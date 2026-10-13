@@ -29,7 +29,7 @@ A new color is a proposal in DECISIONS.md, never a quiet addition.
 | brass / brassLo / gold | f8d280 c86900 f8d280 | fittings, money in the HUD |
 | soul / soulLo | 32fad2 0dc8d9 | ghosts and souls |
 | marker / markerLo | 6e8ef0 5555e6 | markers, the cage's strip |
-| blood | ac0a48 | — (reserved for deaths, M1) |
+| blood | ac0a48 | lives lost, overloads, snake eyes, and the red card suits (DECISIONS #37) |
 
 ## The tiers own their colors
 
@@ -64,7 +64,9 @@ colorblind players (and Milestone 8 adds colorblind glyph options).
 
 ## Pixels and density
 
-- 640×360 internal, whole-number upscale, letterboxed. Never a fractional scale.
+- 640×360 internal, whole-number upscale, letterboxed. A fractional scale only when the best whole
+  number would waste the window (under 85% of it) or the player picks FILL WINDOW (DECISIONS #35);
+  PIXEL-PERFECT keeps whole numbers always. Never out of aspect.
 - **Textures**: 64 or 128 px, `NearestFilter`, no mipmaps, sRGB. Floor and walls at **32 px a
   meter** (a 64 px tile is 2 m); felt, wood and brass tiles at 32 px a meter on their surfaces.
   Edges of a tile quieter than its center; check every tile 2×2 for seams.

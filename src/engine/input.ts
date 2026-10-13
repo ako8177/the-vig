@@ -41,6 +41,8 @@ export class Input {
   look = { dx: 0, dy: 0 };
   /** Is the pointer locked to the game (first-person look)? */
   locked = false;
+  /** The last lock request was refused (the browser blocks a re-lock for ~1 s after Esc). */
+  lockFailed = false;
   /** Typed characters this frame (for text fields). */
   text = '';
   /** When true, actions are suppressed (a text field has focus). */
@@ -78,6 +80,9 @@ export class Input {
       // leaving pointer lock with Esc: the browser eats the keydown, so latch it here
       if (!this.locked) this.pressed.add('PointerUnlock');
     });
+    document.addEventListener('pointerlockerror', () => {
+      this.lockFailed = true;
+    });
     el.addEventListener('mousemove', (e) => {
       if (this.locked) {
         this.look.dx += e.movementX;
@@ -109,9 +114,10 @@ export class Input {
   /** Ask for pointer lock (must run inside a user gesture: a click). */
   lock() {
     if (!this.el || this.locked) return;
+    this.lockFailed = false;
     try {
       const p = this.el.requestPointerLock() as unknown;
-      if (p && typeof (p as Promise<void>).catch === 'function') (p as Promise<void>).catch(() => {});
+      if (p && typeof (p as Promise<void>).catch === 'function') (p as Promise<void>).catch(() => (this.lockFailed = true));
     } catch {
       /* headless browsers without pointer lock */
     }

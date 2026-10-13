@@ -46,12 +46,17 @@ export class View3D {
   readonly mix: ShaderPass;
   readonly pixel: ShaderPass;
   toggles: PassToggles = { bloom: true, pixel: true, lowRes: true };
+  /** 'auto': a whole-number scale when it fills most of the window, else fit it; 'pixel': whole
+   *  numbers only (STYLE.md's strict rule); 'fill': always fit (DECISIONS #35) */
+  scaling: 'auto' | 'pixel' | 'fill' = 'auto';
   box: Letterbox = { x: 0, y: 0, w: VIEW_W, h: VIEW_H, scale: 1, css: { x: 0, y: 0, w: VIEW_W, h: VIEW_H } };
   private ray = new Raycaster();
   private dw = 0;
   private dh = 0;
   private black = new MeshBasicMaterial({ color: 0x000000 });
   private stash = new Map<Mesh, Material | Material[]>();
+  /** the meshes drawn black in the glow pass, found once (invalidateGlow after the scene changes) */
+  private dark: Mesh[] | null = null;
   private bg = new Color();
 
   constructor(readonly canvas: HTMLCanvasElement) {
@@ -92,12 +97,17 @@ export class View3D {
     this.scene.background = new Color(hexOf(C.ink));
   }
 
+  /** The scene's meshes changed (a room built or disposed): find the dark ones again. */
+  invalidateGlow() {
+    this.dark = null;
+  }
+
   /** Mark an object (and its children) as glowing. */
   static glow(o: Object3D) {
     o.traverse((c) => c.layers.enable(GLOW));
   }
 
-  /** Fit the window: whole-number scale of 640×360, centered, black bars. */
+  /** Fit the window: 640×360 scaled the same on both axes, centered, black bars. */
   resize() {
     const dpr = window.devicePixelRatio || 1;
     const cw = Math.max(1, Math.floor(this.canvas.clientWidth * dpr));
@@ -107,25 +117,34 @@ export class View3D {
       this.dw = cw;
       this.dh = ch;
     }
-    const k = Math.max(1, Math.floor(Math.min(cw / VIEW_W, ch / VIEW_H)));
-    // a window smaller than 640x360 still gets the whole picture, scaled down to fit
-    const w = Math.min(cw, VIEW_W * k), h = Math.min(ch, VIEW_H * k);
+    const fit = Math.min(cw / VIEW_W, ch / VIEW_H);
+    // a whole number keeps every pixel square; when the best whole number would waste most of the
+    // window (a 1366x768 laptop gets 1x: a quarter of the screen), fit it instead (DECISIONS #35).
+    // Below 1x it always fits, never out of aspect.
+    const whole = Math.floor(fit);
+    const k = fit < 1 ? fit : this.scaling === 'pixel' || (this.scaling === 'auto' && whole / fit >= 0.85) ? whole : fit;
+    const w = Math.round(VIEW_W * k), h = Math.round(VIEW_H * k);
     const x = Math.floor((cw - w) / 2), y = Math.floor((ch - h) / 2);
     this.box = { x, y, w, h, scale: k, css: { x: x / dpr, y: y / dpr, w: w / dpr, h: h / dpr } };
     const [rw, rh] = this.toggles.lowRes ? [VIEW_W, VIEW_H] : [w, h];
-    this.glowComposer.setSize(rw, rh);
+    // the glow buffer at half size: bloom is a blur, and this pass was a third of the frame (DECISIONS #36)
+    this.glowComposer.setSize(Math.ceil(rw / 2), Math.ceil(rh / 2));
     this.composer.setSize(rw, rh);
     this.pixel.uniforms.res.value.set(rw, rh);
   }
 
   /** Render the glow layer alone: everything else black (it still occludes), no background. */
   private renderGlow() {
-    this.scene.traverse((o) => {
-      if (o instanceof Mesh && !o.layers.isEnabled(GLOW)) {
-        this.stash.set(o, o.material);
-        o.material = this.black;
-      }
-    });
+    if (!this.dark) {
+      this.dark = [];
+      this.scene.traverse((o) => {
+        if (o instanceof Mesh && !o.layers.isEnabled(GLOW)) this.dark!.push(o);
+      });
+    }
+    for (const o of this.dark) {
+      this.stash.set(o, o.material);
+      o.material = this.black;
+    }
     const bg = this.scene.background;
     this.scene.background = this.bg.set(0x000000);
     this.glowComposer.render();

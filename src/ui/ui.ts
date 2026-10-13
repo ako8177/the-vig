@@ -173,7 +173,8 @@ export class UI {
 
   /** A button. `edge` is the color of its border and label (a tier color on a table's bet button). */
   button(id: string, x: number, y: number, w: number, h: number, label: string, opts: { disabled?: boolean; active?: boolean; tip?: TipLine[] | string; edge?: number } = {}): boolean {
-    const hov = this.hover(x, y, w, h) && !opts.disabled;
+    const over = this.hover(x, y, w, h);
+    const hov = over && !opts.disabled;
     const down = hov && this.pointer.down;
     const edge = opts.disabled ? C.smoke : opts.edge ?? C.dust;
     if (this.audit) this.rec('button', x, y, w, h);
@@ -185,10 +186,9 @@ export class UI {
       const col = opts.disabled ? C.ash : hov ? C.white : opts.edge ?? C.bone;
       this.text(label, x + w / 2, y + Math.floor((h - 7) / 2) + (down ? 1 : 0), col, { align: 'center' });
     }
-    if (hov) {
-      this.hoverId = id;
-      if (opts.tip) this.tip(typeof opts.tip === 'string' ? [{ text: opts.tip }] : opts.tip);
-    }
+    if (hov) this.hoverId = id;
+    // a disabled button still says why it is disabled
+    if (over && opts.tip) this.tip(typeof opts.tip === 'string' ? [{ text: opts.tip }] : opts.tip);
     if (hov && this.clicked) {
       this.eat();
       this.sfx('click');

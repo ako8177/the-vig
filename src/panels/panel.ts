@@ -1,6 +1,10 @@
 // A table's panel: a 320×180 2D canvas drawn by the IMGUI kit. render3d shows it on the table's
 // screen as a CanvasTexture and only re-uploads it on frames it redrew (THREEJS-NOTES rule 4).
 // Panels read the sim's state to draw and send commands to act; they never write state.
+//
+// When to redraw: the panel you're sitting at, every frame (it follows the mouse and animates);
+// any other panel when the sim has emitted something since (Game.rev) or while its table has a
+// round in the air. A hand-picked key went stale the moment a panel showed more than the bank.
 import { UI, NO_POINTER, type Pointer } from '../ui/ui';
 import type { Input } from '../engine/input';
 import type { Command } from '../sim/commands';
@@ -15,6 +19,9 @@ export interface PanelView {
   player: number;
   /** seated here: the panel takes input */
   active: boolean;
+  /** the sim's tick (round animations) and its event count (redraws) */
+  tick: number;
+  rev: number;
 }
 
 export abstract class Panel {
@@ -23,7 +30,8 @@ export abstract class Panel {
   /** commands this panel wants sent (the app drains them into the sim) */
   out: Command[] = [];
   private ctx: CanvasRenderingContext2D;
-  private lastKey = '';
+  private lastRev = -1;
+  private wasActive = false;
 
   constructor(readonly table: string) {
     this.canvas = document.createElement('canvas');
@@ -32,16 +40,20 @@ export abstract class Panel {
     this.ctx = this.canvas.getContext('2d')!;
   }
 
-  /** What the panel's look depends on, besides the pointer. */
-  protected abstract key(v: PanelView): string;
   protected abstract draw(ui: UI, v: PanelView): void;
 
-  /** Redraw if anything it shows changed. Returns true when the canvas changed. */
+  /** Something on it is moving (a round in the air, a wheel spinning): keep redrawing. */
+  protected animating(_v: PanelView): boolean {
+    return false;
+  }
+
+  /** Redraw if anything it shows may have changed. Returns true when the canvas changed. */
   update(v: PanelView, pointer: Pointer | null, dt: number, input: Input | null, force = false): boolean {
+    const due = force || v.active || this.wasActive || v.rev !== this.lastRev || this.animating(v) || this.ui.audit;
+    this.wasActive = v.active;
+    if (!due) return false;
+    this.lastRev = v.rev;
     const p = v.active && pointer ? pointer : NO_POINTER;
-    const k = this.key(v) + `|${v.active}|${p.x | 0},${p.y | 0},${p.down},${p.pressed}`;
-    if (!force && k === this.lastKey && !this.ui.audit) return false;
-    this.lastKey = k;
     this.ui.begin(this.ctx, p, 1, dt, v.active ? input : null);
     this.draw(this.ui, v);
     this.ui.end();

@@ -111,12 +111,18 @@ const G: Record<string, string> = {
   '\u0011': '.....|.###.|#...#|#.#.#|#...#|.###.|.....', // mark: a target, you are marked (a debuff)
   '\u0012': '.###.|#####|#.#.#|#####|#####|#####|#.#.#', // soul: a ghost
   '\u0013': '..#..|.###.|##.##|#...#|##.##|.###.|..#..', // marker: a diamond chip
+  // card suits (Twenty-One, Red Line): solid, so the diamond suit never reads as the hollow marker chip
+  '\u0014': '.....|.#.#.|#####|#####|.###.|..#..|.....', // suit: hearts
+  '\u0015': '..#..|.###.|#####|#####|.###.|..#..|.....', // suit: diamonds
+  '\u0016': '.###.|.###.|##.##|#####|##.##|..#..|.###.', // suit: clubs
+  '\u0017': '..#..|.###.|#####|#####|#.#.#|..#..|.###.', // suit: spades
 };
 
 export const ICON = {
   heart: '\u0001', coin: '\u0002', bolt: '\u0003', star: '\u0004', clock: '\u0005',
   up: '\u0006', down: '\u0007', right: '\u0008', left: '\u000e',
   skull: '\u0010', mark: '\u0011', soul: '\u0012', marker: '\u0013',
+  hearts: '\u0014', diamonds: '\u0015', clubs: '\u0016', spades: '\u0017',
 };
 export const FONT_H = 9; // cell height incl. descenders
 export const LINE_H = 10;

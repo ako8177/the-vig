@@ -1,7 +1,7 @@
 // Fixed views of the room, screenshotted (Read every PNG before calling it done).
 // Usage: npm run shots [-- name,name]   (dev server on 5180, or BASE=...)
 // Shots: door (the room from the door), hilo (seated at Hi-Lo), collector (the Collector's table),
-// and the pass comparison: door-nobloom, door-nopixel, door-fullres.
+// midnight (the 0:00 drop), and the pass comparison: door-nobloom, door-nopixel, door-fullres.
 import fs from 'node:fs';
 import { open, glInfo, OUT } from './launch.mjs';
 
@@ -24,9 +24,14 @@ const SHOTS = {
     await page.mouse.move(5, 5);
   },
   collector: async () => {
-    await ev(() => { const a = window.__app; if (a.me().seat) a.game.submit(0, { t: 'stand' }); });
+    await ev(() => { const a = window.__app; if (a.game.state.players[0].seat) a.game.submit(0, { t: 'stand' }); });
     await wait(700);
     await ev(() => window.__app.pose(0, 3.6, 0, -0.32));
+  },
+  // the lights dropping at 0:00, seen from the Collector's seat
+  midnight: async () => {
+    await ev(() => { const a = window.__app; a.game.state.bank = 3600; a.skipTo(a.game.tick + a.game.state.clock + 1); });
+    await wait(2500);
   },
 };
 

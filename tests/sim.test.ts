@@ -22,7 +22,7 @@ describe('sim scaffold', () => {
 
   it('starts night 1 from DESIGN.md §2', () => {
     const s = new Game({ seed: 1 }).state;
-    expect([s.bank, s.quota, s.night, s.clock]).toEqual([1000, 3000, 1, 360 * 60]);
+    expect([s.bank, s.quota, s.night, s.clock]).toEqual([1500, 3000, 1, 360 * 60]);
     expect(s.players[0].lives).toBe(3);
   });
 

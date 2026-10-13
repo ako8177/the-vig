@@ -5,8 +5,10 @@ import type { Game, System } from '../Game';
 import type { Collider } from '../../data/floors';
 import { FLOOR_1, PLAYER_R } from '../../data/floors';
 import { TICKS_PER_S } from '../state';
+import { STICKY } from '../../data/marks';
+import { hasTeamMark } from '../rules';
 
-/** Walking speed, m/s (THREEJS-NOTES rule 2). Sticky Floor (DESIGN.md §3) will scale it. */
+/** Walking speed, m/s (THREEJS-NOTES rule 2). Sticky Floor (DESIGN.md §3) scales it by 0.7. */
 export const WALK_SPEED = 3;
 const STEP = WALK_SPEED / TICKS_PER_S;
 
@@ -64,6 +66,9 @@ export const movement: System = {
     p.yaw = clampInt(cmd.yaw, -7000, 7000);
   },
   tick(g: Game) {
+    // you walk the floor while the night runs; at 0:00 you're held at the Collector's table
+    if (g.state.phase !== 'floor') return;
+    const step = STEP * (hasTeamMark(g, 'sticky') ? STICKY : 1);
     for (const p of g.state.players) {
       if (p.seat || (p.mx === 0 && p.mz === 0)) continue;
       let vx = p.mx / 1000, vz = p.mz / 1000;
@@ -72,7 +77,7 @@ export const movement: System = {
         vx /= len;
         vz /= len;
       }
-      const to = collide(p.x + vx * STEP, p.z + vz * STEP, PLAYER_R, FLOOR_1.colliders);
+      const to = collide(p.x + vx * step, p.z + vz * step, PLAYER_R, FLOOR_1.colliders);
       p.x = to.x;
       p.z = to.z;
     }

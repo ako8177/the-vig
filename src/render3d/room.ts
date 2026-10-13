@@ -44,6 +44,8 @@ export interface Room {
   hemi: HemisphereLight;
   /** neon materials by tier, so a palette swap can recolor them */
   neon: Map<Tier, MeshBasicMaterial[]>;
+  /** the lights' intensities as built, for the 0:00 drop */
+  base: { lights: number[]; hemi: number };
   dispose(): void;
 }
 
@@ -170,9 +172,10 @@ export function buildRoom(scene: Scene, floor: Floor, tx: Textures): Room {
     if (pl.table === 'bandit') {
       // a slot cabinet rather than a table
       add(new BoxGeometry(pl.w, 1.8, pl.d), lambert('wood'), pl.x, 0.9, pl.z, 'bandit');
-      add(new PlaneGeometry(pl.w - 0.3, 0.6), screenOff, pl.x, 1.25, pl.z + pl.d / 2 + 0.005, 'bandit-glass');
+      // neon on the cabinet's crown and kick, well clear of its screen (it bloomed across the glass:
+      // DECISIONS #25 is the same lesson on the tables)
       add(new BoxGeometry(pl.w + 0.04, 0.04, 0.04), nm, pl.x, 1.82, pl.z + pl.d / 2, 'neon');
-      add(new BoxGeometry(pl.w + 0.04, 0.04, 0.04), nm, pl.x, 0.92, pl.z + pl.d / 2, 'neon');
+      add(new BoxGeometry(pl.w + 0.04, 0.04, 0.04), nm, pl.x, 0.1, pl.z + pl.d / 2, 'neon');
     } else {
       add(new BoxGeometry(pl.w, pl.h - 0.06, pl.d), lambert('wood'), pl.x, (pl.h - 0.06) / 2, pl.z, pl.table);
       add(uvRepeat(new BoxGeometry(pl.w - 0.14, 0.06, pl.d - 0.14), (pl.w - 0.14) * 2, (pl.d - 0.14) * 2), lambert('felt'), pl.x, pl.h - 0.03, pl.z, 'felt');
@@ -191,7 +194,8 @@ export function buildRoom(scene: Scene, floor: Floor, tx: Textures): Room {
       const frame = add(new BoxGeometry(s.w + 0.06, s.h + 0.06, 0.03), lambert('wood'), s.x, s.y, s.z, 'screenframe');
       frame.rotation.x = -s.tilt;
       frame.translateZ(-0.02);
-      add(new BoxGeometry(0.06, s.y - s.h / 2, 0.06), lambert('brass'), s.x, (s.y - s.h / 2) / 2, s.z - 0.05, 'screenpost');
+      // a table's screen stands on a post; the Bandit's is set in its cabinet
+      if (pl.table !== 'bandit') add(new BoxGeometry(0.06, s.y - s.h / 2, 0.06), lambert('brass'), s.x, (s.y - s.h / 2) / 2, s.z - 0.05, 'screenpost');
       screens.set(pl.table, m);
     }
     sign(`sign_${pl.table}` as TextureName, 96, pl.x, pl.signY, pl.z);
@@ -206,13 +210,25 @@ export function buildRoom(scene: Scene, floor: Floor, tx: Textures): Room {
     ring.rotation.x = Math.PI / 2;
   }
   // his chair: a high back across the table from yours, and his eyes in the dark above it
-  const chairZ = co.z - co.r - 0.55;
-  add(new BoxGeometry(1.0, 2.5, 0.25), lambert('wood', hexOf(C.smoke)), co.x, 1.25, chairZ - 0.2, 'collectorchair');
-  add(new BoxGeometry(1.1, 0.1, 0.35), lambert('brass'), co.x, 2.5, chairZ - 0.2, 'collectorchairtop');
+  // the chair's box is floor data (a collider), so you can't walk into his eyes
+  const ch = co.chair;
+  const chairZ = (ch.z0 + ch.z1) / 2 + 0.2;
+  add(new BoxGeometry(ch.x1 - ch.x0 - 0.1, 2.5, ch.z1 - ch.z0 - 0.1), lambert('wood', hexOf(C.smoke)), co.x, 1.25, chairZ - 0.2, 'collectorchair');
+  add(new BoxGeometry(ch.x1 - ch.x0, 0.1, ch.z1 - ch.z0), lambert('brass'), co.x, 2.5, chairZ - 0.2, 'collectorchairtop');
   const eyes = keep(new MeshBasicMaterial({ color: neonColor('coll') }));
   glowing.add(eyes);
   for (const dx of [-0.11, 0.11]) add(new BoxGeometry(0.07, 0.035, 0.02), eyes, co.x + dx, 1.62, chairZ - 0.06, 'eyes');
   sign('sign_collector', 128, co.x, co.signY, co.z);
+  // his screen lies back on the felt: the Circuit, the choice and the wheels are drawn on it
+  {
+    const sc = co.screen;
+    const m = add(new PlaneGeometry(sc.w, sc.h), screenOff, sc.x, sc.y, sc.z, 'screen-collector');
+    m.rotation.x = -sc.tilt;
+    const fr = add(new BoxGeometry(sc.w + 0.06, sc.h + 0.06, 0.03), lambert('wood'), sc.x, sc.y, sc.z, 'screenframe');
+    fr.rotation.x = -sc.tilt;
+    fr.translateZ(-0.02);
+    screens.set('collector', m);
+  }
 
   // ---- lights: one dim hemisphere, one point light per table cluster (≤ 8 in all)
   const hemi = new HemisphereLight(hexOf(C.wallHi), hexOf(C.carpetLo), 2.2);
@@ -234,8 +250,9 @@ export function buildRoom(scene: Scene, floor: Floor, tx: Textures): Room {
     if (o instanceof Mesh && glowing.has(o.material as Material)) o.layers.enable(GLOW);
   });
   scene.add(group);
+  const base = { lights: lights.map((l) => l.intensity), hemi: hemi.intensity };
   return {
-    group, screens, lights, hemi, neon,
+    group, screens, lights, hemi, neon, base,
     dispose() {
       scene.remove(group);
       group.traverse((o: Object3D) => {
@@ -276,6 +293,18 @@ function mergeByMaterial(group: Group, keep: <T extends { dispose(): void }>(x: 
     one.name = 'merged:' + meshes[0].name;
     group.add(one);
   }
+}
+
+/**
+ * The 0:00 drop (THREEJS-NOTES rule 9): `t` 0 = the night's lights, 1 = midnight, every lamp out
+ * but the Collector's violet one (the seventh light), which burns hotter.
+ */
+export function setMidnight(room: Room, t: number) {
+  room.lights.forEach((l, i) => {
+    const b = room.base.lights[i];
+    l.intensity = i === 6 ? b * (1 + 0.8 * t) : b * (1 - 0.94 * t);
+  });
+  room.hemi.intensity = room.base.hemi * (1 - 0.75 * t);
 }
 
 /** Recolor the neon after a palette swap. */

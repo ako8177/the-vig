@@ -53,8 +53,9 @@ Circuit worth playing aggressively).
 
 **Phase 1 — The floor.** Players spread out across the tables. Each table shows its tier, its
 odds and its loss cost. Bets come out of the shared bank. Mid-risk losses hand out **marks**
-(timed debuffs on a player or the team). High-risk losses can **kill**: the player becomes a
-ghost, their soul held by the house, and a buyback costs a cut of the current quota.
+(timed debuffs on a player or the team). High-risk losses can **kill**: each "death" costs a
+life, and a player out of lives becomes a ghost, their soul held by the house; a buyback costs a
+cut of the current quota.
 
 **Phase 2 — The cage.** Markers (a second currency earned by surviving risk: high-table wins,
 Circuit survivals) buy charms and permanent upgrades at the cage. Open all night; the choice is
@@ -96,11 +97,11 @@ Marks (debuffs) and boons are statuses, not currencies.
 | Table | Tier | Bet | Pays | RTP | Losing costs |
 |---|---|---|---|---|---|
 | The Bandit (slots) | low | $100 | per reel table | 0.95 | the bet |
-| Twenty-One | low | $100–300 | 1:1, 3:2 natural | 0.97 | the bet |
-| Hi-Lo Dice | mid | $200 | 2.2× on a call | 1.10 | the bet + a **mark** (−10% payouts for 60 s, stacks) |
-| The Wheel of Marks | mid | $300 | 1.6× | 1.15 | a random **team mark** |
-| Red Line (cards) | high | $500 | 3× | 1.35 | the bet; **three losses in a row kills** |
-| Dead Man's Hand (dice) | high | $1,000 | 5× | 1.50 | the bet; **a 1–1 kills outright** (1/36) |
+| Twenty-One | low | $100–300 | 1:1, 3:2 natural | 0.974 | the bet |
+| Hi-Lo Dice | mid | $200 | 2.4× on a call | 1.20 | the bet + a **mark** (−5% mid payouts for 30 s, stacks) |
+| The Wheel of Marks | mid | $300 | 1.6× | 1.152 | the bet + a random **team mark** |
+| Red Line (cards) | high | $500 | 2.5× | 1.25 | the bet; **three losses in a row cost a life** |
+| Dead Man's Hand (dice) | high | $1,000 | 6× | 1.50 | the bet; **snake eyes (1/36) costs a life** |
 
 Numbers derive in `DESIGN.md`; the shape is the rule: RTP rises with the tier, and the price
 of losing rises from money to marks to lives.

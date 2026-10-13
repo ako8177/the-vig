@@ -30,6 +30,8 @@ export const SYSTEMS: readonly System[] = [clock, movement, tables, marks, lives
 export interface GameOpts {
   seed: number;
   players?: number;
+  /** permanent upgrades the run starts with (meta; DESIGN.md §5) */
+  upgrades?: import('../data/charms').UpgradeId[];
 }
 
 export class Game {
@@ -38,7 +40,9 @@ export class Game {
   /** every random number in the sim comes from here */
   rng: Rng;
   state: State;
-  /** the applied command log, in the order applied (replaying it reproduces the night) */
+  /** counts emitted events: presentation redraws a panel when it moves (not part of the hash) */
+  rev = 0;
+    /** the applied command log, in the order applied (replaying it reproduces the night) */
   log: Stamped[] = [];
   private queue: Stamped[] = [];
   private events: SimEvent[] = [];
@@ -47,7 +51,7 @@ export class Game {
   constructor(opts: GameOpts) {
     this.seed = opts.seed >>> 0;
     this.rng = new Rng(this.seed);
-    this.state = newState(opts.players ?? 1);
+    this.state = newState(opts.players ?? 1, opts.upgrades ?? []);
     for (const s of SYSTEMS) for (const t of s.handles) {
       if (this.owner.has(t)) throw new Error(`command ${t} owned by both ${this.owner.get(t)!.id} and ${s.id}`);
       this.owner.set(t, s);
@@ -79,6 +83,7 @@ export class Game {
 
   emit(e: SimEvent) {
     this.events.push(e);
+    this.rev++;
   }
 
   /** Hand the events since the last drain to presentation. */

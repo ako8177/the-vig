@@ -7,9 +7,13 @@ export type PlayerId = number;
 export type Command =
   | { t: 'sit'; table: string }
   | { t: 'stand' }
+  /** Twenty-One: place a bet and deal */
   | { t: 'bet'; table: string; amount: number }
+  /** Hi-Lo 'hi' | 'lo'; Red Line 'red' | 'black'; Twenty-One 'hit' | 'stand' */
   | { t: 'call'; table: string; call: string }
+  /** the one-button tables: the Bandit, the Wheel of Marks, Dead Man's Hand */
   | { t: 'spin'; table: string }
+  /** a charm or an upgrade, at the cage */
   | { t: 'buy'; item: string }
   | { t: 'inspect'; circuit: number }
   | { t: 'reroute'; a: number; b: number }
@@ -17,6 +21,10 @@ export type Command =
   | { t: 'pay' }
   | { t: 'gamble' }
   | { t: 'buyback'; target: PlayerId }
+  /** spin the Collector's Boon or Bane wheel (DECISIONS #33) */
+  | { t: 'fortune' }
+  /** done reading the night's summary: start the next night (DECISIONS #33) */
+  | { t: 'ready' }
   /**
    * Walk intent in world space, in thousandths (|(mx, mz)| <= 1000 after the sim clamps it), and
    * the facing in milliradians for other players' views. The sim does no trigonometry: the client

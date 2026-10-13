@@ -38,15 +38,25 @@ export interface Floor {
   door: { x: number; w: number; h: number };
   colliders: Collider[];
   tables: Placement[];
-  /** the Collector's round table */
-  collector: { x: number; z: number; r: number; h: number; stand: { x: number; z: number }; signY: number };
+  /** the Collector's round table, and where you sit at it at 0:00 (his screen lies on the felt) */
+  collector: {
+    x: number; z: number; r: number; h: number; stand: { x: number; z: number }; signY: number;
+    eye: { x: number; y: number; z: number }; look: { x: number; y: number; z: number };
+    screen: { x: number; y: number; z: number; w: number; h: number; tilt: number };
+    /** his high-backed chair across the table (a collider too: what you bump into is what you see) */
+    chair: Box;
+  };
   bar: Box;
   cage: Box;
+  /** where you stand to use the cage (charms, upgrades, buybacks) */
+  cageStand: { x: number; z: number };
   pillars: Circle[];
 }
 
 /** You can sit at a table from this far from its stand point (m). */
 export const USE_RADIUS = 1.3;
+/** You can use the cage's window from this far from its stand point (m): it is 5 m long. */
+export const CAGE_RADIUS = 1.8;
 /** Eye height standing (THREEJS-NOTES rule 2). */
 export const EYE_H = 1.6;
 /** The player's capsule radius (m). */
@@ -73,12 +83,18 @@ function place(table: string, x: number, z: number, w: number, d: number, signY 
   };
 }
 
+/** A slot cabinet: its screen is the glass on its front, upright, and you sit facing it. */
+function cabinet(p: Placement): Placement {
+  const sc = { x: p.x, y: 1.3, z: p.z + p.d / 2 + 0.02, w: 1.28, h: 0.72, tilt: 0 };
+  return { ...p, screen: sc, eye: { x: p.x, y: sc.y, z: sc.z + SEAT_D }, look: { x: p.x, y: sc.y, z: sc.z } };
+}
+
 const tables: Placement[] = [
   // Low tier nearest the door, mid out by the walls, high at the back flanking the Collector: the
   // deeper you walk, the worse it costs. Every sign is inside the 91 deg view from the door (the
   // whole question in one look) and no sign hides another from there.
   // the near signs hang higher so that from the door they clear the mid signs behind them
-  place('bandit', -4, 2.5, 1.4, 0.9, 3.4),
+  cabinet(place('bandit', -4, 2.5, 1.4, 0.9, 3.4)),
   place('twentyone', 4, 2.5, 2.2, 1.2, 3.4),
   place('hilo', -8, -2, 1.8, 1.1),
   place('wheel', 8, -2, 2.0, 1.2),
@@ -94,7 +110,16 @@ const pillars: Circle[] = [
   { kind: 'circle', x: -9.6, z: -6.6, r: 0.35, h: 4, what: 'pillar' },
   { kind: 'circle', x: 9.6, z: -6.6, r: 0.35, h: 4, what: 'pillar' },
 ];
-const collector = { x: 0, z: -0.5, r: 1.3, h: 0.85, stand: { x: 0, z: 1.55 }, signY: 3.25 };
+// the Collector's screen lies back on the felt (60 deg from vertical would hide his eyes; 0.6 rad
+// keeps them in view above it) and the seat sits 1.25 m out along its normal, like every table
+const CO_SCREEN = { x: 0, y: 1.18, z: -0.3, w: 1.28, h: 0.72, tilt: 0.6 };
+const collector = {
+  x: 0, z: -0.5, r: 1.3, h: 0.85, stand: { x: 0, z: 1.55 }, signY: 3.25,
+  screen: CO_SCREEN,
+  eye: { x: 0, y: CO_SCREEN.y + Math.sin(CO_SCREEN.tilt) * SEAT_D, z: CO_SCREEN.z + Math.cos(CO_SCREEN.tilt) * SEAT_D },
+  look: { x: 0, y: CO_SCREEN.y, z: CO_SCREEN.z },
+  chair: { kind: 'box', x0: -0.55, z0: -0.5 - 1.3 - 0.55 - 0.375, x1: 0.55, z1: -0.5 - 1.3 - 0.55 - 0.025, h: 2.55, what: 'collectorchair' } as Box,
+};
 
 const W = 24, D = 16;
 const walls: Box[] = [
@@ -118,11 +143,13 @@ export const FLOOR_1: Floor = {
     ...pillars,
     ...tables.map((t): Box => ({ kind: 'box', x0: t.x - t.w / 2, z0: t.z - t.d / 2, x1: t.x + t.w / 2, z1: t.z + t.d / 2, h: t.h, what: t.table })),
     { kind: 'circle', x: collector.x, z: collector.z, r: collector.r, h: collector.h, what: 'collector' },
+    collector.chair,
   ],
   tables,
   collector,
   bar,
   cage,
+  cageStand: { x: cage.x0 - 0.9, z: (cage.z0 + cage.z1) / 2 },
   pillars,
 };
 
