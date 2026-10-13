@@ -11,7 +11,7 @@ and every table's panel are 2D canvases drawn by one IMGUI kit (`src/ui/ui.ts`).
 
 ## How to run
 
-- Node 22+ must be on PATH (on the original owner's PC, put the portable `C:\Users\jacks\tools\node-v22.20.0-win-x64` on PATH).
+- Node 22+ must be on PATH.
 - A dev server is often running at `http://127.0.0.1:5180/`. Reuse it; never kill one you didn't
   start. Otherwise start `npx vite --port 5181 --host 127.0.0.1` and pass `BASE=http://127.0.0.1:5181/`.
 - The e2e scripts open the installed Chrome with SwiftShader through `e2e/launch.mjs` (Windows blocks

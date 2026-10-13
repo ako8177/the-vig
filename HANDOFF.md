@@ -21,10 +21,8 @@ deals from the center, standing, not seated across from you (#30).
 - Play: double-click `Play.bat`, or in a terminal put Node on PATH and `npm run dev`
   (`http://127.0.0.1:5180/`). Click to step onto the floor; WASD, mouse, E to sit at Hi-Lo
   (the only open table in M0), E or Esc to stand.
-- Node 22+ installed normally works as is. On the original owner's PC Node is portable:
-  `export PATH="/c/Users/jacks/tools/node-v22.20.0-win-x64:$PATH"` (bash) or
-  `$env:Path = "C:\Users\jacks\tools\node-v22.20.0-win-x64;" + $env:Path` (PowerShell).
-- Live build: https://ycgnem.github.io/the-vig/ (repo `ycgNem/the-vig`). Every push to `main` runs
+- Node 22+ installed normally, on PATH.
+- Live build: https://ako8177.github.io/the-vig/ (repo `ako8177/the-vig`). Every push to `main` runs
   the tests, builds and deploys (`.github/workflows/deploy.yml`), about a minute.
 - `npm run typecheck`, `npm test`, `npm run build`.
 - With the dev server up: `npm run shots`, `npm run screens`, `npm run perf`, `npm run e2e` (smoke),
@@ -49,7 +47,6 @@ deals from the center, standing, not seated across from you (#30).
 
 ## Gotchas
 
-- The other game folders in Documents are read-only for this project.
 - e2e drives the installed Chrome (`channel: 'chrome'`, e2e/launch.mjs) because Windows blocked
   Playwright's own Chromium on the original PC. Elsewhere, `PW_CHANNEL=chromium` works after
   `npx playwright install chromium`.

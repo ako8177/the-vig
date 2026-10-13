@@ -34,8 +34,7 @@ in this milestone), then `src/data/` (tables, charms, marks, wheels, floors, the
    without each charm; whether the Lead Apron + Overclock flip still holds.
 6. **The Collector's choice** (§7): when gambling beats paying; the Boon and Bane wheels' expected
    effect on the next night.
-7. **The pace tests** (§8): run `npm test` (Node 22+ on PATH; on the original owner's PC put the portable
-   `C:\Users\jacks\tools\node-v22.20.0-win-x64` on PATH) and read each bot's result on its 20 seeds
+7. **The pace tests** (§8): run `npm test` (Node 22+ on PATH) and read each bot's result on its 20 seeds
    against its band.
 8. **Derivations**: every number in `src/data/` has a derivation string, it names a section that
    exists, and the section says the same number.

@@ -16,13 +16,9 @@ the S&S synth and jsfxr bank · localStorage for settings and meta · Vitest · 
 headless Chromium (SwiftShader) · GitHub Pages · Electron later · **Trystero** (WebRTC, no
 server) for co-op in Milestone 3.
 
-The engine layer comes from Sprocket & Sprout (`C:\Users\jacks\Documents\sprocket-and-sprout`):
+The engine layer (extracted in Milestone 0 from an earlier project, and now part of this repo):
 `src/engine/` (loop, rng, input, audio, sfxr, music), the bitmap font and IMGUI kit, the overlap
-audit, the e2e harness, the deploy workflow, the `.bat` files, Electron. **Nothing from its
-`sim/`, `data/`, `app/`, renderer or art.** The other projects in `Documents` (candlepower,
-trotline, slipstream-salvager, slipstream-salvager-3d) are **read-only**: never write, commit or
-run npm there. `slipstream-salvager-3d/THREEJS-NOTES.md` may be read for the first-person
-camera, pixel pass and SwiftShader notes.
+audit, the e2e harness, the deploy workflow, the `.bat` files, Electron.
 
 ## Architecture rules
 
@@ -90,11 +86,7 @@ camera, pixel pass and SwiftShader notes.
 
 ## Environment notes
 
-Windows. Node 22+: either installed normally, or (on the original owner's PC) a portable copy at
-`C:\Users\jacks\tools\node-v22.20.0-win-x64`, not on PATH; the `.bat` files use whichever exists,
-and `HANDOFF.md` has the PATH line for a terminal. The engine layer was extracted in Milestone 0,
-so the Sprocket & Sprout folder and the read-only projects above exist only on the original
-owner's PC; nobody else needs them. PixelLab MCP and Blender MCP are optional (art is drawn with
+Windows. Node 22+ installed normally, on PATH. PixelLab MCP and Blender MCP are optional (art is drawn with
 the pixel-art-studio skill). Tokens never go in the repo (it is public). Say what you spent from
-the PixelLab budget in `PROGRESS.md`. The repo is `github.com/ycgNem/the-vig`; every push to
-`main` deploys to https://ycgnem.github.io/the-vig/.
+the PixelLab budget in `PROGRESS.md`. The repo is `github.com/ako8177/the-vig`; every push to
+`main` deploys to https://ako8177.github.io/the-vig/.

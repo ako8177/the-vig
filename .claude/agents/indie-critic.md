@@ -24,7 +24,7 @@ you go down a floor. The one thing: **safety is a slow loss**. Tables have tiers
 tier and the price of losing rises from money to marks to lives. TypeScript + Vite + Three.js, first
 person, 640×360 with bloom → palette pixel pass → whole-number upscale. The sim (`src/sim/`) is
 pure, seeded and command-driven so co-op (Milestone 3, Trystero/WebRTC) is a transport problem.
-The project is the repo you are in (`github.com/ycgNem/the-vig`).
+The project is the repo you are in (`github.com/ako8177/the-vig`).
 
 Read first, in this order, and hold the game to them:
 - `PLAN.md`: the pitch, the pillars, **the removal test**, **the not-list**, the night's structure.
@@ -42,7 +42,7 @@ Read first, in this order, and hold the game to them:
    Check the quota curve against what the tables can earn in 360 s. Show the working. Never guess.
 2. **Read the systems** (`src/sim/Game.ts`, `src/sim/systems/`) to learn what a player can actually do
    and whether it matches the docs.
-3. **Play the build.** Node 22+ must be on PATH (on the original owner's PC, put the portable `C:\Users\jacks\tools\node-v22.20.0-win-x64` on PATH).
+3. **Play the build.** Node 22+ must be on PATH.
    A dev server may be running at `http://127.0.0.1:5180/` (check first, reuse it, never kill one you
    didn't start; otherwise start `npx vite --port 5181 --host 127.0.0.1` and stop it when done).
    Drive it with Playwright through `e2e/launch.mjs` (installed Chrome + SwiftShader; Windows blocks

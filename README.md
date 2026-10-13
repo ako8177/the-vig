@@ -5,7 +5,7 @@ Collector wants more. Gamble a shared bank up to the quota, buy charms that bend
 at the Collector's table for a game that can kill you. **Safety is a slow loss**: the safe tables
 bleed you, the risky ones pay, and the price of losing climbs from money to marks to lives.
 
-**Play the current build: https://ycgnem.github.io/the-vig/**
+**Play the current build: https://ako8177.github.io/the-vig/**
 (Chrome, Edge or Firefox on a PC. Click to step onto the floor; WASD walk, mouse look, E to sit at a
 table, E or Esc to stand.)
 
@@ -19,7 +19,7 @@ what exists.
 ## Run it on your own PC
 
 1. Install **Node.js LTS** (22 or newer) from https://nodejs.org.
-2. Get the code: `git clone https://github.com/ycgNem/the-vig.git` (or **Code → Download ZIP** on
+2. Get the code: `git clone https://github.com/ako8177/the-vig.git` (or **Code → Download ZIP** on
    GitHub and unzip it).
 3. Double-click **`Play.bat`**. The first run installs the tools (a minute), then your browser opens
    the game at http://127.0.0.1:5180.
