@@ -1,6 +1,7 @@
 // The Wheel of Marks (mid): 25 slots, 18 pay 1.6x, 7 hand the whole team a random mark (Cold
 // Deck, Sticky Floor, Blackout, Tax). p = 0.72, RTP 1.152. DESIGN.md §3.
 import type { TableModule } from './table';
+import { stakeFor } from '../rules';
 import { defOf, stake } from './table';
 import { addMark, payoutFactor } from '../rules';
 import { TEAM_MARKS } from '../../data/marks';
@@ -22,7 +23,7 @@ export const wheel: TableModule = {
   lossCost: () => def.lossText,
   start(g, p, cmd) {
     if (cmd.t !== 'spin') return 'spin the wheel';
-    const bet = def.bet as number;
+    const bet = stakeFor(p, def.bet as number);
     const why = stake(g, bet);
     if (why) return why;
     const slot = g.rng.int(0, WHEEL_SLOTS - 1);

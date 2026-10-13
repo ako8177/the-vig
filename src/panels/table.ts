@@ -8,7 +8,8 @@ import { C, TIER_NAME, TIER_ROLE } from '../data/palette';
 import { TABLE_BY_ID, minBet, type TableDef } from '../data/tables';
 import { ICON } from '../ui/font';
 import { TICKS_PER_S, type Card, type Outcome, type TableState } from '../sim/state';
-import { payoutFactorOf, blackoutLeft } from './view';
+import { payoutFactorOf, blackoutLeft, lossTextOf } from './view';
+import { stakeFor } from '../sim/rules';
 import { isRed, RANK } from '../sim/tables/table';
 
 export const LOSS_ICON = { coin: ICON.coin, mark: ICON.mark, skull: ICON.skull };
@@ -74,10 +75,11 @@ export abstract class TablePanel extends Panel {
       const pays = d.pays !== null ? `PAYS ${d.paysText} (${money(bet * d.pays)} ON ${money(bet)})` : `PAYS ${d.paysText}`;
       ui.text(win, 12, 29, C.white);
       ui.text(pays, 70, 29, C.white);
-      ui.text(`LOSE: ${d.lossText.replace('THE BET', '$' + (typeof d.bet === 'number' ? d.bet : `${d.bet[0]}-${d.bet[1]}`))}`, 12, 40, tier.hi);
+      ui.text(`LOSE: ${lossTextOf(d, v.state).replace('THE BET', '$' + (typeof d.bet === 'number' ? d.bet : `${d.bet[0]}-${d.bet[1]}`))}`, 12, 40, tier.hi);
       ui.text(`RETURNS $${d.rtp.toFixed(2)} PER $1`, 12, 51, C.dust);
       const f = payoutFactorOf(v.state, me, d.id);
-      if (Math.abs(f - 1) > 1e-9) ui.text(`YOUR PAYOUTS NOW x${f.toFixed(2)}`, PANEL_W - 12, 51, f < 1 ? C.midHi : C.gold, { align: 'right' });
+      if (me.overclock > 0) ui.text(`OVERCLOCK: STAKES AND WINS x2, ${Math.ceil(me.overclock / TICKS_PER_S)} S`, PANEL_W - 12, 51, C.gold, { align: 'right' });
+      else if (Math.abs(f - 1) > 1e-9) ui.text(`YOUR PAYOUTS NOW x${f.toFixed(2)}`, PANEL_W - 12, 51, f < 1 ? C.midHi : C.gold, { align: 'right' });
       ui.text(d.howText, 12, 60, C.ash);
     }
     this.drawPlay(ui, v);
@@ -88,6 +90,16 @@ export abstract class TablePanel extends Panel {
   protected abstract drawPlay(ui: UI, v: PanelView): void;
   /** The bet buttons (drawn after the odds: the odds always come first). */
   protected abstract drawControls(ui: UI, v: PanelView): void;
+
+  /** This player's stake at this table now (Overclock doubles it). */
+  protected stake(v: PanelView, base = minBet(this.def)): number {
+    return stakeFor(v.state.players[v.player], base);
+  }
+
+  /** The odds are hidden by a Blackout (the header says so). */
+  protected dark(v: PanelView): boolean {
+    return blackoutLeft(v.state) > 0;
+  }
 
   /** Why a bet button is disabled, or '' when it isn't. */
   protected blocked(v: PanelView, amount: number): string {

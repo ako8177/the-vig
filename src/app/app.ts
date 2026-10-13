@@ -15,6 +15,7 @@ import { FLOOR_1, USE_RADIUS } from '../data/floors';
 import { TABLE_BY_ID, minBet } from '../data/tables';
 import { CHARMS, UPGRADES, CHARM_BY_ID, UPGRADE_BY_ID, type CharmId, type UpgradeId } from '../data/charms';
 import { MARK_BY_ID } from '../data/marks';
+import { ECONOMY } from '../data/economy';
 import { activePalette, C, TIER_NAME, TIER_ROLE, type PaletteId } from '../data/palette';
 import { View3D, type PassToggles } from '../render3d/view';
 import { Textures } from '../render3d/textures';
@@ -24,7 +25,8 @@ import { Hud, HUD_W, HUD_H, type HudAction, type Lesson, type Meta, type Screen,
 import { BanditPanel, DeadManPanel, HiLoPanel, RedLinePanel, TwentyOnePanel, WheelPanel } from '../panels/games';
 import { CollectorPanel } from '../panels/collector';
 import { PANEL_W, PANEL_H, type Panel } from '../panels/panel';
-import { blackoutLeft } from '../panels/view';
+import { blackoutLeft, lossTextOf } from '../panels/view';
+import { CALL_RADIUS } from '../sim/systems/collector';
 import { money } from '../panels/table';
 import type { Pointer } from '../ui/ui';
 
@@ -57,9 +59,11 @@ const LESSONS: Record<string, [string, string]> = {
   mark: ['YOU ARE MARKED', '-5% ON YOUR HI-LO PAYOUTS A STACK. AT 4 STACKS HI-LO LOSES: GO SPIN THE WHEEL.'],
   teammark: ['A TEAM MARK', 'THE WHEEL PAYS, BUT ITS LOSSES HIT EVERYONE. IT LASTS 45 S.'],
   blood: ['A BLOOD TABLE', 'IT PAYS BEST, AND LOSING CAN COST A LIFE. READ THE SCREEN BEFORE YOU BET.'],
-  midnight: ['0:00. THE COLLECTOR.', 'SHORT: A LIFE PER $1,000 AND THE BANK. MADE IT: PAY, OR GAMBLE ON THE CIRCUIT.'],
+  midnight: ['0:00. THE COLLECTOR.', `SHORT: A LIFE PER ${money(ECONOMY.shortfallPerLife.v)} AND THE BANK. MADE IT: PAY, OR GAMBLE ON THE CIRCUIT.`],
   markers: ['MARKERS', 'SPEND THEM AT THE CAGE ON THE EAST WALL: CHARMS THAT CROSS THE ROOM.'],
+  broke: ['BROKE', "NOTHING LEFT TO BET? WALK TO THE COLLECTOR'S TABLE IN THE MIDDLE AND PRESS E TO CALL IT."],
 };
+const URGENT = new Set(['blood', 'midnight', 'broke']);
 
 export class App {
   readonly input = new Input();
@@ -81,6 +85,10 @@ export class App {
   /** a lock request the browser refused (it holds the mouse back for ~1 s after Esc) */
   relock = false;
   cageOpen = false;
+  /** a yes/no card on screen (calling the night) */
+  confirm: { title: string; lines: string[]; yes: string } | null = null;
+  /** the stand-up came from Esc: don't grab the mouse back (no user gesture) */
+  private standByEsc = false;
   private toasts: Toast[] = [];
   private lesson: Lesson | null = null;
   private lessonQueue: string[] = [];
@@ -162,7 +170,7 @@ export class App {
 
   /** Walking the floor, mouse free: a click should take the mouse. */
   private wantsLock() {
-    return this.screen === 'game' && this.game.state.phase === 'floor' && !this.fp.seated && !this.cageOpen && !this.input.locked;
+    return this.screen === 'game' && this.game.state.phase === 'floor' && !this.fp.seated && !this.cageOpen && !this.confirm && !this.input.locked;
   }
 
   private resetCamera() {
@@ -204,11 +212,13 @@ export class App {
     this.dark = 0;
   }
 
+  /** Queue a lesson card (once per browser). Blood and 0:00 cut the line: they must come before the risk. */
   private teach(id: string) {
-    if (this.meta.lessons.includes(id) || this.lessonQueue.includes(id) || this.lesson?.title === LESSONS[id][0]) return;
-    this.meta.lessons.push(id);
-    save('vig.meta', this.meta);
-    this.lessonQueue.push(id);
+    if (this.meta.lessons.includes(id) || this.lessonQueue.includes(id) || this.lesson?.id === id) return;
+    if (URGENT.has(id)) {
+      this.lessonQueue.unshift(id);
+      if (this.lesson) this.lesson.t = 0;
+    } else this.lessonQueue.push(id);
   }
 
   private toast(text: string, color: number) {
@@ -264,7 +274,10 @@ export class App {
         case 'stood':
           if (e.player !== ME || this.game.state.phase !== 'floor') break;
           this.fp.stand(this.view.camera);
-          this.input.lock();
+          // E is a key the browser lets us take the mouse on; Esc isn't: the pause card takes the click
+          if (this.standByEsc) this.paused = true;
+          else this.input.lock();
+          this.standByEsc = false;
           break;
         case 'play':
           if (!mine) break;
@@ -309,6 +322,9 @@ export class App {
           if (e.delta < 0) {
             this.banner = { text: '-1 LIFE', sub: `${e.why.toUpperCase()}. ${e.lives} LEFT.`, color: C.blood, t: 2.4 };
             a.sfx('life');
+          } else if (e.delta === 0) {
+            this.toast(e.why.toUpperCase(), C.collHi);
+            a.sfx('buy');
           } else {
             this.toast(`+1 LIFE (${e.why.toUpperCase()})`, C.blood);
             a.sfx('buy');
@@ -325,6 +341,7 @@ export class App {
           break;
         case 'midnight':
           this.cageOpen = false;
+          this.confirm = null;
           this.banner = { text: '0:00', sub: 'THE COLLECTOR CALLS YOU TO HIS TABLE.', color: C.collHi, t: 2.5 };
           a.sfx('midnight');
           this.input.unlock();
@@ -371,7 +388,7 @@ export class App {
           }
           break;
         case 'overclock':
-          if (e.player === ME) this.toast('OVERCLOCKED: x2 FOR YOUR FIRST 60 S AT THE TABLES', C.gold);
+          if (e.player === ME) this.toast('OVERCLOCKED: STAKES AND WINS x2 FOR THE FIRST 60 S OF THE NIGHT', C.gold);
           break;
         case 'refused':
           if (e.player !== ME || e.cmd === 'move') break;
@@ -393,7 +410,7 @@ export class App {
       title: `E  SIT  ${d.name.toUpperCase()}`,
       odds: hidden
         ? `${TIER_NAME[d.tier]}  BLACKOUT: ODDS HIDDEN`
-        : `${TIER_NAME[d.tier]}  WIN ${Math.round(d.winP * 100)}%  PAYS ${d.pays !== null ? d.paysText : 'BY LINE'}  LOSE ${d.lossText.replace('THE BET', bet)}`,
+        : `${TIER_NAME[d.tier]}  WIN ${Math.round(d.winP * 100)}%  PAYS ${d.pays !== null ? d.paysText : 'BY LINE'}  LOSE ${lossTextOf(d, this.game.state).replace('THE BET', bet)}`,
       color: TIER_ROLE[d.tier].base,
     };
   }
@@ -431,6 +448,11 @@ export class App {
         case 'resume': this.input.lock(); break;
         case 'buy': this.send({ t: 'buy', item: a.item }); break;
         case 'closeCage': this.closeCage(); break;
+        case 'confirm':
+          this.confirm = null;
+          if (a.yes) this.send({ t: 'callit' });
+          else this.input.lock();
+          break;
         case 'set':
           this.settings = { ...this.settings, ...a.settings };
           save('vig.settings', this.settings);
@@ -444,6 +466,23 @@ export class App {
           break;
       }
     }
+  }
+
+  /** Standing at the Collector's table (where a night can be called early). */
+  private atCollectorTable() {
+    const p = this.me();
+    const c = FLOOR_1.collector.stand;
+    return (p.x - c.x) ** 2 + (p.z - c.z) ** 2 <= CALL_RADIUS ** 2;
+  }
+
+  private askCallIt() {
+    const s = this.game.state;
+    this.input.unlock();
+    this.confirm = {
+      title: 'CALL IT?',
+      lines: [`THE CLOCK JUMPS TO 0:00 NOW (${Math.ceil(s.clock / TICKS_PER_S)} S LEFT).`, `THE BANK HOLDS ${money(s.bank)} OF ${money(s.quota)}.`, 'NO MORE BETS TONIGHT.'],
+      yes: 'CALL IT',
+    };
   }
 
   private openCage() {
@@ -464,18 +503,24 @@ export class App {
 
     if (inGame && s.phase === 'floor') {
       // Esc while walking: the browser drops pointer lock; we pause (THREEJS-NOTES rule 2)
-      if (this.wasLocked && !i.locked && !this.fp.seated && !this.cageOpen) this.paused = true;
+      if (this.wasLocked && !i.locked && !this.fp.seated && !this.cageOpen && !this.confirm) this.paused = true;
       if (i.lockFailed && !i.locked && !this.fp.seated && !this.cageOpen) this.relock = true;
       const l = i.takeLook();
       if (i.locked) this.fp.look(l.dx, this.settings.invert ? -l.dy : l.dy);
       if (this.cageOpen) {
         if (i.wasPressed('interact') || i.wasPressed('pause')) this.closeCage();
+      } else if (this.confirm) {
+        if (i.wasPressed('pause')) this.confirm = null;
       } else if (this.fp.seated) {
-        if (i.wasPressed('interact') || i.wasPressed('pause')) this.send({ t: 'stand' });
+        if (i.wasPressed('interact') || i.wasPressed('pause')) {
+          this.standByEsc = i.wasPressed('pause');
+          this.send({ t: 'stand' });
+        }
       } else if (this.started && !this.paused && i.wasPressed('interact')) {
         const t = this.reachable();
         if (t) this.send({ t: 'sit', table: t });
         else if (atCage(this.me())) this.openCage();
+        else if (this.atCollectorTable()) this.askCallIt();
       }
     } else i.takeLook();
     this.wasLocked = i.locked;
@@ -531,14 +576,20 @@ export class App {
     if (this.banner) this.banner.t -= dt;
     if (this.lesson) this.lesson.t -= dt;
     if ((!this.lesson || this.lesson.t <= 0) && this.lessonQueue.length && inGame && (this.started || s.phase !== 'floor')) {
-      const [title, body] = LESSONS[this.lessonQueue.shift()!];
-      this.lesson = { title, body, t: 7 };
+      const id = this.lessonQueue.shift()!;
+      const [title, body] = LESSONS[id];
+      this.lesson = { id, title, body, t: 7 };
+      this.meta.lessons.push(id);
+      save('vig.meta', this.meta);
     }
 
     // the HUD
     const near = inGame && s.phase === 'floor' && !this.fp.seated && this.started && !this.cageOpen;
     const t = near ? this.reachable() : null;
-    const cagePrompt = near && !t && atCage(p) ? { title: 'E  THE CAGE', odds: `CHARMS AND UPGRADES FOR MARKERS  (${s.markers} ${'\u0013'})`, color: C.marker } : null;
+    const cagePrompt = near && !t && atCage(p) ? { title: 'E  THE CAGE', odds: `CHARMS AND UPGRADES FOR MARKERS  (${s.markers} ${'\u0013'})`, color: C.marker }
+      : near && !t && this.atCollectorTable() ? { title: 'E  CALL IT', odds: 'END THE NIGHT NOW: THE COLLECTOR COMES AT ONCE', color: C.coll } : null;
+    // nothing left to bet: say where to go (critic F1)
+    if (inGame && s.phase === 'floor' && this.started && s.bank < 100 && !Object.values(s.tables).some((x) => x.pending)) this.teach('broke');
     const b = this.view.box.css;
     const hp: Pointer = { x: ((i.mouse.x - b.x) / b.w) * HUD_W, y: ((i.mouse.y - b.y) / b.h) * HUD_H, down: i.mouse.down[0], pressed: i.mouse.pressed[0] };
     const overlay = this.screen === 'game' && s.phase === 'floor' && !this.fp.seated && !this.cageOpen
@@ -549,7 +600,7 @@ export class App {
         screen: this.screen, state: this.screen === 'title' || this.screen === 'howto' ? null : s, player: ME,
         seated: this.fp.seated, atCollector: atColl,
         prompt: t ? this.promptFor(t) : cagePrompt,
-        overlay, cage: inGame && s.phase === 'floor' ? this.cageView() : null,
+        overlay: this.confirm ? null : overlay, confirm: this.confirm, cage: inGame && s.phase === 'floor' ? this.cageView() : null,
         toasts: this.toasts, lesson: this.lesson, banner: this.banner, settings: this.settings, meta: this.meta, dark: this.dark,
       },
       hp, dt, i,

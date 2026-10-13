@@ -116,6 +116,8 @@ export interface CircuitState {
   log: string[];
   /** set when it's over */
   done: { won: boolean; why: string } | null;
+  /** players who activated an overload and lived (Lucky Fuse pays them if the team wins) */
+  survived: number[];
   /** the tick it ended (the wheel opens after a beat) */
   endedAt: number;
 }
@@ -153,6 +155,8 @@ export interface NightSummary {
   overshootMarkers: number;
   circuit: { won: boolean; why: string } | null;
   wheel: { kind: 'boon' | 'bane'; id: BoonId | BaneId } | null;
+  /** the last night's won gamble: the permanent upgrade it took (null: none) */
+  ledger: string | null;
   /** next night's quota (if there is one) */
   nextQuota: number;
 }
@@ -191,6 +195,8 @@ export interface State {
   next: NightMods;
   /** a lost gamble's extra on the next quota (+10-40%) */
   nextExtra: number;
+  /** a solo Bane: next night's bank starts this much lower (DECISIONS #51) */
+  nextDock: number;
   circuit: CircuitState | null;
   wheel: WheelState | null;
   summary: NightSummary | null;
@@ -241,6 +247,7 @@ export function newState(players: number, upgrades: UpgradeId[] = []): State {
     mods: { ...NO_MODS },
     next: { ...NO_MODS },
     nextExtra: 0,
+    nextDock: 0,
     circuit: null,
     wheel: null,
     summary: null,

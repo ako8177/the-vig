@@ -44,6 +44,7 @@ export interface Toast {
 }
 
 export interface Lesson {
+  id: string;
   title: string;
   body: string;
   t: number;
@@ -60,6 +61,8 @@ export interface HudView {
   /** seated at the Collector's table (0:00 onward): no stand-up hint */
   atCollector: boolean;
   overlay: 'enter' | 'paused' | 'relock' | null;
+  /** a yes/no card (calling the night early) */
+  confirm: { title: string; lines: string[]; yes: string } | null;
   cage: { open: boolean; why: Map<string, string | null>; slots: number } | null;
   toasts: Toast[];
   lesson: Lesson | null;
@@ -72,7 +75,7 @@ export interface HudView {
 
 export type HudAction =
   | { t: 'newRun' } | { t: 'screen'; to: Screen } | { t: 'resume' } | { t: 'buy'; item: string }
-  | { t: 'closeCage' } | { t: 'set'; settings: Partial<Settings> } | { t: 'quit' };
+  | { t: 'closeCage' } | { t: 'set'; settings: Partial<Settings> } | { t: 'quit' } | { t: 'confirm'; yes: boolean };
 
 /** A mark's effect in a few words, for the HUD's list (the lesson card says it in full). */
 const MARK_SHORT: Record<string, (stacks: number) => string> = {
@@ -106,6 +109,7 @@ export class Hud {
     else if (v.state) {
       this.play(ui, v);
       if (v.cage?.open) this.cage(ui, v, out);
+      if (v.confirm) this.confirm(ui, v, out);
       if (v.screen === 'results') this.results(ui, v, out);
       else if (v.overlay) this.pause(ui, v, out);
     }
@@ -178,11 +182,13 @@ export class Hud {
         ui.text(odds, HUD_W / 2, py + 16, color, { align: 'center' });
       }
     }
-    if (v.screen === 'game' && v.seated && !v.atCollector && !v.cage?.open) ui.text('E / ESC  STAND UP', HUD_W / 2, HUD_H - 12, C.ash, { align: 'center' });
+    if (v.screen === 'game' && s.phase === 'floor' && v.seated && !v.atCollector && !v.cage?.open) ui.text('E / ESC  STAND UP', HUD_W / 2, HUD_H - 12, C.ash, { align: 'center' });
 
-    // toasts rise from just under the crosshair; seated, from under the table's screen
+    // toasts rise from just under the crosshair; seated, from under the table's screen, and not
+    // while a banner holds that space (critic F10)
     const ty = v.seated ? HUD_H - 30 : HUD_H / 2 + 40;
-    v.toasts.forEach((t, i) => {
+    const bannerUp = !!v.banner && v.banner.t > 0;
+    if (!(v.seated && bannerUp)) v.toasts.forEach((t, i) => {
       const a = Math.min(1, t.t);
       const y = ty - (2.2 - t.t) * (v.seated ? 6 : 14) - i * 11;
       if (a > 0.15) ui.text(t.text, HUD_W / 2, Math.round(y), t.color, { align: 'center' });
@@ -198,7 +204,7 @@ export class Hud {
     }
 
     // a lesson card: two lines, the first time each thing happens (held back while the cage is open)
-    if (v.lesson && v.lesson.t > 0 && !v.cage?.open) {
+    if (v.lesson && v.lesson.t > 0 && !v.cage?.open && !v.confirm && v.screen === 'game') {
       const l = v.lesson;
       const w = Math.max(textWidth(l.title), textWidth(l.body)) + 20;
       ui.panel((HUD_W - w) / 2, 40, w, 30, 'dark', { blocking: false, edge: C.coll });
@@ -249,6 +255,18 @@ export class Hud {
     if (ui.button('closecage', x + w / 2 - 50, y + h - 26, 100, 20, 'CLOSE (E)', { tip: 'Back to the floor.' })) out.push({ t: 'closeCage' });
   }
 
+  private confirm(ui: UI, v: HudView, out: HudAction[]) {
+    const c = v.confirm!;
+    ui.fill(0, 0, HUD_W, HUD_H, C.ink, 0.5);
+    const w = 340, h = 44 + c.lines.length * 12 + 30;
+    const x = (HUD_W - w) / 2, y = (HUD_H - h) / 2;
+    ui.panel(x, y, w, h, 'dark', { edge: C.coll });
+    ui.text(c.title, HUD_W / 2, y + 8, C.collHi, { scale: 2, align: 'center' });
+    c.lines.forEach((l, i) => ui.text(l, HUD_W / 2, y + 32 + i * 12, i === 0 ? C.white : C.dust, { align: 'center' }));
+    if (ui.button('yes', HUD_W / 2 - 110, y + h - 28, 100, 20, c.yes, { edge: C.coll })) out.push({ t: 'confirm', yes: true });
+    if (ui.button('no', HUD_W / 2 + 10, y + h - 28, 100, 20, 'NOT YET (ESC)')) out.push({ t: 'confirm', yes: false });
+  }
+
   // ---------------------------------------------------------------- around play
 
   private card(ui: UI, w: number, h: number, edge = C.coll) {
@@ -279,7 +297,7 @@ export class Hud {
     ui.text('HOW TO PLAY', HUD_W / 2, y + 8, C.collHi, { scale: 2, align: 'center' });
     const lines: [string, number][] = [
       ['EVERY NIGHT LASTS 6 MINUTES. AT 0:00 THE COLLECTOR WANTS THE QUOTA FROM THE BANK.', C.white],
-      ['SHORT OF IT, HE TAKES A LIFE FOR EVERY $1,000 YOU ARE SHORT, AND THE WHOLE BANK.', C.blood],
+      [`SHORT OF IT, HE TAKES A LIFE FOR EVERY ${money(ECONOMY.shortfallPerLife.v)} YOU ARE SHORT, AND THE WHOLE BANK.`, C.blood],
       ['', 0],
       ['THE TABLES HAVE TIERS. SAFETY IS A SLOW LOSS:', C.white],
       [`  LOW (GREEN): RETURNS UNDER $1 PER $1. YOU LOSE THE BET.`, C.low],
@@ -290,7 +308,7 @@ export class Hud {
       ['HIGH-TABLE WINS EARN MARKERS. SPEND THEM AT THE CAGE (EAST WALL) ON CHARMS.', C.marker],
       ['', 0],
       ['MADE THE QUOTA? PAY IT, OR GAMBLE: PAY IT AND PLAY THE CIRCUIT AGAINST HIM.', C.collHi],
-      ['INSPECT, REROUTE OR ACTIVATE CIRCUITS. AN OVERLOAD COSTS A LIFE; HIS COST HIM FUSES.', C.dust],
+      ['HE TAKES THE LOWEST CIRCUIT HE TRUSTS. LOOK AHEAD OF HIM; ROUTE OVERLOADS INTO HIS PATH.', C.dust],
       ['WIN FOR THE BOON WHEEL. LOSE FOR THE BANE WHEEL AND A STEEPER QUOTA.', C.dust],
       ['', 0],
       ['SURVIVE THREE NIGHTS. LOSE YOUR LAST LIFE AND THE HOUSE KEEPS YOU.', C.white],
@@ -351,7 +369,9 @@ export class Hud {
     ui.fill(0, 0, HUD_W, HUD_H, C.ink, 0.75);
     const { x, y } = this.card(ui, 420, 250, r.won ? C.coll : C.blood);
     ui.text(r.won ? 'YOU WALKED OUT' : 'THE HOUSE KEEPS YOU', HUD_W / 2, y + 10, r.won ? C.collHi : C.blood, { scale: 2, align: 'center' });
-    ui.para(r.why, x + 20, y + 34, 380, C.bone);
+    const sm = s.summary;
+    const short = sm && sm.night === s.night && sm.how === 'short' ? `SHORT ${money(sm.short)} OF ${money(sm.quota)}: ${sm.livesTaken} ${sm.livesTaken === 1 ? 'LIFE' : 'LIVES'}. ` : '';
+    ui.para(short + r.why, x + 20, y + 34, 380, C.bone);
     const st = s.stats;
     const nights = r.won ? s.night : s.night - 1;
     const rows: [string, string][] = [

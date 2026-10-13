@@ -27,9 +27,12 @@ export const BANES: SlotDef<BaneId>[] = [
   { id: 'bleed', label: '-1 LIFE', text: 'A LIVING PLAYER LOSES A LIFE NOW', derivation: 'DESIGN.md §7: Bane, one random living player -1 life now' },
   { id: 'twoloss', label: 'TWO LOSSES', text: 'RED LINE TAKES A LIFE ON 2 LOSSES', derivation: 'DESIGN.md §7: Bane, blood tables kill on two losses' },
   { id: 'longmarks', label: 'LONG MARKS', text: 'HI-LO MARKS LAST 60 S', derivation: 'DESIGN.md §7: Bane, Hi-Lo marks last 60 s' },
-  { id: 'dearsoul', label: 'DEAR SOULS', text: 'SOUL BUYBACK COSTS 75%', derivation: 'DESIGN.md §7: Bane, soul buyback 75%' },
-  { id: 'overloads', label: '3 OVERLOADS', text: 'THE CIRCUIT HAS 3 OVERLOADS', derivation: 'DESIGN.md §7: Bane, the Circuit has 3 overloads' },
+  { id: 'dearsoul', label: 'DEAR SOULS', text: 'SOUL BUYBACK COSTS 75%', derivation: 'DESIGN.md §7: Bane, soul buyback 75%; solo, -$500 off the next bank (DECISIONS #51)' },
+  { id: 'overloads', label: '3 OVERLOADS', text: 'THE CIRCUIT HAS 3 OVERLOADS; HE HAS 3 FUSES', derivation: 'DESIGN.md §7: Bane, the Circuit has 3 overloads (and he 3 fuses: DECISIONS #52)' },
 ];
+
+/** Solo, Dear Souls has no soul to price: it docks the next night's bank instead (DECISIONS #51). */
+export const DEAR_SOULS_SOLO = { label: 'DEAR SOULS', text: 'SOLO: THE NEXT BANK STARTS $500 LOWER', dock: 500 };
 
 /** Boon and Bane numbers (DESIGN.md §7). */
 export const WHEEL = {

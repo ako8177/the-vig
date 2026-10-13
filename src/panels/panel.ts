@@ -31,6 +31,8 @@ export abstract class Panel {
   out: Command[] = [];
   private ctx: CanvasRenderingContext2D;
   private lastRev = -1;
+  /** timers on a panel (a mark clearing) tick once a second even with no events */
+  private lastSec = -1;
   private wasActive = false;
 
   constructor(readonly table: string) {
@@ -49,10 +51,12 @@ export abstract class Panel {
 
   /** Redraw if anything it shows may have changed. Returns true when the canvas changed. */
   update(v: PanelView, pointer: Pointer | null, dt: number, input: Input | null, force = false): boolean {
-    const due = force || v.active || this.wasActive || v.rev !== this.lastRev || this.animating(v) || this.ui.audit;
+    const sec = Math.floor(v.tick / 60);
+    const due = force || v.active || this.wasActive || v.rev !== this.lastRev || sec !== this.lastSec || this.animating(v) || this.ui.audit;
     this.wasActive = v.active;
     if (!due) return false;
     this.lastRev = v.rev;
+    this.lastSec = sec;
     const p = v.active && pointer ? pointer : NO_POINTER;
     this.ui.begin(this.ctx, p, 1, dt, v.active ? input : null);
     this.draw(this.ui, v);

@@ -10,8 +10,8 @@ import { ICON } from '../ui/font';
 import { BLANK, BAR, STAR, SEVEN, STRIP, linePays } from '../sim/tables/bandit';
 import { MARK_SLOTS, WHEEL_SLOTS } from '../sim/tables/wheel';
 import { handValue } from '../sim/tables/twentyone';
-import { streakLimitOf } from './view';
-import { HILO_MARK, MARKS } from '../data/marks';
+import { hiloMarkSOf, streakLimitOf, streakRisk } from './view';
+import { HILO_MARK } from '../data/marks';
 import { ECONOMY } from '../data/economy';
 import { minBet } from '../data/tables';
 import { TICKS_PER_S } from '../sim/state';
@@ -58,6 +58,10 @@ export class BanditPanel extends TablePanel {
     ui.text('BAR x3', px, PLAY_Y + 32, C.white);
     ui.text('BLANK x4', px, PLAY_Y + 41, C.ash);
     // the pay table, from the same function that pays it
+    if (this.dark(v)) {
+      this.result(ui, v);
+      return;
+    }
     const rows: [string, string][] = [
       ['7 7 7', `${linePays(SEVEN, SEVEN, SEVEN).x}x`],
       [`${ICON.star}${ICON.star}${ICON.star}`, `${linePays(STAR, STAR, STAR).x}x`],
@@ -73,7 +77,7 @@ export class BanditPanel extends TablePanel {
   }
 
   protected drawControls(ui: UI, v: PanelView) {
-    const bet = minBet(this.def);
+    const bet = this.stake(v);
     if (this.betButton(ui, v, 'pull', 110, 100, `PULL  ${money(bet)}`, bet)) this.send({ t: 'spin', table: 'bandit' });
   }
 }
@@ -110,7 +114,7 @@ export class TwentyOnePanel extends TablePanel {
       this.row(ui, 'YOU', o.player21, false, 168);
     } else {
       ui.text('PLACE A BET TO DEAL.', PANEL_W / 2, PLAY_Y + 24, C.dust, { align: 'center' });
-      ui.text('NATURAL (A + 10) PAYS 3:2. A WIN PAYS 1:1.', PANEL_W / 2, PLAY_Y + 36, C.ash, { align: 'center' });
+      if (!this.dark(v)) ui.text('NATURAL (A + 10) PAYS 3:2. A WIN PAYS 1:1.', PANEL_W / 2, PLAY_Y + 36, C.ash, { align: 'center' });
     }
     this.result(ui, v);
   }
@@ -125,7 +129,8 @@ export class TwentyOnePanel extends TablePanel {
       return;
     }
     [100, 200, 300].forEach((amount, i) => {
-      if (this.betButton(ui, v, `bet${amount}`, 46 + i * 80, 68, `BET ${money(amount)}`, amount)) this.send({ t: 'bet', table: 'twentyone', amount });
+      const stake = this.stake(v, amount);
+      if (this.betButton(ui, v, `bet${amount}`, 46 + i * 80, 68, `BET ${money(stake)}`, stake)) this.send({ t: 'bet', table: 'twentyone', amount });
     });
   }
 }
@@ -147,20 +152,22 @@ export class HiLoPanel extends TablePanel {
     const n = st?.stacks ?? 0;
     const losesAt = Math.floor((1 - 1 / this.def.rtp) / HILO_MARK.perStack) + 1;
     ui.text(`${ICON.mark} YOUR MARKS: ${n}`, 12, PLAY_Y + 6, n ? C.midHi : C.dust);
-    ui.text(`-${Math.round(HILO_MARK.perStack * 100)}% A STACK, ${MARKS[0].durS} S`, 12, PLAY_Y + 16, C.dust);
-    ui.text(`AT ${losesAt} IT STOPS PAYING`, 12, PLAY_Y + 26, n >= losesAt ? C.midHi : C.ash);
+    ui.text(`-${Math.round(HILO_MARK.perStack * 100)}% A STACK, ${hiloMarkSOf(s)} S`, 12, PLAY_Y + 16, C.dust);
+    ui.text(`AT ${losesAt} IT LOSES MONEY`, 12, PLAY_Y + 26, n >= losesAt ? C.midHi : C.ash);
     if (st) ui.text(`CLEARS IN ${Math.ceil(st.left / TICKS_PER_S)} S`, 12, PLAY_Y + 36, C.ash);
     const bet = minBet(this.def);
     const me = s.players[v.player];
     const f = 1 - HILO_MARK.perStack * n;
     const pay = Math.round(bet * this.def.pays! * f * (s.marks.some((m) => m.id === 'colddeck') ? 0.9 : 1) * (me.overclock > 0 ? 2 : 1));
-    ui.text('A WIN PAYS', PANEL_W - 12, PLAY_Y + 6, C.dust, { align: 'right' });
-    ui.text(money(pay), PANEL_W - 12, PLAY_Y + 16, C.gold, { align: 'right', scale: 2 });
+    if (!this.dark(v)) {
+      ui.text('A WIN PAYS', PANEL_W - 12, PLAY_Y + 6, C.dust, { align: 'right' });
+      ui.text(money(pay), PANEL_W - 12, PLAY_Y + 16, C.gold, { align: 'right', scale: 2 });
+    }
     this.result(ui, v);
   }
 
   protected drawControls(ui: UI, v: PanelView) {
-    const bet = minBet(this.def);
+    const bet = this.stake(v);
     if (this.betButton(ui, v, 'call-lo', 60, 96, 'CALL LO  1-3', bet)) this.send({ t: 'call', table: 'hilo', call: 'lo' });
     if (this.betButton(ui, v, 'call-hi', 164, 96, 'CALL HI  4-6', bet)) this.send({ t: 'call', table: 'hilo', call: 'hi' });
   }
@@ -195,13 +202,13 @@ export class WheelPanel extends TablePanel {
     // the pointer
     ui.fill(PANEL_W / 2 - 1, y - 6, 3, 5, C.white);
     ui.fill(PANEL_W / 2 - 1, y + 27, 3, 5, C.white);
-    ui.text(`18 SLOTS PAY 1.6x   7 SLOTS ${ICON.mark} MARK THE TEAM:`, PANEL_W / 2, PLAY_Y + 42, C.dust, { align: 'center' });
+    ui.text(this.dark(v) ? `7 SLOTS ${ICON.mark} MARK THE TEAM:` : `18 SLOTS PAY 1.6x   7 SLOTS ${ICON.mark} MARK THE TEAM:`, PANEL_W / 2, PLAY_Y + 42, C.dust, { align: 'center' });
     ui.text('COLD DECK, STICKY FLOOR, BLACKOUT OR TAX', PANEL_W / 2, PLAY_Y + 51, C.midHi, { align: 'center' });
     this.result(ui, v);
   }
 
   protected drawControls(ui: UI, v: PanelView) {
-    const bet = minBet(this.def);
+    const bet = this.stake(v);
     if (this.betButton(ui, v, 'spin', 110, 100, `SPIN  ${money(bet)}`, bet)) this.send({ t: 'spin', table: 'wheel' });
   }
 }
@@ -231,16 +238,19 @@ export class RedLinePanel extends TablePanel {
     }
     if (streak === limit - 1) ui.text('NEXT LOSS COSTS A LIFE', 12, PLAY_Y + 38, C.blood);
     else ui.text(`${limit} IN A ROW COSTS A LIFE`, 12, PLAY_Y + 38, C.ash);
+    ui.text(`6 ROUNDS: ${Math.round(streakRisk(limit, 6) * 100)}% TO LOSE A LIFE`, 12, PLAY_Y + 48, C.highHi);
     const bet = minBet(this.def);
-    ui.text('A WIN PAYS', PANEL_W - 12, PLAY_Y + 4, C.dust, { align: 'right' });
-    ui.text(money(Math.round(bet * this.def.pays! * (me.overclock > 0 ? 2 : 1) * (v.state.marks.some((m) => m.id === 'colddeck') ? 0.9 : 1))), PANEL_W - 12, PLAY_Y + 14, C.gold, { align: 'right', scale: 2 });
+    if (!this.dark(v)) {
+      ui.text('A WIN PAYS', PANEL_W - 12, PLAY_Y + 4, C.dust, { align: 'right' });
+      ui.text(money(Math.round(bet * this.def.pays! * (me.overclock > 0 ? 2 : 1) * (v.state.marks.some((m) => m.id === 'colddeck') ? 0.9 : 1))), PANEL_W - 12, PLAY_Y + 14, C.gold, { align: 'right', scale: 2 });
+    }
     const mk = ECONOMY.markers.redline.v * (me.charms.includes('magnet') ? 2 : 1);
     ui.text(`+${mk} ${ICON.marker} MARKER${mk > 1 ? 'S' : ''}`, PANEL_W - 12, PLAY_Y + 34, C.marker, { align: 'right' });
     this.result(ui, v);
   }
 
   protected drawControls(ui: UI, v: PanelView) {
-    const bet = minBet(this.def);
+    const bet = this.stake(v);
     if (this.betButton(ui, v, 'red', 60, 96, 'CALL RED', bet)) this.send({ t: 'call', table: 'redline', call: 'red' });
     if (this.betButton(ui, v, 'black', 164, 96, 'CALL BLACK', bet)) this.send({ t: 'call', table: 'redline', call: 'black' });
   }
@@ -260,21 +270,26 @@ export class DeadManPanel extends TablePanel {
     const snake = !rolling && o?.lifeLost;
     drawDie(ui, 122, PLAY_Y + 6, 34, a, snake ? C.blood : C.ink);
     drawDie(ui, 164, PLAY_Y + 6, 34, b, snake ? C.blood : C.ink);
-    ui.text('WINS 6x:', 12, PLAY_Y + 4, C.dust);
-    ui.text('ANY DOUBLE', 12, PLAY_Y + 14, C.bone);
-    ui.text('OR 10, 11, 12', 12, PLAY_Y + 23, C.bone);
+    if (!this.dark(v)) {
+      ui.text('WINS 6x:', 12, PLAY_Y + 4, C.dust);
+      ui.text('ANY DOUBLE', 12, PLAY_Y + 14, C.bone);
+      ui.text('OR 10, 11, 12', 12, PLAY_Y + 23, C.bone);
+    }
     ui.text(`${ICON.skull} 1-1 COSTS A LIFE`, 12, PLAY_Y + 38, C.highHi);
+    ui.text('1 IN 36 A ROLL (2.8%)', 12, PLAY_Y + 48, C.highHi);
     const me = v.state.players[v.player];
     const bet = minBet(this.def);
-    ui.text('A WIN PAYS', PANEL_W - 12, PLAY_Y + 4, C.dust, { align: 'right' });
-    ui.text(money(Math.round(bet * this.def.pays! * (me.overclock > 0 ? 2 : 1) * (v.state.marks.some((m) => m.id === 'colddeck') ? 0.9 : 1))), PANEL_W - 12, PLAY_Y + 14, C.gold, { align: 'right', scale: 2 });
+    if (!this.dark(v)) {
+      ui.text('A WIN PAYS', PANEL_W - 12, PLAY_Y + 4, C.dust, { align: 'right' });
+      ui.text(money(Math.round(bet * this.def.pays! * (me.overclock > 0 ? 2 : 1) * (v.state.marks.some((m) => m.id === 'colddeck') ? 0.9 : 1))), PANEL_W - 12, PLAY_Y + 14, C.gold, { align: 'right', scale: 2 });
+    }
     const mk = ECONOMY.markers.deadman.v * (me.charms.includes('magnet') ? 2 : 1);
     ui.text(`+${mk} ${ICON.marker} MARKERS`, PANEL_W - 12, PLAY_Y + 34, C.marker, { align: 'right' });
     this.result(ui, v);
   }
 
   protected drawControls(ui: UI, v: PanelView) {
-    const bet = minBet(this.def);
+    const bet = this.stake(v);
     if (this.betButton(ui, v, 'roll', 100, 120, `ROLL  ${money(bet)}`, bet)) this.send({ t: 'spin', table: 'deadman' });
   }
 }

@@ -1,6 +1,7 @@
 // Hi-Lo Dice (mid): one die, call HI (4-6) or LO (1-3); p = 1/2, pays 2.4x; a loss marks you
 // (-5% on your mid payouts a stack). DESIGN.md §3.
 import type { TableModule } from './table';
+import { stakeFor } from '../rules';
 import { defOf, stake } from './table';
 import { addMark, payoutFactor } from '../rules';
 
@@ -18,7 +19,7 @@ export const hilo: TableModule = {
   lossCost: () => def.lossText,
   start(g, p, cmd) {
     if (cmd.t !== 'call' || (cmd.call !== 'hi' && cmd.call !== 'lo')) return 'call hi or lo';
-    const bet = def.bet as number;
+    const bet = stakeFor(p, def.bet as number);
     const why = stake(g, bet);
     if (why) return why;
     const die = g.rng.int(1, 6);

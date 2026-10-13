@@ -4,7 +4,7 @@
 // computed below by dynamic programming over the endless shoe.
 import type { TableModule } from './table';
 import { defOf, drawCard, stake } from './table';
-import { payoutFactor } from '../rules';
+import { payoutFactor, stakeFor } from '../rules';
 import type { Card, Outcome, PlayerState } from '../state';
 import type { Game } from '../Game';
 
@@ -194,8 +194,9 @@ export const twentyone: TableModule = {
     const t = g.state.tables.twentyone;
     if (cmd.t === 'bet') {
       if (t.hand && t.hand.stage === 'play') return 'finish the hand';
-      const amount = Math.round(cmd.amount / 100) * 100;
-      if (amount < MIN || amount > MAX) return `bet $${MIN}-$${MAX}`;
+      const base = Math.round(cmd.amount / 100) * 100;
+      if (base < MIN || base > MAX) return `bet $${MIN}-$${MAX}`;
+      const amount = stakeFor(p, base);
       const why = stake(g, amount);
       if (why) return why;
       t.hand = { bet: amount, player: [drawCard(g), drawCard(g)], dealer: [drawCard(g), drawCard(g)], stage: 'play' };

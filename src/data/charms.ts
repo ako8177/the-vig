@@ -18,19 +18,19 @@ export interface CharmDef {
 
 export const CHARMS: CharmDef[] = [
   {
-    id: 'luckyfuse', name: 'Lucky Fuse', price: 3, systems: ['circuit', 'lives'],
-    text: ['SURVIVE AN OVERLOAD:', '+1 LIFE'],
-    derivation: 'DESIGN.md §5: survive an overload, +1 life; price 3',
+    id: 'luckyfuse', name: 'Lucky Fuse', price: 3, systems: ['circuit', 'collector', 'lives'],
+    text: ['WIN A CIRCUIT AFTER SURVIVING', 'AN OVERLOAD IN IT: +1 LIFE'],
+    derivation: 'DESIGN.md §5 (DECISIONS #53): win the Circuit having survived an overload in it, +1 life; price 3',
   },
   {
     id: 'overclock', name: 'Overclock', price: 4, systems: ['circuit', 'table'],
-    text: ['SURVIVE AN OVERLOAD: YOUR', 'PAYOUTS x2 FOR 60 S OF TABLES'],
-    derivation: 'DESIGN.md §5 (DECISIONS #9): x2 payouts for 60 s of table time after surviving an overload; price 4',
+    text: ['SURVIVE AN OVERLOAD: STAKES AND', 'WINS x2, FIRST 60 S OF THE NIGHT'],
+    derivation: 'DESIGN.md §5 (DECISIONS #9, #54): stakes x2 (so wins x2, odds unchanged) for the next night\'s first 60 s after surviving an overload; price 4',
   },
   {
-    id: 'leadapron', name: 'Lead Apron', price: 3, systems: ['circuit', 'lives'],
-    text: ['YOUR FIRST OVERLOAD', 'EACH NIGHT COSTS NOTHING'],
-    derivation: 'DESIGN.md §5: the first overload each night costs nothing; price 3',
+    id: 'leadapron', name: 'Lead Apron', price: 3, systems: ['table', 'circuit', 'lives'],
+    text: ['THE FIRST LIFE YOU WOULD LOSE', 'EACH NIGHT COSTS NOTHING'],
+    derivation: 'DESIGN.md §5 (DECISIONS #53): the first life lost each night (blood table, Circuit or shortfall) costs nothing; price 3',
   },
   {
     id: 'magnet', name: 'Marker Magnet', price: 3, systems: ['table', 'circuit'],

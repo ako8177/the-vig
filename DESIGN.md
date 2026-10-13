@@ -20,7 +20,8 @@ numbers. Change a number → write the new derivation here first.
 Night 1 **$3,000**, then ×1.5: $4,500, $6,750, $10,125… Start bank **$1,500** (DECISIONS #40;
 it was $1,000, and the pace bots went broke before the night's drift could show). A lost
 Collector gamble adds a random +10–40% on top of the ×1.5 for the next night. Shortfall:
-**one life per $1,000 short**, rounded up, taken from the player with the most lives (ties:
+**one life per $2,000 short** (DECISIONS #55; it was $1,000, and 23% of sensible runs died on
+night 1 before seeing the Collector), rounded up, taken from the player with the most lives (ties:
 team picks; solo: you), and the Collector takes the whole bank. Overshoot pays **1 marker per
 $500 over** (whole $500s, counted before the quota leaves the bank).
 
@@ -36,9 +37,11 @@ and adding two Red Line bursts **≈ +$3,400** (σ ≈ $2,600). So night 2 asks 
 carried cushion, and night 3 asks for more than one player can expect: the high tables, an
 Overclock window, the Boon, or the overshoot carried from night 2. Overshooting is worth twice:
 markers now, and money tomorrow. That is the escalation: night 1 forces mid risk, night 3 forces
-blood. **Open question for the owner** (the quota curve is theirs to change): a sensible solo bot
-that decides pay-or-gamble by its charms reaches night 3 on 13/20 runs but survives all three on
-3/20. That is a hard roguelike; whether it is too hard for the slice is a playtest question.
+blood. Measured on 200 seeds (§8): a sensible solo bot that always pays dies on night 1 6.5% of
+the time and survives all three nights 38% of the time. **Open questions for the owner** (the quota
+curve and the win condition are theirs): whether a lost gamble's +10–40% is too steep (it is why
+paying beats gambling, §7), and whether being short on the last night with lives to spare should
+still count as walking out (today it does: DECISIONS #56).
 
 ## 3. Tables (floor 1) and their derivations
 
@@ -112,9 +115,9 @@ exists for the last minute of a night you're about to fail.
 **Why night 1 forces risk.** You need +$1,500 in 360 s. Low tables are negative. Hi-Lo bursts
 alone (+$150 per 15 s then 30 s off) average ~+$200/min → +$1,200 → **short**. Hi-Lo bursts
 rotated with the Wheel ≈ +$600/min on paper, **≈ +$330/min measured** (walking 16 m between them,
-Cold Deck, waits) → makes it about 4 nights in 5, at the cost of team marks. Two Red Line bursts
-(+$1,500 expected) on top, once the bank can take three $500 losses (≥ $2,000), make it as often
-and cost a life on Red Line about 2 nights in 5. The model says: a night-1 team spreads across
+Cold Deck, waits) → makes it about 2 nights in 3, at the cost of team marks. Two Red Line bursts
+(+$1,500 expected) on top, once the bank can take three $500 losses (≥ $2,000), make it about
+3 nights in 4 and cost a life on Red Line about 3 nights in 10 (§8, 200 seeds). The model says: a night-1 team spreads across
 Hi-Lo, Wheel and one brave Red Line player.
 
 ## 4. Souls
@@ -134,29 +137,36 @@ activate (+1), each $500 over quota (+1). Markers are the team's, like the bank.
 
 | Charm | Price | Table side | Circuit / Collector side |
 |---|---|---|---|
-| Lucky Fuse | 3 | — (lives: **+1 life**) | survive an overload: **+1 life** |
-| Overclock | 4 | **your payouts ×2 for 60 s** of table play | …starting when you survive an overload |
-| Lead Apron | 3 | — (lives: the life is kept) | your **first overload each night costs nothing** |
+| Lucky Fuse | 3 | — (lives) | **win a Circuit after surviving an overload in it: +1 life** |
+| Overclock | 4 | **your stakes, and so your wins, ×2 for 60 s** of table play | …starting when you survive an overload |
+| Lead Apron | 3 | **the first life you would lose each night** (blood table, Circuit or shortfall) **costs nothing** | (the same: an overload, too) |
 | Marker Magnet | 3 | **high-table wins give double markers** | **inspections cost 1 marker instead of $100** |
 
-"Survive an overload" means activating an overloaded circuit and still having a life after it.
-**Overclock's window counts table time (DECISIONS #9)**: the Circuit is played at 0:00 when the
-tables are closed, so the 60 s run from the next night's first second. **Marker Magnet** runs
+Revised after the Milestone 1 review (DECISIONS #53, #54): as first written, Lucky Fuse made every
+overload free, Lead Apron + Lucky Fuse made the Circuit a life generator (+0.6 lives a game), and
+Overclock doubled the whole return (the Bandit returned 1.90 a dollar for a minute). Now:
+Overclock doubles the stake, so the expected win doubles and the odds don't; Lead Apron reaches
+onto the floor (it changes whether you'll take a Red Line burst); and Lucky Fuse pays only for an
+overload survived on the way to beating him. A revealed overload is dead to the team (§6), so no
+charm can be farmed by activating a known overload. "Survive an overload" means activating an
+overloaded circuit and still having a life after it. **Overclock's window counts floor time
+(DECISIONS #9)**: the Circuit is played at 0:00 when the tables are closed, so the 60 s run from
+the next night's first second. **Marker Magnet** runs
 the other way, from the tables into the Circuit: a Red Line burst (≈3 wins) pays for it, and
 it turns the team's two inspections from $200 into 2 markers. Price derivation: 3 markers ≈ one
 Red Line burst's wins plus one safe circuit; Overclock costs one more because its window is worth
 ≈ +$600 on a mid rotation (+$1,250 on Red Line).
 
-Derived check: Lead Apron + Overclock turns the first Circuit overload of a night from a lost
-life into a free ×2 window, which makes **activating blind early** the right play for that
-player, where without them it is the wrong play. That flip is a pace test (§8).
+Derived check (§8 test 5): Lead Apron takes the Circuit's life cost to ≈ 0 for any line (0.16 →
+0.00 lives a game), which is what makes gambling cheap for the player who wears it.
 
 **Upgrades** (permanent across runs, bought with markers at the cage, saved with the settings):
 a fourth charm slot (6), +$500 starting bank every night (4), Hi-Lo marks last 20 s (4).
 
 ## 6. The Circuit (floor 1 rules)
 
-A panel of **7 circuits, 2 overloaded**, shuffled by the seeded RNG. **Players vs the Collector**,
+A panel of **10 circuits, 2 overloaded** (DECISIONS #52; it was 7), shuffled by the seeded RNG.
+**Players vs the Collector**,
 alternating turns, players first (the team picks who acts each turn; a ghost may only inspect).
 
 - **Inspect** a circuit: costs **$100** (or 1 marker with Marker Magnet); its state is shown to
@@ -164,26 +174,29 @@ alternating turns, players first (the team picks who acts each turn; a ghost may
 - **Reroute**: swap two circuits' positions blind. Uses the turn. The team sees which two
   moved (what it knew moves with them); **the Collector remembers positions, not circuits**, so
   after a reroute his memory of those two positions is wrong. Rerouting a revealed overload
-  into an untouched position is how you trap him.
+  into his next pick is how you blow his fuse.
 - **Activate** a circuit: safe → **+$300 and +1 marker** to the team, the circuit is spent;
   overloaded → the activator **loses 1 life** (floor 1 house rule; floor 2 switches to bank
-  damage), the circuit is spent.
+  damage), the circuit is spent. **A revealed overload can't be activated by the team**: the only
+  way to spend it is to route him into it.
 - The **Collector** has **2 fuses**. He never inspects; he sees what the team inspects (it is
-  shown at the table) and remembers it by position. He activates the circuit the team has not
-  touched for longest (inspected, rerouted; ties go to the lowest position), skipping any position
-  he believes overloaded unless nothing else is left. An overload he activates costs him a fuse;
-  a safe one scores for him.
+  shown at the table) and remembers it by position. **He activates the lowest-numbered circuit he
+  doesn't believe overloaded** (DECISIONS #52; it was "the one left alone longest"), so his next
+  move is always visible, and he passes when he trusts nothing left. An overload he activates
+  costs him a fuse; a safe one scores for him.
 - **End**: when both overloads are spent, or the Collector is out of fuses, or every living
-  player is out of lives. **Win** if the Collector is out of fuses, or if the team activated
-  more safe circuits than he did when the panel is spent. Ties go to the house.
+  player is out of lives, or the team has no circuit left to play. **Win** if the Collector is out
+  of fuses, or if the team activated more safe circuits than he did. Ties go to the house.
+- The screen prints his rule and the win rule every turn.
 
-Derived and measured (100 games): with 5 safe of 7, **inspecting once and then cashing known
-safes wins ≈ 51%**, inspecting twice ≈ 35% (every inspection is a turn he spends activating),
-activating blind ≈ 43–49%. An overload costs a life about half the time a Circuit is played
-(≈ 0.5 lives a game); **Lead Apron cuts that to ≈ 0.03**, which is what turns the blind first move
-from a risk into a free look (the flip). He uses what he sees only to avoid revealed overloads
-(DECISIONS #41: a Collector who also took the safes you revealed made inspecting pointless, since
-his turn falls between your inspect and your next move). The pace test checks the band.
+Measured (400 games): **looking at his next pick, cashing safes you know and routing overloads you
+know into his path wins ≈ 48%** at ≈ 0.16 lives a game; activating blind wins ≈ 37% at ≈ 0.34 lives.
+The line is about positions, which Buckshot Roulette's shells don't have (the review's derivative
+flag; DECISIONS #52). Sweeping the panel: with as many overloads as he has fuses the team wins
+37–51% as the panel grows from 7 to 12; with more overloads than fuses the trap wins 83–91%; with
+one fuse it always wins. He uses what he sees only to avoid revealed overloads (DECISIONS #41: a
+Collector who also took the safes you revealed made inspecting pointless). The pace test checks
+the band, and the choice screen prints "you win about 48%".
 
 ## 7. The Collector's choice and the wheels
 
@@ -195,43 +208,50 @@ Boon (6 slots): everyone +1 life · +$1,000 · +3 markers · a random charm · n
 all marks cleared and the team is mark-immune next night.
 
 Bane (6 slots, all last the next night): Cold Deck all night · one random living player −1
-life now · blood tables kill on **two** losses · Hi-Lo marks last 60 s · soul buyback 75% ·
-the Circuit has 3 overloads.
+life now · blood tables kill on **two** losses · Hi-Lo marks last 60 s · soul buyback 75% (solo:
+the next bank starts $500 lower, DECISIONS #51) · the Circuit has 3 overloads **and he 3 fuses**
+(with 3 fuses he can't be blown out, so the team must out-cash him: ≈ 28%; DECISIONS #52).
+
+**The last night** has no tomorrow for a wheel to touch (DECISIONS #50): won, the Circuit takes a
+free permanent upgrade from the house's ledger; lost, it costs only what it cost (lives, a turn of
+your bank). The choice card says so.
 
 Details for the slice: lives cap at **5** (the Boon and Lucky Fuse can lift you past 3). "A random
 charm" goes to the player with a free slot (none free: +3 markers instead). "Next quota −20%"
-applies after the ×1.5. "Soul buyback 75%" does nothing solo; it stays on the wheel for co-op.
-In the Circuit, a solo player takes every team turn.
+applies after the ×1.5. In the Circuit, a solo player takes every team turn. A broke player can
+end the night early from the Collector's table ("call it", DECISIONS #49).
 
-Derived: gambling is the right call when the team has a charm that fires on overloads or a
-strong bank cushion; paying is right at 2 lives with no charms. Both must be chosen by a
-sensible bot in different states (pace test).
+Intended: gambling is the right call when the team has a charm that fires on overloads or a
+strong bank cushion; paying is right at 2 lives with no charms. **Measured (§8 test 6): not yet.**
+Always paying scores 2.09, deciding by charms 1.98, always gambling 1.35 (survive-all-three: 38%,
+30%, 15%). A lost gamble's +10–40% on the next quota outweighs a 48% Circuit and the Boon. The
+lever is the surcharge, which is part of the quota curve: the owner's call (§2).
 
-## 8. Derived checks (these become pace tests, run on 20 seeds)
+## 8. Derived checks (pace tests, 200 seeds)
 
-The bots (tests/bots.ts) play through commands and pay walking time at 3 m/s. Thresholds were
-revised on 2026-10-12 from the first measurements (DECISIONS #42); the last run's numbers are in
-brackets.
+The bots (tests/bots.ts) play through commands and pay walking time at 3 m/s. 200 seeds since the
+Milestone 1 review: 20 gave a lucky sample (80% where 200 say 64%). Thresholds are rates
+(DECISIONS #42, #57); the last run's numbers are in brackets.
 
-1. **Safe-only** bot (Bandit + Twenty-One at minimum stakes) fails night 1 on ≥ 17/20 seeds and
-   ends the night poorer than it started on average [0/20 made; mean bank $973 from $1,500].
+1. **Safe-only** bot (Bandit + Twenty-One at minimum stakes) makes night 1 at most 15% of the time
+   and ends the night poorer than it started on average [5%; mean bank $1,236 from $1,500].
    Luck can carry a low table for a night now and then; expectation never does.
 2. **Mid-rotation** bot (Hi-Lo bursts of ≤ 5 rounds, out at 3 stacks, the Wheel while marked)
-   makes night 1 on ≥ 10/20 with mean ≥ 3 team marks suffered [16/20; 5.9 marks].
+   makes night 1 at least 50% of the time with ≥ 3 team marks suffered on average [64%; 5.3].
 3. **Red Line burst** bot (two six-round bursts once the bank holds $2,000, mid rotation around
-   them) makes night 1 on ≥ 13/20 and loses a life on Red Line on ≥ 5/20 (DECISIONS #8: the
-   streak costs one life) [16/20; 8/20].
-4. **Dead Man's** bot from a $1,000 bank goes broke on ≥ 6/20 [13/20].
-5. **Circuit** (100 games: one game is near a coin flip): inspecting once then cashing known
-   safes wins 30–65%; blind first costs more lives than inspecting first without Lead Apron and
-   no more with it, at the same win rate (the flip) [51%; 0.52 vs 0.55 lives; with the apron
-   0.03 vs 0.04].
+   them) makes night 1 at least 60% of the time and more often than the mid rotation alone, and
+   loses a life on Red Line at least 20% of the time [72% vs 64%; 29%].
+4. **Dead Man's** bot from a $1,000 bank goes broke at least 30% of the time [78%].
+5. **Circuit** (400 games): the sensible line (§6) wins 40–65%; activating blind costs more lives;
+   Lead Apron takes any line's life cost to ≈ 0 [48% at 0.16 lives; blind 37% at 0.34; with the
+   apron 0.00 and 0.00].
 6. **Collector's choice**: the decision bot gambles when holding Lucky Fuse or Lead Apron with
-   more than one life, else pays, and scores at least as well over three nights as always-gamble,
-   and within 0.15 of always-pay (score = nights survived + lives/10) [1.74 vs 1.31 and 1.60].
+   more than one life, else pays; it must score at least as well as always-gamble and within
+   0.15 of always-pay (score = nights survived + lives/10) [1.98 vs 1.35 and 2.09]. The intended
+   lesson, that gambling with a fuse charm is *better*, does not hold yet (§7).
 7. **Ghost**: a two-player run where one becomes a ghost in the first minute still makes night 1
-   on ≥ 6/20 when the survivor buys the soul back once the bank holds quota × 0.5 + $1,000. A lower
-   bound: the bot doesn't play the bought-back player [7/20].
+   at least 30% of the time when the survivor buys the soul back once the bank holds
+   quota × 0.5 + $1,000. A lower bound: the bot doesn't play the bought-back player [47%].
 
 ## 9. What the slice must answer
 

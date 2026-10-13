@@ -2,6 +2,7 @@
 // or a total of 10+ wins 6x (9 of 36); everything else loses the bet. p = 0.25 x 6 = RTP 1.50.
 // A win: +2 markers (4 with Marker Magnet). DESIGN.md §3, §5.
 import type { TableModule } from './table';
+import { stakeFor } from '../rules';
 import { defOf, stake } from './table';
 import { addMarkers, loseLife, payoutFactor } from '../rules';
 import { ECONOMY } from '../../data/economy';
@@ -23,7 +24,7 @@ export const deadman: TableModule = {
   lossCost: () => def.lossText,
   start(g, p, cmd) {
     if (cmd.t !== 'spin') return 'roll the dice';
-    const bet = def.bet as number;
+    const bet = stakeFor(p, def.bet as number);
     const why = stake(g, bet);
     if (why) return why;
     const dice = [g.rng.int(1, 6), g.rng.int(1, 6)];

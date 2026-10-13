@@ -38,7 +38,8 @@ export function startNight(g: Game) {
   const sum = s.summary!;
   s.night++;
   s.quota = sum.nextQuota;
-  s.bank = Math.max(s.bank, ECONOMY.bankFloor.v) + (s.upgrades.includes('bank500') ? 500 : 0);
+  s.bank = Math.max(s.bank, ECONOMY.bankFloor.v) + (s.upgrades.includes('bank500') ? 500 : 0) - s.nextDock;
+  s.nextDock = 0;
   s.clock = NIGHT_TICKS;
   s.mods = { ...s.next };
   s.next = { ...NO_MODS };

@@ -297,12 +297,12 @@ function mergeByMaterial(group: Group, keep: <T extends { dispose(): void }>(x: 
 
 /**
  * The 0:00 drop (THREEJS-NOTES rule 9): `t` 0 = the night's lights, 1 = midnight, every lamp out
- * but the Collector's violet one (the seventh light), which burns hotter.
+ * but the Collector's violet one (the seventh light), which burns a little hotter.
  */
 export function setMidnight(room: Room, t: number) {
   room.lights.forEach((l, i) => {
     const b = room.base.lights[i];
-    l.intensity = i === 6 ? b * (1 + 0.8 * t) : b * (1 - 0.94 * t);
+    l.intensity = i === 6 ? b * (1 + 0.3 * t) : b * (1 - 0.94 * t);
   });
   room.hemi.intensity = room.base.hemi * (1 - 0.75 * t);
 }

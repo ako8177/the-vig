@@ -1,4 +1,4 @@
-// The Collector (DESIGN.md §2, §6, §7): at 0:00, short of quota he takes a life per $1,000 short
+// The Collector (DESIGN.md §2, §6, §7): at 0:00, short of quota he takes a life per $2,000 short
 // and the bank; at or over it, the team pays, or gambles on the Circuit for the Boon or the Bane.
 import type { Game, System } from '../Game';
 import type { PlayerState } from '../state';
@@ -6,9 +6,14 @@ import { MIDNIGHT_S } from './clock';
 import { payQuota, summarize } from './economy';
 import { collectorAct, newCircuit, teamAct } from '../circuit';
 import { ECONOMY } from '../../data/economy';
-import { BANES, BOONS, WHEEL } from '../../data/wheels';
-import { CHARMS } from '../../data/charms';
+import { FLOOR_1 } from '../../data/floors';
+import { BANES, BOONS, DEAR_SOULS_SOLO, WHEEL } from '../../data/wheels';
+import { CHARMS, UPGRADES } from '../../data/charms';
+import { midnight } from './clock';
 import { addMarkers, gainLife, living, loseLife, ticks } from '../rules';
+
+/** How close to the Collector's table you must stand to call the night (m). */
+export const CALL_RADIUS = 1.6;
 
 /** The beat between the Circuit ending and the wheel coming up (s). */
 export const AFTER_CIRCUIT_S = 2;
@@ -26,10 +31,9 @@ function shortfall(g: Game) {
     if (!alive.length) break;
     // from the player with the most lives (ties: the lowest id; the team picks in co-op later)
     const p = alive.reduce((a, b) => (b.lives > a.lives ? b : a));
-    loseLife(g, p, 'shortfall');
-    taken++;
+    if (loseLife(g, p, 'shortfall') === 'lost') taken++;
   }
-  summarize(g, { bankAtMidnight: bank, how: 'short', short, livesTaken: taken, overshootMarkers: 0, circuit: null, wheel: null });
+  summarize(g, { bankAtMidnight: bank, how: 'short', short, livesTaken: taken, overshootMarkers: 0, circuit: null, wheel: null, ledger: null });
 }
 
 function charmFor(g: Game): PlayerState | null {
@@ -68,7 +72,13 @@ function applyWheel(g: Game, kind: 'boon' | 'bane', slot: number): { id: string;
     case 'bleed': { const alive = living(g); if (alive.length) loseLife(g, g.rng.pick(alive), 'bane'); break; }
     case 'twoloss': s.next.twoLoss = true; break;
     case 'longmarks': s.next.longMarks = true; break;
-    case 'dearsoul': s.next.dearSoul = true; break;
+    case 'dearsoul':
+      if (s.players.length === 1) {
+        s.nextDock = DEAR_SOULS_SOLO.dock;
+        return { id: b.id, text: DEAR_SOULS_SOLO.text };
+      }
+      s.next.dearSoul = true;
+      break;
     case 'overloads': s.next.overloads3 = true; break;
   }
   return { id: b.id, text: b.text };
@@ -76,21 +86,31 @@ function applyWheel(g: Game, kind: 'boon' | 'bane', slot: number): { id: string;
 
 export const collector: System = {
   id: 'collector',
-  handles: ['pay', 'gamble', 'inspect', 'reroute', 'activate', 'fortune'],
+  handles: ['pay', 'gamble', 'inspect', 'reroute', 'activate', 'fortune', 'callit'],
   command(g, p, cmd) {
     const s = g.state;
     const refuse = (why: string) => g.emit({ t: 'refused', player: p.id, cmd: cmd.t, why });
+    if (cmd.t === 'callit') {
+      // a broke team need not wait out the clock (the night is no shorter for anyone who plays it)
+      if (s.phase !== 'floor') return refuse('not now');
+      if (p.ghost) return refuse('a ghost has no say');
+      if (s.players.length > 1) return refuse('the whole team must agree (co-op: Milestone 3)');
+      const c = FLOOR_1.collector.stand;
+      if ((p.x - c.x) ** 2 + (p.z - c.z) ** 2 > CALL_RADIUS ** 2) return refuse("walk to the Collector's table");
+      midnight(g);
+      return;
+    }
     if (cmd.t === 'pay' || cmd.t === 'gamble') {
       if (s.phase !== 'choice') return refuse('not now');
       if (p.ghost) return refuse('a ghost has no say');
       const bank = s.bank;
       const over = payQuota(g);
       if (cmd.t === 'pay') {
-        summarize(g, { bankAtMidnight: bank, how: 'paid', short: 0, livesTaken: 0, overshootMarkers: over, circuit: null, wheel: null });
+        summarize(g, { bankAtMidnight: bank, how: 'paid', short: 0, livesTaken: 0, overshootMarkers: over, circuit: null, wheel: null, ledger: null });
         return;
       }
       s.circuit = newCircuit(g);
-      s.summary = { night: s.night, quota: s.quota, nextQuota: 0, bankAtMidnight: bank, how: 'gambled', short: 0, livesTaken: 0, overshootMarkers: over, circuit: null, wheel: null };
+      s.summary = { night: s.night, quota: s.quota, nextQuota: 0, bankAtMidnight: bank, how: 'gambled', short: 0, livesTaken: 0, overshootMarkers: over, circuit: null, wheel: null, ledger: null };
       s.phase = 'circuit';
       s.phaseAt = g.tick;
       return;
@@ -123,6 +143,26 @@ export const collector: System = {
       if (!c.done && c.turn === 'coll' && g.tick >= c.wait) collectorAct(g);
       if (c.done && s.phase === 'circuit' && g.tick - c.endedAt >= ticks(AFTER_CIRCUIT_S)) {
         s.summary!.circuit = c.done;
+        // the last night: no tomorrow for a Boon or a Bane to touch. A win takes one permanent
+        // upgrade from the house's ledger; a loss costs only what the Circuit cost (DECISIONS #50).
+        if (s.night >= ECONOMY.nights.v) {
+          const part = s.summary!;
+          let ledger: string | null = null;
+          if (c.done.won) {
+            const free = UPGRADES.filter((u) => !s.upgrades.includes(u.id));
+            if (free.length) {
+              const u = g.rng.pick(free);
+              s.upgrades.push(u.id);
+              ledger = u.id;
+              g.emit({ t: 'bought', player: 0, item: u.id, kind: 'upgrade' });
+            }
+          }
+          summarize(g, {
+            bankAtMidnight: part.bankAtMidnight, how: 'gambled', short: 0, livesTaken: 0, overshootMarkers: part.overshootMarkers,
+            circuit: c.done, wheel: null, ledger,
+          });
+          return;
+        }
         if (!c.done.won) s.nextExtra = ECONOMY.gambleLossMin.v + g.rng.next() * (ECONOMY.gambleLossMax.v - ECONOMY.gambleLossMin.v);
         s.wheel = { kind: c.done.won ? 'boon' : 'bane', slot: null, until: 0, applied: false };
         s.phase = 'wheel';
@@ -136,7 +176,7 @@ export const collector: System = {
       const part = s.summary!;
       summarize(g, {
         bankAtMidnight: part.bankAtMidnight, how: 'gambled', short: 0, livesTaken: 0, overshootMarkers: part.overshootMarkers,
-        circuit: part.circuit, wheel: { kind: w.kind, id: r.id as never },
+        circuit: part.circuit, wheel: { kind: w.kind, id: r.id as never }, ledger: null,
       });
     }
   },

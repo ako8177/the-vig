@@ -8,8 +8,9 @@ import { ICON } from '../ui/font';
 import { TICKS_PER_S } from '../sim/state';
 import { money } from './table';
 import { ECONOMY } from '../data/economy';
-import { BANES, BOONS, WHEEL } from '../data/wheels';
-import { CHARM_BY_ID } from '../data/charms';
+import { BANES, BOONS, DEAR_SOULS_SOLO, WHEEL } from '../data/wheels';
+import { CHARM_BY_ID, UPGRADE_BY_ID, type UpgradeId } from '../data/charms';
+import type { Command } from '../sim/commands';
 import { rulesFor } from '../sim/circuit';
 
 const T = TIER_ROLE.coll;
@@ -58,6 +59,7 @@ export class CollectorPanel extends Panel {
     ui.text(`${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')} LEFT`, PANEL_W / 2, 82, C.bone, { scale: 2, align: 'center' });
     ui.text(`SHORT: A LIFE FOR EVERY ${money(ECONOMY.shortfallPerLife.v)}, AND THE BANK.`, PANEL_W / 2, 112, T.hi, { align: 'center' });
     ui.text('MADE IT: PAY ME, OR GAMBLE ON THE CIRCUIT.', PANEL_W / 2, 124, C.dust, { align: 'center' });
+    ui.text('DONE EARLY, OR BROKE? STAND HERE AND PRESS E TO CALL IT.', PANEL_W / 2, 146, C.ash, { align: 'center' });
   }
 
   private midnight(ui: UI, v: PanelView) {
@@ -78,9 +80,9 @@ export class CollectorPanel extends Panel {
     const last = s.night >= ECONOMY.nights.v;
     // two cards: what each choice costs and gives, then its button
     const card = (x: number, title: string, lines: [string, number][]) => {
-      ui.panel(x, 30, 148, 104, 'inset', { blocking: false });
-      ui.text(title, x + 74, 35, C.white, { align: 'center' });
-      lines.forEach(([l, c], i) => ui.text(l, x + 6, 48 + i * 10, c));
+      ui.panel(x, 30, 148, 106, 'inset', { blocking: false });
+      ui.text(title, x + 74, 34, C.white, { align: 'center' });
+      lines.forEach(([l, c], i) => ui.text(l, x + 6, 46 + i * 11, c));
     };
     card(8, 'PAY', [
       [`${money(s.quota)} LEAVES THE BANK`, C.bone],
@@ -89,14 +91,16 @@ export class CollectorPanel extends Panel {
       [last ? '' : `NEXT NIGHT STARTS AT ${money(keep)}`, C.dust],
     ]);
     const r = rulesFor(s.floor);
-    const odds = s.mods.overloads3 ? 3 : r.overloads;
+    const odds = s.mods.overloads3 ? WHEEL.bigOverloads : r.overloads;
     card(164, 'GAMBLE', [
       ['PAY, THEN PLAY THE CIRCUIT', C.bone],
       [`${r.circuits} CIRCUITS, ${odds} OVERLOADED`, C.dust],
-      [`AN OVERLOAD COSTS A LIFE ${ICON.heart}`, C.blood],
-      [`WIN: THE BOON WHEEL`, T.hi],
-      [`LOSE: THE BANE WHEEL,`, T.hi],
-      [last ? 'THEN THE STAIRS' : `NEXT QUOTA +10-40% MORE`, T.hi],
+      [`SAFE: +$${r.safeBank} AND A MARKER`, C.gold],
+      [`OVERLOAD: A LIFE ${ICON.heart}`, C.blood],
+      [`YOU WIN ABOUT ${Math.round(r.odds.win * 100)}%`, C.dust],
+      ...(last
+        ? ([['WIN: A FREE PERMANENT UPGRADE', T.hi], ['LOSE: ONLY WHAT IT COST', T.hi]] as [string, number][])
+        : ([['WIN: THE BOON WHEEL', T.hi], ['LOSE: BANE, QUOTA +10-40%', T.hi]] as [string, number][])),
     ]);
     const ghost = me.ghost;
     if (ui.button('pay', 8, 140, 148, 22, `PAY ${money(s.quota)}`, { edge: C.gold, disabled: ghost || !v.active, tip: ghost ? 'A ghost has no say.' : 'Pay and go on.' })) this.send({ t: 'pay' });
@@ -115,7 +119,7 @@ export class CollectorPanel extends Panel {
     ui.text(`YOU ${c.teamSafe}  HIM ${c.collSafe}`, PANEL_W / 2 + 40, 10, C.bone, { align: 'center' });
     // the panel of circuits
     const n = c.slots.length;
-    const tw = 36, gap = 4, x0 = Math.round((PANEL_W - (n * tw + (n - 1) * gap)) / 2), y = 32;
+    const gap = 3, tw = Math.min(36, Math.floor((PANEL_W - 20 - (n - 1) * gap) / n)), x0 = Math.round((PANEL_W - (n * tw + (n - 1) * gap)) / 2), y = 32;
     const myTurn = c.turn === 'team' && !c.done;
     c.slots.forEach((sl, i) => {
       const x = x0 + i * (tw + gap);
@@ -162,17 +166,26 @@ export class CollectorPanel extends Panel {
     if (ui.button('inspect', 8, y2, 96, 20, `INSPECT ${cost}`, {
       edge: T.base, disabled: off || one < 0 || known || me.ghost && false,
       tip: off ? "Wait for your turn." : one < 0 ? pickTip : known ? 'Already known.' : 'See its state. He sees it too.',
-    })) this.send({ t: 'inspect', circuit: one });
+    })) this.act({ t: 'inspect', circuit: one });
     if (ui.button('activate', 112, y2, 96, 20, 'ACTIVATE', {
       edge: T.base, disabled: off || one < 0 || me.ghost,
       tip: me.ghost ? 'A ghost may only inspect.' : off ? 'Wait for your turn.' : one < 0 ? pickTip : `Safe: +$${r.safeBank} and a marker. Overloaded: a life.`,
-    })) this.send({ t: 'activate', circuit: one });
+    })) this.act({ t: 'activate', circuit: one });
     if (ui.button('reroute', 216, y2, 96, 20, 'REROUTE', {
       edge: T.base, disabled: off || this.picked.length !== 2 || me.ghost,
       tip: off ? 'Wait for your turn.' : this.picked.length !== 2 ? 'Click two circuits to swap.' : 'Swap them. He remembers positions, not circuits.',
-    })) this.send({ t: 'reroute', a: this.picked[0], b: this.picked[1] });
-    ui.text(myTurn ? 'YOUR TURN' : 'HIS TURN...', 12, 122, myTurn ? C.white : T.hi);
-    c.log.slice(0, 3).forEach((l, i) => ui.text(l, 12, 134 + i * 10, i === 0 ? C.bone : C.ash));
+    })) this.act({ t: 'reroute', a: this.picked[0], b: this.picked[1] });
+    // the rules, every turn (critic F5): what he does, and how you win
+    ui.text('HE TAKES THE LOWEST # HE TRUSTS; HE SKIPS OVERLOADS HE SAW.', 12, 120, C.collHi);
+    ui.text(`WIN: BLOW HIS ${r.fuses} FUSES, OR CASH MORE SAFES. TIES: HOUSE.`, 12, 130, C.collHi);
+    ui.text(myTurn ? 'YOUR TURN' : 'HIS TURN...', 12, 143, myTurn ? C.white : T.hi);
+    c.log.slice(0, 2).forEach((l, i) => ui.text(l, 70, 143 + i * 10, i === 0 ? C.bone : C.ash));
+  }
+
+  /** Send a Circuit action; the picks clear (critic F6: the next click shouldn't toggle a stale pick off). */
+  private act(c: Command) {
+    this.picked = [];
+    this.send(c);
   }
 
   private wheel(ui: UI, v: PanelView) {
@@ -200,7 +213,7 @@ export class CollectorPanel extends Panel {
     });
     if (w.slot === null) {
       if (ui.button('fortune', 110, 140, 100, 22, 'SPIN', { edge: boon ? T.base : C.blood, disabled: !v.active, tip: 'Spin the wheel.' })) this.send({ t: 'fortune' });
-    } else ui.text(slots[w.slot].text, PANEL_W / 2, 146, C.white, { align: 'center' });
+    } else if (v.tick >= w.until) ui.text(slots[w.slot].text, PANEL_W / 2, 146, C.white, { align: 'center' });
   }
 
   private summary(ui: UI, v: PanelView) {
@@ -219,20 +232,28 @@ export class CollectorPanel extends Panel {
     if (sm.circuit) lines.push([`THE CIRCUIT: ${sm.circuit.won ? 'WON' : 'LOST'}. ${sm.circuit.why}`, sm.circuit.won ? T.hi : C.blood]);
     if (sm.wheel) {
       const d = (sm.wheel.kind === 'boon' ? BOONS : BANES).find((b) => b.id === sm.wheel!.id)!;
-      lines.push([`${sm.wheel.kind === 'boon' ? 'BOON' : 'BANE'}: ${d.text}`, sm.wheel.kind === 'boon' ? T.hi : C.blood]);
+      const solo = sm.wheel.id === 'dearsoul' && s.players.length === 1;
+      lines.push([`${sm.wheel.kind === 'boon' ? 'BOON' : 'BANE'}: ${solo ? DEAR_SOULS_SOLO.text : d.text}`, sm.wheel.kind === 'boon' ? T.hi : C.blood]);
     }
+    if (sm.ledger) lines.push([`THE HOUSE'S LEDGER: ${UPGRADE_BY_ID.get(sm.ledger as UpgradeId)!.name.toUpperCase()} IS YOURS FOR GOOD.`, T.hi]);
     if (!last) {
       const keep = Math.max(s.bank, ECONOMY.bankFloor.v) + (s.upgrades.includes('bank500') ? 500 : 0);
       lines.push([`NIGHT ${sm.night + 1}: QUOTA ${money(sm.nextQuota)}, THE BANK STARTS AT ${money(keep)}.`, C.white]);
       lines.push(['SPEND YOUR MARKERS AT THE CAGE ON THE EAST WALL.', C.dust]);
     } else lines.push([`THAT WAS THE LAST NIGHT OF THE SLICE.`, C.white]);
-    lines.forEach(([l, c], i) => ui.para(l, 12, 34 + i * 16, PANEL_W - 24, c));
+    let y = 32;
+    for (const [l, c] of lines) y += ui.para(l, 12, y, PANEL_W - 24, c) + 5;
     if (ui.button('ready', 100, 150, 120, 22, last ? 'WALK OUT' : `NIGHT ${sm.night + 1}`, { edge: T.base, disabled: !v.active, tip: last ? 'See how the run went.' : 'Back to the floor.' })) this.send({ t: 'ready' });
   }
 
   private over(ui: UI, v: PanelView) {
-    const r = v.state.result;
-    ui.text(r?.won ? 'YOU WALK OUT' : 'THE HOUSE KEEPS YOU', PANEL_W / 2, 60, r?.won ? T.hi : C.blood, { scale: 2, align: 'center' });
-    if (r) ui.para(r.why, 20, 90, PANEL_W - 40, C.bone);
+    const s = v.state;
+    const r = s.result;
+    ui.text(r?.won ? 'YOU WALK OUT' : 'THE HOUSE KEEPS YOU', PANEL_W / 2, 50, r?.won ? T.hi : C.blood, { scale: 2, align: 'center' });
+    let y = 80;
+    // a shortfall that took the last life: show the arithmetic (critic F11)
+    const sm = s.summary;
+    if (sm && sm.night === s.night && sm.how === 'short') y += ui.para(`SHORT ${money(sm.short)} OF ${money(sm.quota)}: ${sm.livesTaken} ${sm.livesTaken === 1 ? 'LIFE' : 'LIVES'} AND THE BANK.`, 20, y, PANEL_W - 40, C.blood) + 6;
+    if (r) ui.para(r.why, 20, y, PANEL_W - 40, C.bone);
   }
 }

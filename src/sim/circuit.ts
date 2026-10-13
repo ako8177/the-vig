@@ -13,18 +13,20 @@ export const rulesFor = (floor: number) => CIRCUIT_RULES.find((r) => r.floor ===
 
 export function newCircuit(g: Game): CircuitState {
   const r = rulesFor(g.state.floor);
+  // the Bane: three overloads, and he carries three fuses, so no trap can blow him out (DECISIONS #52)
   const overloads = g.state.mods.overloads3 ? WHEEL.bigOverloads : r.overloads;
   const states = Array.from({ length: r.circuits }, (_, i) => i < overloads);
   g.rng.shuffle(states);
   return {
     slots: states.map((over) => ({ over, spent: false, known: false, touched: -1, by: null })),
     mem: states.map(() => null),
-    fuses: r.fuses,
+    fuses: g.state.mods.overloads3 ? WHEEL.bigOverloads : r.fuses,
     overloadsLeft: overloads,
     teamSafe: 0,
     collSafe: 0,
     turn: 'team',
     wait: 0,
+    survived: [],
     log: ['YOUR TURN: INSPECT, REROUTE OR ACTIVATE.'],
     done: null,
     endedAt: 0,
@@ -39,14 +41,22 @@ const say = (c: CircuitState, line: string) => {
 /** Check the end conditions (DESIGN.md §6); returns true when it's over. */
 function checkEnd(g: Game, c: CircuitState): boolean {
   let done: CircuitState['done'] = null;
+  // the team can still play a circuit that isn't spent and isn't a revealed overload
+  const live = c.slots.some((s) => !s.spent && !(s.known && s.over));
   if (c.fuses <= 0) done = { won: true, why: 'THE COLLECTOR BLEW HIS LAST FUSE.' };
   else if (living(g).length === 0) done = { won: false, why: 'NO ONE IS LEFT STANDING.' };
-  else if (c.overloadsLeft <= 0 || c.slots.every((s) => s.spent)) {
+  else if (c.overloadsLeft <= 0 || !live) {
+    const how = c.overloadsLeft <= 0 ? 'BOTH OVERLOADS ARE SPENT' : 'NO SAFE CIRCUIT IS LEFT';
     done = c.teamSafe > c.collSafe
-      ? { won: true, why: `THE PANEL IS SPENT: YOU ${c.teamSafe}, HIM ${c.collSafe}.` }
-      : { won: false, why: `THE PANEL IS SPENT: YOU ${c.teamSafe}, HIM ${c.collSafe}. TIES GO TO THE HOUSE.` };
+      ? { won: true, why: `${how}: YOU ${c.teamSafe} SAFE, HIM ${c.collSafe}.` }
+      : { won: false, why: `${how}: YOU ${c.teamSafe} SAFE, HIM ${c.collSafe}.${c.teamSafe === c.collSafe ? ' TIES GO TO THE HOUSE.' : ''}` };
   }
   if (!done) return false;
+  // Lucky Fuse: win the Circuit having survived an overload in it, +1 life (DECISIONS #53)
+  if (done.won) for (const id of c.survived) {
+    const p = g.state.players[id];
+    if (p.charms.includes('luckyfuse') && !p.ghost) gainLife(g, p, 'lucky fuse');
+  }
   c.done = done;
   c.endedAt = g.tick;
   g.emit({ t: 'circuitEnd', won: done.won, why: done.why });
@@ -87,12 +97,13 @@ export function teamAct(g: Game, p: PlayerState, act: 'inspect' | 'reroute' | 'a
     if (s.spent || c.slots[b].spent) return 'already spent';
     // the circuits swap; what the team knew moves with them; his memory stays with the positions
     [c.slots[a], c.slots[b]] = [c.slots[b], c.slots[a]];
-    c.slots[a].touched = c.slots[b].touched = g.tick;
     const text = `REROUTED #${a + 1} AND #${b + 1}`;
     say(c, text);
     g.emit({ t: 'circuit', who: 'team', action: 'reroute', slot: a, text });
   } else {
     if (s.spent) return 'already spent';
+    // a revealed overload is dead to the team: the only way to spend it is to route him into it
+    if (s.known && s.over) return 'it is overloaded: reroute it into his path instead';
     s.spent = true;
     s.known = true;
     s.by = 'team';
@@ -100,20 +111,11 @@ export function teamAct(g: Game, p: PlayerState, act: 'inspect' | 'reroute' | 'a
     c.mem[a] = s.over;
     if (s.over) {
       c.overloadsLeft--;
-      let text: string;
-      if (p.charms.includes('leadapron') && !p.apronUsed) {
-        p.apronUsed = true;
-        text = `#${a + 1} OVERLOADS. THE LEAD APRON TAKES IT.`;
-      } else {
-        text = `#${a + 1} OVERLOADS. IT COSTS A LIFE.`;
-        loseLife(g, p, 'overload');
-      }
+      const lost = loseLife(g, p, 'overload');
+      let text = lost === 'apron' ? `#${a + 1} OVERLOADS. THE LEAD APRON TAKES IT.` : `#${a + 1} OVERLOADS. IT COSTS A LIFE.`;
       // surviving an overload is what the fuse charms are for
       if (!p.ghost) {
-        if (p.charms.includes('luckyfuse')) {
-          gainLife(g, p, 'lucky fuse');
-          text += ' LUCKY FUSE: +1 LIFE.';
-        }
+        if (!c.survived.includes(p.id)) c.survived.push(p.id);
         if (p.charms.includes('overclock')) {
           p.overclock = ticks(OVERCLOCK.s);
           g.emit({ t: 'overclock', player: p.id });
@@ -136,28 +138,27 @@ export function teamAct(g: Game, p: PlayerState, act: 'inspect' | 'reroute' | 'a
 }
 
 /**
- * Which position the Collector takes: the one the team left alone longest, skipping any he believes
- * overloaded (DESIGN.md §6). His memory is by position, so a reroute turns his memory into a trap.
- * The floor's `sees: 'take'` would also have him take a safe he watched you inspect; tried and
- * rejected for floor 1 (DECISIONS #41): his turn falls between your inspect and your next move, so
- * every safe you found was his, and inspecting became pointless.
+ * Which position the Collector takes: the lowest-numbered one he doesn't believe overloaded
+ * (DESIGN.md §6; DECISIONS #52). He remembers what he saw by position, so you can predict him, and a
+ * revealed overload rerouted into his next position is how you blow his fuse. -1: nothing he trusts.
  */
-export function collectorPick(c: CircuitState, sees: 'avoid' | 'take' = 'avoid'): number {
-  const open = c.slots.map((s, i) => i).filter((i) => !c.slots[i].spent);
-  const known = sees === 'take' ? open.find((i) => c.mem[i] === false) : undefined;
-  if (known !== undefined) return known;
-  const trusted = open.filter((i) => c.mem[i] !== true);
-  const pool = trusted.length ? trusted : open;
-  let best = pool[0];
-  for (const i of pool) if (c.slots[i].touched < c.slots[best].touched) best = i;
-  return best;
+export function collectorPick(c: CircuitState): number {
+  for (let i = 0; i < c.slots.length; i++) if (!c.slots[i].spent && c.mem[i] !== true) return i;
+  return -1;
 }
 
 /** The Collector's turn. */
 export function collectorAct(g: Game) {
   const c = g.state.circuit;
   if (!c || c.done || c.turn !== 'coll') return;
-  const i = collectorPick(c, rulesFor(g.state.floor).sees);
+  const i = collectorPick(c);
+  if (i < 0) {
+    // nothing he trusts is left: he passes
+    say(c, 'HE PASSES.');
+    if (checkEnd(g, c)) return;
+    c.turn = 'team';
+    return;
+  }
   const s = c.slots[i];
   s.spent = true;
   s.known = true;

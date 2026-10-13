@@ -3,6 +3,7 @@
 // symbols 3x, a 7 with a blank 1x (money back). Σ 950 / 1000 → RTP 0.950 (DESIGN.md §3). No line
 // pays more than $1,200: a low table must not hand out a night's quota (DECISIONS #38).
 import type { TableModule } from './table';
+import { stakeFor } from '../rules';
 import { defOf, stake } from './table';
 import { payoutFactor } from '../rules';
 
@@ -41,7 +42,7 @@ export const bandit: TableModule = {
   lossCost: () => def.lossText,
   start(g, p, cmd) {
     if (cmd.t !== 'spin') return 'pull the lever';
-    const bet = def.bet as number;
+    const bet = stakeFor(p, def.bet as number);
     const why = stake(g, bet);
     if (why) return why;
     const stops = [g.rng.int(0, 9), g.rng.int(0, 9), g.rng.int(0, 9)];

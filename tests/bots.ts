@@ -9,7 +9,8 @@ import { TABLE_BY_ID } from '../src/data/tables';
 import { best, handValue } from '../src/sim/tables/twentyone';
 import type { CharmId } from '../src/data/charms';
 
-export const SEEDS = Array.from({ length: 20 }, (_, i) => 1000 + i * 7919);
+/** 200 seeds: 20 gave a lucky sample (the M1 design review measured 80% where 200 said 64%). */
+export const SEEDS = Array.from({ length: 200 }, (_, i) => 1000 + i * 7919);
 
 export class Bot {
   /** team marks suffered, Red Line lives lost */

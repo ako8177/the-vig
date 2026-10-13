@@ -23,6 +23,8 @@ export type Command =
   | { t: 'buyback'; target: PlayerId }
   /** spin the Collector's Boon or Bane wheel (DECISIONS #33) */
   | { t: 'fortune' }
+  /** end the night now: the clock jumps to 0:00 (at the Collector's table; DECISIONS #49) */
+  | { t: 'callit' }
   /** done reading the night's summary: start the next night (DECISIONS #33) */
   | { t: 'ready' }
   /**

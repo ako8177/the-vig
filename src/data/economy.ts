@@ -15,7 +15,7 @@ export const ECONOMY = {
   quotaGrowth: n(1.5, 'DESIGN.md §2: the quota x1.5 each night'),
   startBank: n(1500, 'DESIGN.md §2: start bank $1,500 (DECISIONS #40: $1,000 went broke on 42% of mid rotations)'),
   bankFloor: n(1000, 'DESIGN.md §2 (DECISIONS #10): the bank carries over with a $1,000 floor'),
-  shortfallPerLife: n(1000, 'DESIGN.md §2: one life per $1,000 short, rounded up'),
+  shortfallPerLife: n(2000, 'DESIGN.md §2: one life per $2,000 short, rounded up (DECISIONS #55)'),
   overshootPerMarker: n(500, 'DESIGN.md §2: 1 marker per $500 over quota'),
   gambleLossMin: n(0.1, 'DESIGN.md §2, §7: a lost gamble adds +10-40% on top of the x1.5'),
   gambleLossMax: n(0.4, 'DESIGN.md §2, §7: a lost gamble adds +10-40% on top of the x1.5'),

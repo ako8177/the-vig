@@ -2,6 +2,7 @@
 // losses in a row (two under the Bane) cost a life; the streak is yours and survives standing up.
 // A win: +1 marker (2 with Marker Magnet). DESIGN.md §3, §5; DECISIONS #8, #11.
 import type { TableModule } from './table';
+import { stakeFor } from '../rules';
 import { defOf, drawCard, isRed, stake } from './table';
 import { addMarkers, loseLife, payoutFactor } from '../rules';
 import { ECONOMY } from '../../data/economy';
@@ -25,7 +26,7 @@ export const redline: TableModule = {
   lossCost: () => def.lossText,
   start(g, p, cmd) {
     if (cmd.t !== 'call' || (cmd.call !== 'red' && cmd.call !== 'black')) return 'call red or black';
-    const bet = def.bet as number;
+    const bet = stakeFor(p, def.bet as number);
     const why = stake(g, bet);
     if (why) return why;
     const card = drawCard(g);

@@ -24,7 +24,7 @@ export function stacks(g: Game, player: number) {
 
 /**
  * What a payout is multiplied by for this player at this table: Hi-Lo marks at the tables they
- * mark (-5% a stack), Cold Deck (-10%), Overclock (x2). DESIGN.md §3, §5; DECISIONS #39.
+ * mark (-5% a stack), Cold Deck (-10%). DESIGN.md §3; DECISIONS #39. (Overclock doubles the stake.)
  */
 export function payoutFactor(g: Game, p: PlayerState, table: string): number {
   return factorOf(g.state, p, table);
@@ -35,9 +35,11 @@ export function factorOf(s: State, p: PlayerState, table: string): number {
   let f = 1;
   if (HILO_MARK.tables.includes(table)) f *= 1 - HILO_MARK.perStack * (s.marks.find((m) => m.id === 'hilo' && m.player === p.id)?.stacks ?? 0);
   if (s.marks.some((m) => m.id === 'colddeck' && m.player === -1)) f *= COLD_DECK;
-  if (p.overclock > 0) f *= OVERCLOCK.factor;
   return f;
 }
+
+/** A table's stake for this player: doubled under Overclock, so the win doubles and the odds don't (DECISIONS #54). */
+export const stakeFor = (p: PlayerState, bet: number) => bet * (p.overclock > 0 ? OVERCLOCK.factor : 1);
 
 /** Hi-Lo's mark length this night: 30 s, 20 s with the upgrade, 60 s under the Bane. */
 export function hiloMarkS(g: Game) {
@@ -86,9 +88,17 @@ export function gainLife(g: Game, p: PlayerState, why: string) {
   if (p.lives !== before) g.emit({ t: 'life', player: p.id, delta: 1, lives: p.lives, why });
 }
 
-/** Take a life. At 0 the player is a ghost; when no one living is left, the run is over. */
-export function loseLife(g: Game, p: PlayerState, why: string) {
-  if (p.ghost || p.lives <= 0) return;
+/**
+ * Take a life. Lead Apron takes the first one each night instead (DECISIONS #53). At 0 the player
+ * is a ghost; when no one living is left, the run is over. Returns what happened.
+ */
+export function loseLife(g: Game, p: PlayerState, why: string): 'lost' | 'apron' | 'none' {
+  if (p.ghost || p.lives <= 0) return 'none';
+  if (p.charms.includes('leadapron') && !p.apronUsed) {
+    p.apronUsed = true;
+    g.emit({ t: 'life', player: p.id, delta: 0, lives: p.lives, why: `${why}: the lead apron took it` });
+    return 'apron';
+  }
   p.lives--;
   g.state.stats.livesLost++;
   g.emit({ t: 'life', player: p.id, delta: -1, lives: p.lives, why });
@@ -102,6 +112,7 @@ export function loseLife(g: Game, p: PlayerState, why: string) {
     g.emit({ t: 'ghost', player: p.id });
     if (g.state.players.every((o) => o.ghost)) endRun(g, false, g.state.players.length === 1 ? 'OUT OF LIVES. A GHOST ALONE CANNOT BE BOUGHT BACK.' : 'EVERY SOUL BELONGS TO THE HOUSE.');
   }
+  return 'lost';
 }
 
 export function endRun(g: Game, won: boolean, why: string) {
