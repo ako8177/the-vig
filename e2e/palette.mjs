@@ -13,7 +13,7 @@ const TIERS = [['twentyone', 'low', 0], ['hilo', 'mid', 0], ['redline', 'high', 
 
 const { browser, page, ev, wait } = await open({ width: 1280, height: 720 });
 await ev(() => window.__app.enter());
-for (const pal of ['r64', 'r64teal', 'tano48']) {
+for (const pal of ['tano48']) {
   await ev((pal) => window.__app.setPalette(pal), pal);
   await wait(300);
   // the room from the door

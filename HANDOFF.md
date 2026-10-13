@@ -4,23 +4,17 @@ Read this first, every session.
 
 ## Where things stand (2026-10-12)
 
-Milestone 0 is built and committed, **except STYLE.md, which waits for the owner's palette pick.**
-The neon-and-palette test ran on three casts; the screenshots are in `e2e/out/palette/`
-(`<cast>-tiers.png`: each tier's sign from 10 m; `<cast>-door.png`: the room from the door).
-Claude recommends **r64teal** (Resurrect 64 with the low tier cast teal; DECISIONS #21).
+**Milestone 0 is done.** The owner picked TanoPal 48 (mid tier cast yellow so it doesn't read as
+the high tier's red; DECISIONS #29) and STYLE.md is written. The Collector keeps his eyes; in M5 he
+deals from the center, standing, not seated across from you (#30).
 
 ## Next
 
-1. **The owner picks a cast** (r64, r64teal or tano48). Then: set `activePalette` in
-   `src/data/palette.ts` to it, delete the other casts and their `public/tex/<cast>/` folders, have the
-   art director write `STYLE.md` from the pick (palette, the role cast, tier colors, neon rules from
-   DECISIONS #15-#17, texel densities: textures 32 px/m on the floor and walls, signs 34 px/m,
-   panels about 1:1 from the seat, the pixel-art-studio pipeline), and commit. That closes M0.
-2. **Start of Milestone 1, before any code**: fold DECISIONS #8-#11 into DESIGN.md (blood-table
+1. **Start of Milestone 1, before any code**: fold DECISIONS #8-#11 into DESIGN.md (blood-table
    deaths cost one life; Overclock carries over and Marker Magnet joins the slice; the bank carries
    over with a $1,000 floor; the exact Red Line and Dead Man's numbers; the Red Line streak
    survives standing; PLAN.md's table numbers synced). Re-derive §2's nights 2-3 and §8 test 3.
-3. Then START-HERE.md Prompt 1.
+2. Then START-HERE.md Prompt 1.
 
 ## How to run
 
@@ -34,7 +28,7 @@ Claude recommends **r64teal** (Resurrect 64 with the low tier cast teal; DECISIO
   `node e2e/palette.mjs`, `node e2e/coverage.mjs`. They drive the installed Chrome with SwiftShader;
   from Claude's tool sandbox they need the sandbox off (`spawn UNKNOWN` otherwise). Output in
   `e2e/out/` (ignored by git).
-- Art: `python pixel-art/vig-room/build.py` re-renders every texture and sign in every cast
+- Art: `python pixel-art/vig-room/build.py` re-renders every texture and sign
   (Pillow; the pixel-art-studio skill's `pixelstudio.py`). Contact sheets in
   `pixel-art/vig-room/previews/` (ignored).
 
@@ -47,7 +41,7 @@ Claude recommends **r64teal** (Resurrect 64 with the low tier cast teal; DECISIO
 - `src/render3d/` view.ts (renderer, selective bloom, letterbox, pick), pixelpass.ts, room.ts,
   textures.ts, fpcam.ts. `src/panels/` panel.ts, hilo.ts. `src/hud/` hud.ts. `src/app/` app.ts.
 - Debug hooks: `window.__app` (`enter()`, `pose(x, z, yaw, pitch)`, `sitAt(table)`,
-  `setToggles({bloom, pixel, lowRes})`, `setPalette(id)`), `window.__game`, `window.__Game`,
+  `setToggles({bloom, pixel, lowRes})`), `window.__game`, `window.__Game`,
   `window.__floors`.
 
 ## Gotchas

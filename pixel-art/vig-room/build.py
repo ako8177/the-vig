@@ -1,6 +1,7 @@
 """The Vig, floor 1: room textures, neon signs and loss icons, drawn pixel by pixel with the
-pixel-art-studio skill (pixelstudio.py). One run renders every asset in BOTH candidate palettes
-(the Milestone 0 neon test) into public/tex/<palette>/, plus contact sheets in ./previews/.
+pixel-art-studio skill (pixelstudio.py). One run renders every asset in every palette cast in
+src/data/palette.ts (TanoPal 48 since the Milestone 0 pick; STYLE.md) into public/tex/<cast>/,
+plus contact sheets in ./previews/.
 
 Single source of truth: the palette roles are read from src/data/palette.ts and the glyphs from
 the game's bitmap font in src/ui/font.ts, so a sign's lettering is the same font as the HUD.
@@ -31,8 +32,8 @@ def _list(name):
 
 
 cast_src = re.search(r"const CAST.*?= \{(.*?)\n\};", pal_src, re.S).group(1)
-# every cast in palette.ts; a cast named r64* plays from Resurrect 64's colors, tano* from TanoPal's
-PAL_COLORS = {pid: _list("R64") if pid.startswith("r64") else _list("TANO48") for pid in re.findall(r"^  (\w+): \{", cast_src, re.M)}
+# every cast in palette.ts, each playing from TanoPal 48's colors
+PAL_COLORS = {pid: _list("TANO48") for pid in re.findall(r"^  (\w+): \{", cast_src, re.M)}
 CAST = {}
 for pid in PAL_COLORS:
     block = re.search(r"\b%s: \{(.*?)\n  \}," % pid, cast_src, re.S).group(1)

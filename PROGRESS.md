@@ -2,7 +2,7 @@
 
 What is built. Newest first.
 
-## 2026-10-12 — Milestone 0: foundation and the room (waiting on the palette pick)
+## 2026-10-12 — Milestone 0: foundation and the room (done)
 
 **Engine layer** (from Sprocket & Sprout, every S&S name, string, color and asset stripped):
 `src/engine/loop.ts` (fixed 60 Hz), `rng.ts` (mulberry32), `input.ts` (rebindable actions, pointer
@@ -19,7 +19,7 @@ system order and nine systems (seven empty; movement walks at 3 m/s with capsule
 collision; tables seats and stands you, Hi-Lo only), the event queue, a state hash, and
 `Game.replay`. Starting state from DESIGN.md §2 (bank $1,000, quota $3,000, 3 lives, 6:00).
 
-**Data**: `src/data/palette.ts` (Resurrect 64 and TanoPal 48, three role casts, the tier colors),
+**Data**: `src/data/palette.ts` (TanoPal 48 and its role cast, the tier colors; STYLE.md),
 `tables.ts` (the six floor-1 tables with DESIGN.md §3 numbers and derivations), `floors.ts`
 (floor 1: 24 x 16 m, colliders, table placements, seats, screens, signs).
 
@@ -38,8 +38,8 @@ chance, payout, return per $1, loss cost, what a mark is, bet, disabled call but
 seat prompt with the table's odds line, the enter and pause cards.
 
 **Art** (pixel-art-studio skill): `pixel-art/vig-room/build.py` draws 15 assets (carpet, wall,
-felt, wood, brass, ceiling, cage bars, door, seven signs) in every cast into `public/tex/`.
-PixelLab spend: 0.
+felt, wood, brass, ceiling, cage bars, door, seven signs) into `public/tex/tano48/`.
+PixelLab spend: 0. **STYLE.md** written from the owner's pick (TanoPal 48, mid tier cast yellow).
 
 **Agents** (`.claude/agents/`): indie-critic, art-director, qa-screens (rewritten for The Vig,
 each flagging anything derivative of Buckshot Roulette, CloverPit or Gamble With Your Friends) and
@@ -56,8 +56,10 @@ on 3 seeds); screens 7 surfaces, 0 clash / 0 overflow / 0 covered, 0 console err
 SwiftShader 30-42 fps, 31 draw calls, 2.2k triangles; all 15 textures load in all 3 casts;
 `npm run build` 169 kB gzipped. Every screenshot looked at.
 
-**Not done in M0**: STYLE.md (waits for the owner's palette pick, DECISIONS #7, #21); DESIGN.md
-updated for decisions #8-#11 (start of M1, by the owner's choice).
+**Palette test**: three casts at 10 m (Resurrect 64, R64 teal-low, TanoPal 48); the owner picked
+TanoPal 48; mid recast yellow so all four tiers read apart (DECISIONS #21, #29).
+
+**Left for the start of M1** (owner's choice): DESIGN.md updated for DECISIONS #8-#11.
 
 ## 2026-10-12 — Planning
 
@@ -67,7 +69,7 @@ updated for decisions #8-#11 (start of M1, by the owner's choice).
 
 | Milestone | Status |
 |---|---|
-| M0 — Foundation and the room | built; waiting for the palette pick, then STYLE.md |
+| M0 — Foundation and the room | done 2026-10-12 |
 | M1 — The slice (single player, floor 1, three nights) | not started |
 | M2 — The gate | not started |
 | M3 — Co-op | waiting for the gate |

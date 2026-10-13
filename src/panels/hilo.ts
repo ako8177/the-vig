@@ -36,7 +36,7 @@ export class HiLoPanel extends Panel {
     const rows: [string, string, number][] = [
       ['WIN CHANCE', `${Math.round((t.winP ?? 0) * 100)}%  (CALL HI OR LO)`, C.white],
       ['PAYS', `${t.paysText}  ($${Math.round(bet * (t.pays ?? 0))} ON $${bet})`, C.white],
-      ['RETURN', `$${t.rtp.toFixed(2)} PER $1 BET`, C.lowHi],
+      ['RETURN', `$${t.rtp.toFixed(2)} PER $1 BET`, C.white],
       ['LOSING COSTS', `$${bet} + 1 MARK ${ICON.mark}`, tier.hi],
     ];
     let y = 36;

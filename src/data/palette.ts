@@ -1,25 +1,13 @@
-// The palettes. Everything the player sees snaps to one of these: textures are painted in it,
-// the HUD and the table panels draw in it, and the pixel pass (src/render3d/pixelpass.ts)
-// quantizes the bloomed frame to it. Two candidates until the Milestone 0 neon test picks one
-// (DECISIONS #7, STYLE.md once written). Both are published Lospec palettes; no colors are
-// borrowed from another game.
+// The palette. Everything the player sees snaps to it: textures are painted in it, the HUD and
+// the table panels draw in it, and the pixel pass (src/render3d/pixelpass.ts) quantizes the
+// bloomed frame to it. TanoPal 48, picked by the owner after the Milestone 0 neon test
+// (DECISIONS #7, #21, #29; STYLE.md). A published Lospec palette; no colors borrowed from a game.
 //
 // UI and textures never name a hex directly: they name a *role* (C.ink, C.low, ...) and the
 // active palette says which of its colors plays it. Tier colors are roles too, so the four tier
 // colors are the same everywhere a tier appears (felt trim, sign, panel badge, HUD).
 
-export type PaletteId = 'r64' | 'r64teal' | 'tano48';
-
-/** Resurrect 64 by Kerrie Lake (lospec.com/palette-list/resurrect-64): warm, muted, a true violet. */
-const R64 = [
-  '2e222f', '3e3546', '625565', '966c6c', 'ab947a', '694f62', '7f708a', '9babb2', 'c7dcd0', 'ffffff',
-  '6e2727', 'b33831', 'ea4f36', 'f57d4a', 'ae2334', 'e83b3b', 'fb6b1d', 'f79617', 'f9c22b', '7a3045',
-  '9e4539', 'cd683d', 'e6904e', 'fbb954', '4c3e24', '676633', 'a2a947', 'd5e04b', 'fbff86', '165a4c',
-  '239063', '1ebc73', '91db69', 'cddf6c', '313638', '374e4a', '547e64', '92a984', 'b2ba90', '0b5e65',
-  '0b8a8f', '0eaf9b', '30e1b9', '8ff8e2', '323353', '484a77', '4d65b4', '4d9be6', '8fd3ff', '45293f',
-  '6b3e75', '905ea9', 'a884f3', 'eaaded', '753c54', 'a24b6f', 'cf657f', 'ed8099', '831c5d', 'c32454',
-  'f04f78', 'f68181', 'fca790', 'fdcbb0',
-];
+export type PaletteId = 'tano48';
 
 /** TanoPal 48 (lospec.com/palette-list/tanopal-48): saturated, hot neons, near-black darks. */
 const TANO48 = [
@@ -41,38 +29,16 @@ export type Role = (typeof ROLES)[number];
 export const C = Object.fromEntries(ROLES.map((r, i) => [r, i])) as Record<Role, number>;
 
 const CAST: Record<PaletteId, Record<Role, string>> = {
-  r64: {
-    ink: '2e222f', night: '3e3546', smoke: '625565', ash: '7f708a', dust: '9babb2', bone: 'c7dcd0', white: 'ffffff',
-    low: '1ebc73', lowHi: '91db69', lowLo: '239063',
-    mid: 'f9c22b', midHi: 'fbff86', midLo: 'f79617',
-    high: 'e83b3b', highHi: 'f68181', highLo: 'ae2334',
-    coll: 'a884f3', collHi: 'eaaded', collLo: '6b3e75',
-    felt: '165a4c', feltLo: '313638', wood: '6e2727', woodHi: '9e4539', woodLo: '45293f',
-    brass: 'fbb954', brassLo: 'cd683d', gold: 'fbb954', blood: 'ae2334',
-    soul: '8ff8e2', soulLo: '30e1b9', marker: '8fd3ff', markerLo: '4d9be6',
-    carpet: '7a3045', carpetLo: '45293f', wall: '3e3546', wallHi: '625565',
-  },
-  // Resurrect 64 again, with the low tier cast teal: under bloom R64's green drifts to lime and
-  // reads as amber from 10 m; teal blooms toward cyan and can't be mistaken for mid. Souls move
-  // to pale bone (teal is taken), markers to the deeper blue.
-  r64teal: {
-    ink: '2e222f', night: '3e3546', smoke: '625565', ash: '7f708a', dust: '9babb2', bone: 'c7dcd0', white: 'ffffff',
-    low: '30e1b9', lowHi: '8ff8e2', lowLo: '0eaf9b',
-    mid: 'f9c22b', midHi: 'fbff86', midLo: 'f79617',
-    high: 'e83b3b', highHi: 'f68181', highLo: 'ae2334',
-    coll: 'a884f3', collHi: 'eaaded', collLo: '6b3e75',
-    felt: '165a4c', feltLo: '313638', wood: '6e2727', woodHi: '9e4539', woodLo: '45293f',
-    brass: 'fbb954', brassLo: 'cd683d', gold: 'fbb954', blood: 'ae2334',
-    soul: 'c7dcd0', soulLo: '9babb2', marker: '8fd3ff', markerLo: '4d65b4',
-    carpet: '7a3045', carpetLo: '45293f', wall: '3e3546', wallHi: '625565',
-  },
   tano48: {
     ink: '1f1d1e', night: '303232', smoke: '645c5a', ash: '8c9687', dust: '96918c', bone: 'c8c8b5', white: 'ffffff',
     low: '00e60f', lowHi: 'c4ff91', lowLo: '08b428',
-    mid: 'f8a004', midHi: 'f8d280', midLo: 'c86900',
+    // mid is cast yellow, not TanoPal's amber f8a004: from 10 m that amber and the high tier's
+    // f5320a both read orange (DECISIONS #29)
+    mid: 'f0ff00', midHi: 'ffff8e', midLo: 'f8a004',
     high: 'f5320a', highHi: 'f5916e', highLo: 'af000a',
     coll: 'be5aff', collHi: 'e1b6ff', collLo: '801cc0',
-    felt: '005a20', feltLo: '024637', wood: '642808', woodHi: 'c86900', woodLo: '511806',
+    // charcoal felt: TanoPal's felt green lit by a lamp snaps to the low tier's neon green (STYLE.md)
+    felt: '303232', feltLo: '1f1d1e', wood: '642808', woodHi: 'c86900', woodLo: '511806',
     brass: 'f8d280', brassLo: 'c86900', gold: 'f8d280', blood: 'ac0a48',
     soul: '32fad2', soulLo: '0dc8d9', marker: '6e8ef0', markerLo: '5555e6',
     carpet: '410966', carpetLo: '1f1d1e', wall: '303232', wallHi: '645c5a',
@@ -80,13 +46,11 @@ const CAST: Record<PaletteId, Record<Role, string>> = {
 };
 
 export const PALETTES: Record<PaletteId, { name: string; colors: string[] }> = {
-  r64: { name: 'Resurrect 64', colors: R64 },
-  r64teal: { name: 'Resurrect 64, teal low tier', colors: R64 },
   tano48: { name: 'TanoPal 48', colors: TANO48 },
 };
 
-/** The palette in play. Swapped by setPalette (the neon test); STYLE.md will fix it. */
-export let activePalette: PaletteId = 'r64';
+/** The palette in play (one since the Milestone 0 pick; setPalette stays for a future cast). */
+export let activePalette: PaletteId = 'tano48';
 /** role index -> '#rrggbb' in the active palette */
 export const PALETTE: string[] = ROLES.map((r) => '#' + CAST[activePalette][r]);
 

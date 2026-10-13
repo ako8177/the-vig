@@ -55,7 +55,8 @@ export class Hud {
     ui.text(money(s.bank), bx + 6 + textWidth('BANK') + 6, 10, C.gold);
     const q = `QUOTA ${money(s.quota)}`;
     ui.text(q, bx + bw - 6, 10, C.bone, { align: 'right' });
-    ui.bar(bx + 6, 22, bw - 12, 6, s.bank / s.quota, s.bank >= s.quota ? C.low : C.mid);
+    // gold, not a tier color (tier hues belong to the tiers: STYLE.md); bone once the quota is met
+    ui.bar(bx + 6, 22, bw - 12, 6, s.bank / s.quota, s.bank >= s.quota ? C.bone : C.gold);
 
     // top right: lives, souls, markers
     const rx = HUD_W - 6 - 118;

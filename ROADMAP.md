@@ -66,7 +66,9 @@ transition elevator. The quota curve across floors derived in `DESIGN.md`.
 
 A character: lines on sit-down, on pay, on gamble, on each overload, on a ghost; a fixed set of
 rules he announces per floor; the violet lighting pass; his own positional voice (synth, not
-recorded).
+recorded). He stands and deals the Circuit from the center of the ring, never seated across the
+table from you (DECISIONS #28, #30: that framing reads as Buckshot Roulette's Dealer); his violet
+eyes stay.
 
 ## Milestone 6 — Meta and runs
 

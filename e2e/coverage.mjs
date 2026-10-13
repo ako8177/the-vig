@@ -5,7 +5,7 @@ import { open, OUT } from './launch.mjs';
 
 const { browser, ev } = await open();
 const res = {};
-for (const pal of ['r64', 'r64teal', 'tano48']) {
+for (const pal of ['tano48']) {
   res[pal] = await ev(async (pal) => {
     const a = window.__app;
     await a.setPalette(pal);
