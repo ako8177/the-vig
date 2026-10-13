@@ -9,6 +9,7 @@ export const BASE = process.env.BASE ?? 'http://127.0.0.1:5180/';
 export const OUT = 'e2e/out';
 /** The installed Chrome: Windows blocks Playwright's own Chromium build from running on this PC. */
 export const CHANNEL = process.env.PW_CHANNEL ?? 'chrome';
+// (on other PCs `PW_CHANNEL=chromium` uses Playwright's own build after `npx playwright install chromium`)
 export const FLAGS = ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--autoplay-policy=no-user-gesture-required'];
 
 /** Launch, open the game, wait for the room's textures; returns { browser, page, errors, ev, wait }. */

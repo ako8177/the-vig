@@ -90,7 +90,11 @@ camera, pixel pass and SwiftShader notes.
 
 ## Environment notes
 
-Windows. Node is a portable copy at `C:\Users\jacks\tools\node-v22.20.0-win-x64`, not on PATH
-(the `.bat` files add it; in a terminal use the PATH line from the S&S `HANDOFF.md`). PixelLab
-MCP at user scope; Blender MCP connected. Tokens never go in the repo (it is public). Say what
-you spent from the PixelLab budget in `PROGRESS.md`.
+Windows. Node 22+: either installed normally, or (on the original owner's PC) a portable copy at
+`C:\Users\jacks\tools\node-v22.20.0-win-x64`, not on PATH; the `.bat` files use whichever exists,
+and `HANDOFF.md` has the PATH line for a terminal. The engine layer was extracted in Milestone 0,
+so the Sprocket & Sprout folder and the read-only projects above exist only on the original
+owner's PC; nobody else needs them. PixelLab MCP and Blender MCP are optional (art is drawn with
+the pixel-art-studio skill). Tokens never go in the repo (it is public). Say what you spent from
+the PixelLab budget in `PROGRESS.md`. The repo is `github.com/ycgNem/the-vig`; every push to
+`main` deploys to https://ycgnem.github.io/the-vig/.
