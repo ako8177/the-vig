@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#2e222f" />
+    <link rel="icon" href="data:," />
+    <meta name="description" content="A first-person co-op casino roguelike. Gamble a shared bank up to the Collector's quota, buy charms that bend the odds, and sit at a table that can kill you." />
+    <title>The Vig</title>
+    <style>
+      html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+      #stage { position: fixed; inset: 0; }
+      canvas { display: block; position: absolute; inset: 0; width: 100vw; height: 100vh; image-rendering: pixelated; cursor: default; }
+      #hud { pointer-events: none; }
+    </style>
+  </head>
+  <body>
+    <div id="stage">
+      <canvas id="game"></canvas>
+      <canvas id="hud"></canvas>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

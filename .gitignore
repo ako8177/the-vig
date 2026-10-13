@@ -1,0 +1,11 @@
+node_modules/
+dist/
+release/
+e2e/out/
+.vite/
+.vite-local/
+*.log
+.env
+.env.*
+the-vig-web.zip
+pixel-art/*/previews/
