@@ -2,6 +2,58 @@
 
 What is built. Newest first.
 
+## 2026-10-12 — Milestone 1: the playable slice (single player, floor 1, three nights)
+
+**A run, end to end**: title (new run, how to play, settings, the record) → click onto the floor →
+six tables you walk up to and sit at → the cage on the east wall → 0:00: the lights drop and you are
+pulled to the Collector's table → pay or gamble → the Circuit → the Boon or Bane wheel → the night's
+summary → night 2, night 3 → results (won, or out of lives). About 20 minutes.
+
+**Sim** (`src/sim/`, pure, seeded, command-driven; replay test still exact): the clock and phases
+(floor → midnight → choice → circuit → wheel → summary → over); the six tables as modules in
+`src/sim/tables/` with exact odds by enumeration (Twenty-One by dynamic programming over an endless
+shoe); marks (Hi-Lo's personal stacks, the Wheel's four team marks) counting table time only; lives,
+the ghost and the solo run end; the cage (four charms, three permanent upgrades, buybacks); the
+Collector: shortfall, pay, gamble, the Circuit (`src/sim/circuit.ts`), the wheels; the economy
+between nights (overshoot markers, the bank floor, the next quota). Two new commands: `fortune`,
+`ready` (DECISIONS #33).
+
+**Data** (`src/data/`): `economy.ts`, `marks.ts`, `charms.ts` (charms and upgrades), `wheels.ts`,
+`circuit.ts`, and `tables.ts` with the M1 numbers; every number names its DESIGN.md section.
+
+**Presentation**: a panel per table (`src/panels/games.ts`) under one shared odds block
+(`src/panels/table.ts`: tier, win chance, payout, loss cost, return per $1, your payout factor right
+now; Blackout says it is hiding them), the Collector's screen on his felt (`src/panels/collector.ts`:
+the choice with both prices printed, the Circuit, the wheels, the summary); the HUD
+(`src/hud/hud.ts`): clock, bank and quota, lives, souls, markers, charms, Overclock, marks, the seat
+and cage prompts, toasts, banners, lesson cards, title, how to play, settings, the cage, pause,
+results. The 0:00 light drop (`setMidnight` in room.ts). Synthesized sounds for every event and a
+room bed that thins at 0:00 (`src/engine/audio/audio.ts`; the jsfxr bank is still Milestone 7).
+Settings and meta (upgrades, record, lessons seen) in localStorage.
+
+**Balance** (DESIGN.md §2-§8; DECISIONS #38-#42, #49-#57): the pace bots measured the design and
+numbers moved: the Bandit's top line (75× → 12×, RTP unchanged), Hi-Lo marks tax Hi-Lo only, the
+start bank $1,500, a life per $2,000 short; after the reviews the charms were made honest (Overclock
+doubles stakes; Lead Apron and Lucky Fuse no longer generate lives) and the Circuit became
+positional (he takes the lowest circuit he trusts; 10 circuits; a sensible team wins 48%). A
+sensible solo bot that pays every night survives all three 38% of the time and dies on night 1
+6.5%. Open for the owner: the lost gamble's quota surcharge (paying beats gambling today), the
+last-night shortfall rule, two derivative flags (DECISIONS #56-#58).
+
+**Tests**: 28 (sim, data validation with exact RTPs and a 100k-round check, the seven pace tests on
+200 seeds, the Circuit on 400; about 10 s). `npm run e2e` 13/13 (title → a run → a round → 0:00 → pay → night 2).
+`npm run screens` 23 surfaces, 0 clash / 0 overflow; `npm run shots` adds the 0:00 view; perf under
+SwiftShader 20.6 fps (budget 15), within the draw-call and triangle budgets.
+
+**Not done**: Blender models (no Blender MCP here; placeholder geometry, which ROADMAP allows).
+PixelLab spend: 0.
+
+**Playtests**: a user-level `indie-dev-critic` agent (`~/.claude/agents/indie-dev-critic.md`) played
+the M0 build (11 findings, all fixed) and the M1 build (5.5/10: no crashes, no soft-locks, every
+payout matches its printed odds; 14 findings, 13 fixed, F3 left to the owner). The project's
+`indie-critic` reviewed the design against §9: Q4 (readable odds) yes at a table; Q1 not yet within
+a night; Q2 and Q3 not yet (charms were degenerate, now fixed; paying still beats gambling).
+
 ## 2026-10-12 — Milestone 0: foundation and the room (done)
 
 **Engine layer** (from Sprocket & Sprout, every S&S name, string, color and asset stripped):
@@ -70,6 +122,6 @@ TanoPal 48; mid recast yellow so all four tiers read apart (DECISIONS #21, #29).
 | Milestone | Status |
 |---|---|
 | M0 — Foundation and the room | done 2026-10-12 |
-| M1 — The slice (single player, floor 1, three nights) | not started |
+| M1 — The slice (single player, floor 1, three nights) | done 2026-10-12 (Blender models deferred) |
 | M2 — The gate | not started |
 | M3 — Co-op | waiting for the gate |

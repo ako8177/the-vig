@@ -6,15 +6,17 @@ at the Collector's table for a game that can kill you. **Safety is a slow loss**
 bleed you, the risky ones pay, and the price of losing climbs from money to marks to lives.
 
 **Play the current build: https://ako8177.github.io/the-vig/**
-(Chrome, Edge or Firefox on a PC. Click to step onto the floor; WASD walk, mouse look, E to sit at a
-table, E or Esc to stand.)
+(Chrome, Edge or Firefox on a PC. NEW RUN, then click to step onto the floor; WASD walk, mouse look,
+E to sit at a table or open the cage, E or Esc to stand. Make the quota by 0:00.)
 
 ## Where it's at
 
-Milestone 0 is done: the room, walking, the neon signs, sitting at Hi-Lo and reading its odds card,
-the HUD. Nothing is playable as a game yet: no bets, no clock, no Collector. Milestone 1 builds the
-single-player slice (three nights on floor 1). See `ROADMAP.md` for the plan and `PROGRESS.md` for
-what exists.
+Milestone 1 is done: a playable single-player slice. Three six-minute nights on floor 1, six tables
+with printed odds (the Bandit, Twenty-One, Hi-Lo Dice, the Wheel of Marks, Red Line, Dead Man's
+Hand), marks, lives, the cage (charms and permanent upgrades), the Collector at 0:00 (pay, or
+gamble on the Circuit for the Boon or the Bane), and a results screen. Placeholder models; no
+co-op yet (Milestone 3, after the Milestone 2 gate). See `ROADMAP.md` for the plan and
+`PROGRESS.md` for what exists.
 
 ## Run it on your own PC
 

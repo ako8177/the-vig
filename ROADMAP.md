@@ -43,7 +43,9 @@ pass. Screenshots in `e2e/out/`, looked at.
 friend plays it over the owner's shoulder (co-op isn't in yet; this is the proxy for the
 argument). Either the model changes or the gate is marked passed here with the date.
 
-**Gate status: not yet passed.**
+**Milestone 1: done 2026-10-12** (placeholder models; the Blender pass is deferred: DECISIONS #48).
+
+**Gate status: not yet passed.** Before the gate: the owner's open calls in DECISIONS #56-#58 and DESIGN.md §2/§7.
 
 ## Milestone 3 — Co-op
 
