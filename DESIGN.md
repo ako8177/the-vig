@@ -282,8 +282,22 @@ Martini $120 (50 s), Double Whiskey $200 (80 s), The Collector's Own $500 (150 s
 **180 s** and counts down in floor time; at **90 s** you are as drunk as the screen gets (it swims
 and doubles, the camera sways, your walk wanders; a MILD setting softens it). In the slice a drink
 buys nothing but the feeling: it is a way to spend money that isn't a bet, which makes it the
-cheapest bad decision in the house. A drink that changes the odds (a "liquid courage") would be a
-charm by another name; if one is added it must be priced and derived here first.
+cheapest bad decision in the house.
+
+**Each drink's edge** (DECISIONS #77, the owner: "add small buffs to drinking alcohol to give a
+reason to drink"): while its own buzz runs, payouts at one tier's tables are multiplied. The rule:
+**played at that tier for the whole buzz, the edge about pays the drink back**, so a drink is a
+tempo call (walk to the bar, then play the tier it favors, swimming), never free money.
+- Draft Beer $40, 25 s, **low +6%**: 10 Bandit pulls return ≈ $950; 6% ≈ **$57**.
+- Dry Martini $120, 50 s, **mid +4%**: ~16 Hi-Lo rounds return ≈ $3,840 (at 1.2), minus marks;
+  4% ≈ **$150**.
+- Double Whiskey $200, 80 s, **high +3%**: ~13 Red Line rounds return ≈ $8,100; 3% ≈ **$245**
+  (Dead Man's Hand returns more, and kills more).
+- The Collector's Own $500, 150 s, **every table +5%**: a mixed floor turns over ≈ $10,000 in
+  150 s; 5% ≈ **$500**.
+The same drink again restarts its edge; different drinks' edges multiply. The panels print the
+factor ("YOUR PAYOUTS NOW x1.06"); the bar prints each edge and how long it has left. The
+odds printed on the felt stay the base odds: an edge is the player's, like a mark.
 
 ## 9. What the slice must answer
 

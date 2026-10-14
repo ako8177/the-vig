@@ -14,6 +14,10 @@ export const marks: System = {
       if (p.overclock > 0) p.overclock--;
       // a buzz wears off in floor time too (DESIGN.md §10)
       if (p.drunk > 0) p.drunk--;
+      if (p.buffs.length) {
+        for (const b of p.buffs) b.left--;
+        p.buffs = p.buffs.filter((b) => b.left > 0);
+      }
     }
   },
 };

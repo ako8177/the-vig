@@ -360,14 +360,16 @@ export class Hud {
     ui.panel(x, y, w, h, 'dark', { edge: C.pinkHi });
     ui.text('THE BAR', x + 10, y + 7, C.pinkHi, { scale: 2 });
     ui.text(`BANK ${money(s.bank)}`, x + w - 10, y + 10, C.gold, { align: 'right' });
-    ui.text('PAID FROM THE BANK. IT BUYS NOTHING BUT THE FEELING.', x + 10, y + 28, C.dust);
+    ui.text('PAID FROM THE BANK. EACH GIVES AN EDGE WHILE ITS BUZZ LASTS.', x + 10, y + 28, C.dust);
     let ry = y + 42;
     for (const d of DRINKS) {
       const why = v.bar!.why.get(d.id) ?? null;
       ui.panel(x + 8, ry, w - 16, 30, 'inset', { blocking: false });
       ui.text(d.name.toUpperCase(), x + 14, ry + 5, C.white);
       ui.text(money(d.price), x + 150, ry + 5, C.gold);
-      ui.text(`${d.buzzS} S  ${d.text}`, x + 14, ry + 17, C.pinkHi);
+      const on = me.buffs.find((b) => b.drink === d.id);
+      ui.text(`${d.edgeText}, ${d.buzzS} S`, x + 14, ry + 17, on ? C.gold : C.pinkHi);
+      if (on) ui.text(`ON: ${Math.ceil(on.left / TICKS_PER_S)} S`, x + 210, ry + 5, C.gold);
       if (ui.button(`order-${d.id}`, x + w - 84, ry + 5, 70, 20, 'ORDER', { edge: C.pinkHi, disabled: !!why, tip: why ? cap(why) : `${money(d.price)} from the bank.` })) out.push({ t: 'order', drink: d.id });
       ry += 34;
     }

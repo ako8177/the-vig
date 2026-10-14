@@ -5,6 +5,7 @@ import { ECONOMY } from '../data/economy';
 import type { MarkId } from '../data/marks';
 import type { CharmId, UpgradeId } from '../data/charms';
 import type { BaneId, BoonId } from '../data/wheels';
+import type { DrinkId } from '../data/drinks';
 
 /** A timed debuff (DESIGN.md §3). `team` marks hit everyone. */
 export interface Mark {
@@ -41,6 +42,8 @@ export interface PlayerState {
   drunk: number;
   /** holding sprint (DESIGN.md §1) */
   run: boolean;
+  /** the drinks' edges still running (DESIGN.md §10): which drink, ticks left of floor time */
+  buffs: { drink: DrinkId; left: number }[];
 }
 
 /** A card: rank 1 (ace) .. 13 (king), suit 0..3 (0, 1 red; 2, 3 black). */
@@ -260,7 +263,7 @@ export function newState(players: number, upgrades: UpgradeId[] = []): State {
     markers: 0,
     players: Array.from({ length: players }, (_, id) => ({
       id, ...spawnOf(id, players), mx: 0, mz: 0, seat: null, lives: START_LIVES, ghost: false,
-      charms: [], redStreak: 0, overclock: 0, apronUsed: false, drunk: 0, run: false,
+      charms: [], redStreak: 0, overclock: 0, apronUsed: false, drunk: 0, run: false, buffs: [],
     })),
     marks: [],
     tables: newTables(),

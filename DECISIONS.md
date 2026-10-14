@@ -177,3 +177,8 @@ inspirations: the ideas are taken, never their names, numbers or art).
   test measures blackjack per $1 of the opening bet, the way every house edge is quoted. The shoe
   lives in the sim state (seeded, replayable); the panel shows two hands after a split and the
   shoe's depth.
+- #77 2026-10-14: **Drinks give a small edge** (the owner). Each drink multiplies one tier's
+  payouts while its buzz runs: beer low +6%, martini mid +4%, whiskey high +3%, the Collector's Own
+  every table +5%; sized so a whole buzz spent at that tier about pays the drink back (DESIGN.md
+  §10). Replaces #67's "a drink buys nothing but the feeling". It is not a charm (no slot, no
+  markers, one system plus the screen swimming), so pillar 3 doesn't bind it.

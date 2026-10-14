@@ -1,4 +1,6 @@
 // Rules shared by the systems: payout factors, lives, marks, markers. Pure functions of the Game.
+import { TABLE_BY_ID } from '../data/tables';
+import { DRINK_BY_ID } from '../data/drinks';
 import type { Game } from './Game';
 import type { PlayerState, Mark, State } from './state';
 import { TICKS_PER_S } from './state';
@@ -35,6 +37,12 @@ export function factorOf(s: State, p: PlayerState, table: string): number {
   let f = 1;
   if (HILO_MARK.tables.includes(table)) f *= 1 - HILO_MARK.perStack * (s.marks.find((m) => m.id === 'hilo' && m.player === p.id)?.stacks ?? 0);
   if (s.marks.some((m) => m.id === 'colddeck' && m.player === -1)) f *= COLD_DECK;
+  // a drink's edge at its tier's tables (DESIGN.md §10)
+  const tier = TABLE_BY_ID.get(table)?.tier;
+  if (tier) for (const b of p.buffs ?? []) {
+    const d = DRINK_BY_ID.get(b.drink);
+    if (d && d.tiers.includes(tier)) f *= 1 + d.bonus;
+  }
   return f;
 }
 

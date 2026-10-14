@@ -69,6 +69,10 @@ export const cage: System = {
       const d = DRINK_BY_ID.get(cmd.drink as DrinkId)!;
       g.state.bank -= d.price;
       p.drunk = Math.min(ticks(BUZZ.maxS), p.drunk + ticks(d.buzzS));
+      // its edge runs for its own buzz; the same drink again starts it over, it doesn't stack
+      const b = p.buffs.find((x) => x.drink === d.id);
+      if (b) b.left = Math.max(b.left, ticks(d.buzzS));
+      else p.buffs.push({ drink: d.id, left: ticks(d.buzzS) });
       g.emit({ t: 'drank', player: p.id, drink: d.id });
       return;
     }
