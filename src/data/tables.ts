@@ -59,9 +59,9 @@ export const TABLES: TableDef[] = [
   },
   {
     id: 'wheel', name: 'Wheel of Marks', sign: 'WHEEL', tier: 'mid', loss: 'mark', bet: 300, roundS: 5, resolveS: FEEL.wheel.s,
-    winP: 0.72, pays: 1.6, rtp: 1.152, paysText: '1.6x', lossText: 'THE BET + 1 TEAM MARK',
-    howText: '25 SLOTS: 18 PAY, 7 MARK THE WHOLE TEAM.',
-    derivation: 'DESIGN.md §3: mid tier, p 18/25 = 0.72 x 1.6 = RTP 1.152, +$46 a round',
+    winP: 0.48, pays: null, rtp: 1.16, paysText: 'BY COLOR, UP TO 6x', lossText: 'THE BET + 1 TEAM MARK',
+    howText: 'RED 1.5x, PURPLE 2.5x, GOLD 6x, BLACK HALF BACK.',
+    derivation: 'DESIGN.md §3: mid tier, 25 slots: 8 red 1.5x, 3 purple 2.5x, 1 gold 6x, 7 black 0.5x, 6 marks 0 = 29/25 → RTP 1.16, +$48 a round; ahead on 12 of 25',
   },
   {
     id: 'redline', name: 'Red Line', sign: 'RED LINE', tier: 'high', loss: 'skull', bet: 500, roundS: 6, resolveS: FEEL.card.s,

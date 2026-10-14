@@ -39,6 +39,8 @@ export interface PlayerState {
   apronUsed: boolean;
   /** ticks of buzz from the bar (DESIGN.md §10), counted down in floor time */
   drunk: number;
+  /** holding sprint (DESIGN.md §1) */
+  run: boolean;
 }
 
 /** A card: rank 1 (ace) .. 13 (king), suit 0..3 (0, 1 red; 2, 3 black). */
@@ -241,7 +243,7 @@ export function newState(players: number, upgrades: UpgradeId[] = []): State {
     markers: 0,
     players: Array.from({ length: players }, (_, id) => ({
       id, ...spawnOf(id, players), mx: 0, mz: 0, seat: null, lives: START_LIVES, ghost: false,
-      charms: [], redStreak: 0, overclock: 0, apronUsed: false, drunk: 0,
+      charms: [], redStreak: 0, overclock: 0, apronUsed: false, drunk: 0, run: false,
     })),
     marks: [],
     tables: newTables(),

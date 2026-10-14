@@ -2,7 +2,7 @@
 // Under pointer lock the mouse's movement accumulates into `look` (first-person mouse look);
 // without it the mouse is a cursor over the HUD or a seated table's panel.
 
-export const ACTIONS = ['forward', 'back', 'left', 'right', 'interact', 'pause', 'debug'] as const;
+export const ACTIONS = ['forward', 'back', 'left', 'right', 'sprint', 'interact', 'pause', 'debug'] as const;
 export type Action = (typeof ACTIONS)[number];
 
 /** The debug keys exist only in dev builds or with ?debug in the address. */
@@ -11,12 +11,12 @@ export const DEBUG_KEYS = !!import.meta.env?.DEV || (typeof location !== 'undefi
 export const SHOWN_ACTIONS = ACTIONS.filter((a) => a !== 'debug' || DEBUG_KEYS);
 
 export const ACTION_LABELS: Record<Action, string> = {
-  forward: 'Walk forward', back: 'Walk back', left: 'Step left', right: 'Step right',
+  forward: 'Walk forward', back: 'Walk back', left: 'Step left', right: 'Step right', sprint: 'Sprint (hold)',
   interact: 'Sit / stand', pause: 'Stand / pause', debug: 'Debug panel',
 };
 
 export const DEFAULT_BINDS: Record<Action, string[]> = {
-  forward: ['KeyW', 'ArrowUp'], back: ['KeyS', 'ArrowDown'], left: ['KeyA', 'ArrowLeft'], right: ['KeyD', 'ArrowRight'],
+  forward: ['KeyW', 'ArrowUp'], back: ['KeyS', 'ArrowDown'], left: ['KeyA', 'ArrowLeft'], right: ['KeyD', 'ArrowRight'], sprint: ['ShiftLeft', 'ShiftRight'],
   interact: ['KeyE'], pause: ['Escape'], debug: ['Backquote'],
 };
 

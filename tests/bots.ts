@@ -1,11 +1,12 @@
 // Bots for the pace tests (DESIGN.md §8). They play the real sim through commands only; the one
 // shortcut is walking: a bot steps straight to a table's stand point and pays the walk in clock
-// time (3 m/s), so the night's arithmetic stays honest.
+// time at a sprint (5.1 m/s: a player holds Shift), so the night's arithmetic stays honest.
 import { Game } from '../src/sim/Game';
 import type { PlayerState } from '../src/sim/state';
-import { TICKS_PER_S } from '../src/sim/state';
+import { NIGHT_TICKS, TICKS_PER_S } from '../src/sim/state';
 import { FLOOR_1 } from '../src/data/floors';
 import { TABLE_BY_ID } from '../src/data/tables';
+import { SPRINT } from '../src/sim/systems/movement';
 import { best, handValue } from '../src/sim/tables/twentyone';
 import type { CharmId } from '../src/data/charms';
 
@@ -16,6 +17,8 @@ export class Bot {
   /** team marks suffered, Red Line lives lost */
   teamMarks = 0;
   redLives = 0;
+  /** Red Line bursts played */
+  redBursts = 0;
   /** money the Tax mark took */
   taxed = 0;
   constructor(readonly g: Game, readonly id = 0) {}
@@ -51,7 +54,7 @@ export class Bot {
     }
     const pl = FLOOR_1.tables.find((t) => t.table === table)!;
     const d = Math.hypot(p.x - pl.stand.x, p.z - pl.stand.z);
-    this.wait(d / 3);
+    this.wait(d / (3 * SPRINT));
     if (!this.floor) return;
     p.x = pl.stand.x;
     p.z = pl.stand.z;
@@ -67,7 +70,7 @@ export class Bot {
       this.step();
     }
     const c = FLOOR_1.cageStand;
-    this.wait(Math.hypot(p.x - c.x, p.z - c.z) / 3);
+    this.wait(Math.hypot(p.x - c.x, p.z - c.z) / (3 * SPRINT));
     p.x = c.x;
     p.z = c.z;
   }
@@ -163,14 +166,22 @@ export const midRotation = (b: Bot) => {
   } else if (b.hiloMarked()) b.wait(2);
 };
 
-/** Two six-round Red Line bursts once the bank can take three losses, mid rotation around them. */
+/**
+ * Mid rotation, and up to two six-round Red Line bursts when it's behind: past the night's halfway
+ * mark, short of the quota, with a bank that can take three losses. (It used to burst as soon as
+ * the bank allowed, on pace or not; once sprinting and the swingier Wheel came in that gambled
+ * away nights the rotation alone would have made. DECISIONS #73.)
+ */
 export function redBurst() {
   let bursts = 0;
   return (b: Bot) => {
     if (b.made()) return b.idle();
+    const s = b.g.state;
+    const behind = s.clock < NIGHT_TICKS / 2 && s.bank < s.quota;
     // a burst needs a cushion: three losses in a row are $1,500
-    if (bursts < 2 && b.g.state.bank >= 2000) {
+    if (bursts < 2 && behind && s.bank >= 2000) {
       bursts++;
+      b.redBursts++;
       b.sit('redline');
       for (let i = 0; i < 6 && b.canBet('redline') && !b.p.ghost; i++) b.round('redline', i % 2 ? 'red' : 'black');
     }

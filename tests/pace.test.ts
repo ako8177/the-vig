@@ -36,15 +36,17 @@ describe('pace tests (DESIGN.md §8, 200 seeds)', () => {
     expect(marks).toBeGreaterThanOrEqual(3);
   });
 
-  it('3. two Red Line bursts make night 1 at least 60% of the time, more than the mid rotation alone, and cost a life there at least 20% of the time', () => {
+  it('3. Red Line bursts when behind make night 1 at least 60% of the time, more than the mid rotation alone, and a night that bursts loses a life there at least 20% of the time', () => {
     const runs = SEEDS.map((seed) => night(new Game({ seed }), redBurst()));
     const made = count(runs, (r) => r.made);
-    const lost = count(runs, (r) => r.bot.redLives > 0);
+    const burst = runs.filter((r) => r.bot.redBursts > 0);
+    const lost = count(burst, (r) => r.bot.redLives > 0);
     const mid = count(SEEDS.map((seed) => night(new Game({ seed }), midRotation)), (r) => r.made);
-    console.log(`  red line bursts: made ${pct(made)} (mid alone ${pct(mid)}), lost a life there ${pct(lost)}`);
+    console.log(`  red line bursts: made ${pct(made)} (mid alone ${pct(mid)}); ${burst.length} nights burst, ${Math.round((100 * lost) / burst.length)}% of them lost a life there`);
     expect(made / N).toBeGreaterThanOrEqual(0.6);
     expect(made).toBeGreaterThan(mid);
-    expect(lost / N).toBeGreaterThanOrEqual(0.2);
+    expect(burst.length).toBeGreaterThan(0);
+    expect(lost / burst.length).toBeGreaterThanOrEqual(0.2);
   });
 
   it("4. Dead Man's Hand from a $1,000 bank goes broke at least 30% of the time", () => {

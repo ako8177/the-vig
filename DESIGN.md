@@ -14,6 +14,9 @@ numbers. Change a number → write the new derivation here first.
   with marks; high ≫ 1.0 with death.
 - Every random outcome comes from the seeded RNG through the command log, so a night can be
   replayed from inputs.
+- **Walking 3 m/s; holding Shift sprints at ×1.7 = 5.1 m/s** (DECISIONS #73: the owner found the
+  walk slow on the three-room floor). The main floor's 28 m is under 6 s at a sprint, the Lounge to
+  the Back Room ≈ 3 s. The pace bots sprint every walk, so the night's arithmetic assumes it.
 
 ## 2. The quota
 
@@ -52,7 +55,7 @@ Rates assume one player at the table continuously.
 | The Bandit | low | $100 | 2.5 s | 0.216 (0.396 incl. money back) | reel table below | 0.95 | −$5 | −$120 | the bet |
 | Twenty-One | low | $100–300 | 8 s | ≈0.43 | 2× (1:1), 2.5× natural (3:2) | 0.974 | −$5 at $200 | −$39 | the bet |
 | Hi-Lo Dice | mid | $200 | 3 s | 0.50 | 2.4× | 1.20 | +$40 | +$800 (unmarked) | the bet + 1 **mark** |
-| Wheel of Marks | mid | $300 | 5 s | 0.72 | 1.6× | 1.152 | +$46 | +$550 | the bet + 1 **team mark** |
+| Wheel of Marks | mid | $300 | 5 s | 0.48 | 0.5× / 1.5× / 2.5× / 6× by color | 1.16 | +$48 | +$580 | the bet + 1 **team mark** (6 of 25); black returns half |
 | Red Line | high | $500 | 6 s | 0.50 | 2.5× | 1.25 | +$125 | +$1,250 | the bet; **3 losses in a row cost a life** |
 | Dead Man's Hand | high | $1,000 | 4 s | 0.25 | 6× | 1.50 | +$500 | +$7,500 | the bet; **snake eyes (1/36) costs a life** |
 
@@ -74,7 +77,11 @@ it), and a 100k-round seeded run must land within 4 standard errors of it.
   **0.9736** (computed by dynamic programming over the endless shoe; DECISIONS #32); worse play
   returns less. Win ≈ 0.43, push ≈ 0.09.
 - **Hi-Lo Dice**: one die; call HI (4–6) or LO (1–3). p = 1/2 exactly, pays 2.4×.
-- **Wheel of Marks**: 25 slots, 18 pay 1.6× and 7 are marks: p = 0.72, RTP 1.152.
+- **Wheel of Marks** (DECISIONS #74, the owner's colors): 25 slots, **8 red 1.5×, 3 purple 2.5×,
+  1 gold 6×, 7 black 0.5× (half the bet back), 6 marks 0 + a team mark**. Σ = 12 + 7.5 + 6 + 3.5 =
+  29 → **RTP 29/25 = 1.16**; ahead on 12 of 25 (p 0.48). Per $1 the σ is 1.28 (it was 0.72 at a flat
+  1.6× on 18 of 25): the same mid edge, but no longer the floor's one reliable earner. Team marks
+  come on 24% of spins (was 28%).
 - **Red Line**: call RED or BLACK; one card from a fresh deck. p = 1/2 exactly, pays 2.5×.
 - **Dead Man's Hand**: two dice. **Snake eyes (1–1) costs a life** and the bet; **any other
   double or a total of 10+ wins 6×** (2–2, 3–3, 4–4, 5–5, 6–6, 4–6, 6–4, 5–6, 6–5: 9 of 36);
@@ -238,12 +245,15 @@ Milestone 1 review: 20 gave a lucky sample (80% where 200 say 64%). Thresholds a
    and ends the night poorer than it started on average [4%; mean bank $1,239 from $1,500].
    Luck can carry a low table for a night now and then; expectation never does.
 2. **Mid-rotation** bot (Hi-Lo bursts of ≤ 5 rounds, out at 3 stacks, the Wheel while marked)
-   makes night 1 at least 50% of the time with ≥ 3 team marks suffered on average [69%; 5.6].
-3. **Red Line burst** bot (two six-round bursts once the bank holds $2,000, mid rotation around
-   them) makes night 1 at least 60% of the time and more often than the mid rotation alone, and
-   loses a life on Red Line at least 20% of the time [69% vs 69%; 28%]. **Watch this one**: on the
-   three-room floor (DECISIONS #65) the walk from the Lounge to the Back Room eats most of the
-   bursts' edge; if it stops holding, move a blood table nearer or derive a better burst rule.
+   makes night 1 at least 50% of the time with ≥ 3 team marks suffered on average [66%; 3.9].
+3. **Red Line burst** bot (mid rotation; up to two six-round bursts when it is **behind**: past the
+   night's halfway mark, short of the quota, the bank holding $2,000) makes night 1 at least 60% of
+   the time and more often than the mid rotation alone, and a night that bursts loses a life on Red
+   Line at least 20% of the time [69% vs 66%; 31 of 200 nights burst, 32% of them lost a life]. It
+   used to burst as soon as the bank allowed, on pace or not, and counted lives over all nights;
+   with sprinting and the swingier Wheel that bot gambled away nights the rotation would have made
+   (64% vs 66%). The lesson stands as a rule a player can follow: the blood table is for the night
+   you're losing, and a burst costs a life about one time in three (DECISIONS #73).
 4. **Dead Man's** bot from a $1,000 bank goes broke at least 30% of the time [78%].
 5. **Circuit** (400 games): the sensible line (§6) wins 40–65%; activating blind costs more lives;
    Lead Apron takes any line's life cost to ≈ 0 [48% at 0.16 lives; blind 37% at 0.34; with the

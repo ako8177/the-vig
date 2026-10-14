@@ -103,7 +103,7 @@ export class App {
   private dark = 0;
   private overAt = 0;
   /** last sent walk intent, so a `move` goes out only when it changes */
-  private sentMove = { mx: 0, mz: 0, yaw: 0 };
+  private sentMove = { mx: 0, mz: 0, yaw: 0, run: false };
   private prev = { x: 0, z: 0 };
   private wasLocked = false;
   private titleT = 0;
@@ -214,7 +214,7 @@ export class App {
     this.dark = 0;
     if (this.fp.seated) this.fp.stand(this.view.camera);
     this.resetCamera();
-    this.sentMove = { mx: 0, mz: 0, yaw: 0 };
+    this.sentMove = { mx: 0, mz: 0, yaw: 0, run: false };
     this.teach('start');
   }
 
@@ -268,10 +268,11 @@ export class App {
       w = { mx: Math.round(w.mx * c - w.mz * sn), mz: Math.round(w.mx * sn + w.mz * c) };
     }
     const yaw = Math.round(this.fp.yaw * 1000);
+    const run = walking && i.isDown('sprint');
     const sm = this.sentMove;
-    if (s.phase === 'floor' && (w.mx !== sm.mx || w.mz !== sm.mz || (Math.abs(yaw - sm.yaw) > 20 && (w.mx || w.mz)))) {
-      this.sentMove = { ...w, yaw };
-      this.send({ t: 'move', ...w, yaw });
+    if (s.phase === 'floor' && (w.mx !== sm.mx || w.mz !== sm.mz || run !== sm.run || (Math.abs(yaw - sm.yaw) > 20 && (w.mx || w.mz)))) {
+      this.sentMove = { ...w, yaw, run };
+      this.send({ t: 'move', ...w, yaw, run });
     }
     const p = this.me();
     this.prev = { x: p.x, z: p.z };

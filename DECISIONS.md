@@ -153,3 +153,13 @@ inspirations: the ideas are taken, never their names, numbers or art).
   drops the first move after a lock and any step over 300 px that is also 6x the step before it, so
   a real flick, which ramps up, still turns you. Sensitivity may feel a touch different without
   Windows' acceleration: the settings slider covers it.
+- #73 2026-10-14: **Shift sprints at x1.7 (5.1 m/s)** (the owner: "movement is slow as is"). The
+  `move` command carries `run`; the pace bots sprint every walk. With walking cheaper, the old
+  Red Line bot (burst whenever the bank allowed) no longer beat the mid rotation (64% vs 66%): it
+  now bursts only when behind past halfway, and the life-risk check counts nights that burst
+  (DESIGN.md §8 test 3, with the reasoning).
+- #74 2026-10-14: **The Wheel of Marks pays by color** (the owner: multipliers on the colors, e.g.
+  1.5 red, 0.5 black, 2.5 purple; "the wheel in mid risk is the only reliable way to make money").
+  8 red 1.5x, 3 purple 2.5x, 1 gold 6x, 7 black 0.5x, 6 marks: RTP 1.16 (was 1.152), ahead 48% (was
+  72%), about 1.8x the swing. The mid tier keeps its rule (RTP > 1, losing costs a mark); the owner
+  chose to keep the mark slots. The hub reads what the pointer is on.

@@ -10,6 +10,8 @@ import { hasTeamMark } from '../rules';
 
 /** Walking speed, m/s (THREEJS-NOTES rule 2). Sticky Floor (DESIGN.md §3) scales it by 0.7. */
 export const WALK_SPEED = 3;
+/** Holding sprint (DESIGN.md §1): 5.1 m/s, the 28 m floor crossed in under 6 s instead of 9 */
+export const SPRINT = 1.7;
 const STEP = WALK_SPEED / TICKS_PER_S;
 
 const clampInt = (v: number, a: number, b: number) => Math.max(a, Math.min(b, Math.round(Number.isFinite(v) ? v : 0)));
@@ -64,6 +66,7 @@ export const movement: System = {
     p.mx = clampInt(cmd.mx, -1000, 1000);
     p.mz = clampInt(cmd.mz, -1000, 1000);
     p.yaw = clampInt(cmd.yaw, -7000, 7000);
+    p.run = cmd.run === true;
   },
   tick(g: Game) {
     // you walk the floor while the night runs; at 0:00 you're held at the Collector's table
@@ -71,13 +74,14 @@ export const movement: System = {
     const step = STEP * (hasTeamMark(g, 'sticky') ? STICKY : 1);
     for (const p of g.state.players) {
       if (p.seat || (p.mx === 0 && p.mz === 0)) continue;
+      const k = p.run ? SPRINT : 1;
       let vx = p.mx / 1000, vz = p.mz / 1000;
       const len = Math.sqrt(vx * vx + vz * vz);
       if (len > 1) {
         vx /= len;
         vz /= len;
       }
-      const to = collide(p.x + vx * step, p.z + vz * step, PLAYER_R, FLOOR_1.colliders);
+      const to = collide(p.x + vx * step * k, p.z + vz * step * k, PLAYER_R, FLOOR_1.colliders);
       p.x = to.x;
       p.z = to.z;
     }

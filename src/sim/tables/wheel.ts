@@ -1,5 +1,8 @@
-// The Wheel of Marks (mid): 25 slots, 18 pay 1.6x, 7 hand the whole team a random mark (Cold
-// Deck, Sticky Floor, Blackout, Tax). p = 0.72, RTP 1.152. DESIGN.md §3.
+// The Wheel of Marks (mid): 25 colored slots, each paying its own multiple of the bet: red 1.5x,
+// purple 2.5x, one gold 6x, black hands half the bet back, and 6 mark slots pay nothing and hand the
+// whole team a random mark (Cold Deck, Sticky Floor, Blackout, Tax). Ahead on 12 of 25 (p 0.48),
+// RTP 29/25 = 1.16. DESIGN.md §3 (DECISIONS #74: it was 18 slots of a flat 1.6x, the one reliable
+// earner on the floor).
 import type { TableModule } from './table';
 import { stakeFor } from '../rules';
 import { defOf, stake } from './table';
@@ -8,17 +11,29 @@ import { TEAM_MARKS } from '../../data/marks';
 
 const def = defOf('wheel');
 
-/** The 7 mark slots, spread round the 25 (the panel draws the wheel from this). */
-export const MARK_SLOTS = [1, 5, 8, 12, 16, 19, 23];
-export const WHEEL_SLOTS = 25;
+export type WheelColor = 'red' | 'black' | 'purple' | 'gold' | 'mark';
+
+/** What each color returns per $1 bet (stake included). */
+export const WHEEL_PAYS: Record<WheelColor, number> = { red: 1.5, black: 0.5, purple: 2.5, gold: 6, mark: 0 };
+
+/** The 25 slots in order round the wheel (the panel draws it from this). */
+export const WHEEL_LAYOUT: readonly WheelColor[] = [
+  'gold', 'red', 'black', 'mark', 'red', 'purple', 'black', 'red', 'mark', 'black', 'red', 'purple', 'black',
+  'mark', 'red', 'black', 'red', 'mark', 'black', 'purple', 'red', 'mark', 'black', 'red', 'mark',
+];
+export const WHEEL_SLOTS = WHEEL_LAYOUT.length;
+/** The mark slots' indices. */
+export const MARK_SLOTS = WHEEL_LAYOUT.flatMap((c, i) => (c === 'mark' ? [i] : []));
+/** How many slots of each color. */
+export const WHEEL_COUNT = (c: WheelColor) => WHEEL_LAYOUT.filter((x) => x === c).length;
 
 export const wheel: TableModule = {
   id: 'wheel',
   def,
   cmds: ['spin'],
   odds() {
-    const wins = WHEEL_SLOTS - MARK_SLOTS.length;
-    return { rtp: (wins * def.pays!) / WHEEL_SLOTS, winP: wins / WHEEL_SLOTS };
+    const rtp = WHEEL_LAYOUT.reduce((s, c) => s + WHEEL_PAYS[c], 0) / WHEEL_SLOTS;
+    return { rtp, winP: WHEEL_LAYOUT.filter((c) => WHEEL_PAYS[c] > 1).length / WHEEL_SLOTS };
   },
   lossCost: () => def.lossText,
   start(g, p, cmd) {
@@ -27,13 +42,17 @@ export const wheel: TableModule = {
     const why = stake(g, bet);
     if (why) return why;
     const slot = g.rng.int(0, WHEEL_SLOTS - 1);
-    const win = !MARK_SLOTS.includes(slot);
-    const mark = win ? undefined : g.rng.pick(TEAM_MARKS);
+    const color = WHEEL_LAYOUT[slot];
+    const mark = color === 'mark' ? g.rng.pick(TEAM_MARKS) : undefined;
     const factor = payoutFactor(g, p, def.id);
-    const ret = win ? Math.round(bet * def.pays! * factor) : 0;
-    return { table: 'wheel', player: p.id, bet, ret, win, factor, slot, mark, text: win ? `PAYS $${ret}` : 'A MARK FOR THE TEAM' };
+    const ret = Math.round(bet * WHEEL_PAYS[color] * factor);
+    const text =
+      color === 'mark' ? 'A MARK FOR THE TEAM'
+      : color === 'black' ? `BLACK: HALF BACK, $${ret}`
+      : `${color.toUpperCase()} ${WHEEL_PAYS[color]}x: $${ret}`;
+    return { table: 'wheel', player: p.id, bet, ret, win: ret > bet, factor, slot, mark, text };
   },
   resolve(g, p, o) {
-    if (!o.win && o.mark && !addMark(g, o.mark, -1)) o.text = 'MARK BLOCKED (CLEAN SLATE)';
+    if (o.mark && !addMark(g, o.mark, -1)) o.text = 'MARK BLOCKED (CLEAN SLATE)';
   },
 };

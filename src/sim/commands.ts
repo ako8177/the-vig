@@ -34,7 +34,7 @@ export type Command =
    * the facing in milliradians for other players' views. The sim does no trigonometry: the client
    * turns its yaw into a world direction, so every peer integrates the same numbers (Milestone 3).
    */
-  | { t: 'move'; mx: number; mz: number; yaw: number };
+  | { t: 'move'; mx: number; mz: number; yaw: number; run?: boolean };
 
 export type CommandType = Command['t'];
 

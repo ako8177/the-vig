@@ -11,7 +11,7 @@ import { clamp01, drawDieAt, drawThrownDie, drawTray, out3 } from './fx';
 import { blackoutLeft, lossTextOf } from './view';
 import { ICON } from '../ui/font';
 import { BLANK, BAR, STAR, SEVEN, STRIP, linePays } from '../sim/tables/bandit';
-import { MARK_SLOTS, WHEEL_SLOTS } from '../sim/tables/wheel';
+import { WHEEL_COUNT, WHEEL_LAYOUT, WHEEL_PAYS, WHEEL_SLOTS, type WheelColor } from '../sim/tables/wheel';
 import { handValue } from '../sim/tables/twentyone';
 import { hiloMarkSOf, streakLimitOf, streakRisk } from './view';
 import type { Card, Outcome } from '../sim/state';
@@ -285,6 +285,9 @@ export class HiLoPanel extends TablePanel {
  * a peg clacks past the pointer every slot, and it slows onto the slot the sim drew. Drawn for this
  * game in the palette (DECISIONS #62): the wheel's spectacle is the reference, not anyone's art.
  */
+/** The wheel's wedge colors (the owner's red, black and purple; gold for the one big slot). */
+const WEDGE: Record<WheelColor, number> = { red: C.blood, black: C.ink, purple: C.collLo, gold: C.gold, mark: C.midLo };
+
 export class WheelPanel extends TablePanel {
   private lastPeg = -1;
   private readonly cx = 246;
@@ -336,7 +339,7 @@ export class WheelPanel extends TablePanel {
     }
     const bet = minBet(d);
     ui.text(`${TIER_NAME[d.tier]}  WIN ${Math.round(d.winP * 100)}%`, 12, 29, C.white);
-    ui.text(`PAYS ${d.paysText} (${money(bet * d.pays!)} ON ${money(bet)})`, 12, 39, C.white);
+    ui.text(`PAYS ${d.paysText}`, 12, 39, C.white);
     ui.text(`LOSE: ${lossTextOf(d, v.state).replace('THE BET', money(bet))}`, 12, 50, tier.hi);
     ui.text(`RETURNS $${d.rtp.toFixed(2)} PER $1`, 12, 61, C.dust);
   }
@@ -363,10 +366,9 @@ export class WheelPanel extends TablePanel {
     ctx.beginPath();
     ctx.arc(cx, cy, r + 2, 0, Math.PI * 2);
     ctx.fill();
-    // the wedges
+    // the wedges, in their colors
     for (let i = 0; i < WHEEL_SLOTS; i++) {
-      const mark = MARK_SLOTS.includes(i);
-      ctx.fillStyle = PALETTE[mark ? C.midLo : i % 2 ? C.night : C.wood];
+      ctx.fillStyle = PALETTE[WEDGE[WHEEL_LAYOUT[i]]];
       ctx.beginPath();
       ctx.moveTo(cx, cy);
       ctx.arc(cx, cy, r, a + i * th, a + (i + 1) * th);
@@ -377,8 +379,10 @@ export class WheelPanel extends TablePanel {
     for (let i = 0; i < WHEEL_SLOTS; i++) {
       const mid = a + (i + 0.5) * th;
       const x = cx + Math.cos(mid) * (r - 10), y = cy + Math.sin(mid) * (r - 10);
-      if (MARK_SLOTS.includes(i)) ui.text(ICON.mark, Math.round(x), Math.round(y - 3), C.ink, { align: 'center' });
-      else ui.fill(Math.round(x - 1), Math.round(y - 1), 3, 3, C.gold);
+      const c = WHEEL_LAYOUT[i];
+      if (c === 'mark') ui.text(ICON.mark, Math.round(x), Math.round(y - 3), C.ink, { align: 'center' });
+      else if (c === 'gold') ui.text('6', Math.round(x), Math.round(y - 3), C.ink, { align: 'center' });
+      else ui.fill(Math.round(x - 1), Math.round(y - 1), 3, 3, c === 'black' ? C.smoke : C.white);
     }
     // the pegs, the hub
     for (let i = 0; i < WHEEL_SLOTS; i++) {
@@ -393,7 +397,9 @@ export class WheelPanel extends TablePanel {
     ctx.beginPath();
     ctx.arc(cx, cy, 12, 0, Math.PI * 2);
     ctx.fill();
-    ui.text('1.6x', cx, cy - 3, C.ink, { align: 'center' });
+    // the hub shows what the pointer is on
+    const now = WHEEL_LAYOUT[under];
+    ui.text(now === 'mark' ? ICON.mark : `${WHEEL_PAYS[now]}x`, cx, cy - 3, C.ink, { align: 'center' });
 
     // the lamps round the rim: chasing while it spins, all lit gold on a win, amber on a mark
     const since = this.since(v);
@@ -411,9 +417,18 @@ export class WheelPanel extends TablePanel {
     ui.fill(px - 2, py + 4, 5, 2, C.white);
     ui.fill(px - 1, py + 6, 3, 3, C.white);
 
-    // the legend, in the column under the odds
-    ui.text(`${ICON.mark} 7 SLOTS MARK THE TEAM:`, 12, PLAY_Y + 6, C.dust);
-    ['COLD DECK  -10% PAY', 'STICKY FLOOR  -30% WALK', 'BLACKOUT  ODDS HIDDEN', 'TAX  5% OF THE BANK'].forEach((l, i) => ui.text(l, 16, PLAY_Y + 17 + i * 9, C.midHi));
+    // the legend, in the column under the odds: each color, its count and what it pays on this bet
+    const bet = this.stake(v);
+    (['gold', 'purple', 'red', 'black'] as WheelColor[]).forEach((c, i) => {
+      const y = PLAY_Y + 2 + i * 9;
+      ui.fill(12, y + 1, 6, 6, WEDGE[c]);
+      ui.frame(12, y + 1, 6, 6, C.dust);
+      ui.text(`${c.toUpperCase()} x${WHEEL_COUNT(c)}`, 22, y, C.bone);
+      ui.text(`${WHEEL_PAYS[c]}x  ${money(Math.round(bet * WHEEL_PAYS[c]))}`, 150, y, c === 'black' ? C.dust : C.gold, { align: 'right' });
+    });
+    ui.text(`${ICON.mark} x${WHEEL_COUNT('mark')}: 0 + A TEAM MARK`, 12, PLAY_Y + 38, C.midHi);
+    ui.text('COLD DECK, STICKY FLOOR,', 16, PLAY_Y + 47, C.dust);
+    ui.text('BLACKOUT OR TAX', 16, PLAY_Y + 56, C.dust);
     // the result, under the legend
     if (o && !rolling) {
       const col = o.mark ? C.midHi : o.win ? C.gold : C.ash;
