@@ -15,6 +15,8 @@ export type Command =
   | { t: 'spin'; table: string }
   /** a charm or an upgrade, at the cage */
   | { t: 'buy'; item: string }
+  /** a drink, at the bar (DESIGN.md §10; DECISIONS #67) */
+  | { t: 'order'; drink: string }
   | { t: 'inspect'; circuit: number }
   | { t: 'reroute'; a: number; b: number }
   | { t: 'activate'; circuit: number }

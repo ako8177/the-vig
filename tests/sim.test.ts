@@ -39,10 +39,12 @@ describe('sim scaffold', () => {
   it('diverges when the log differs', () => {
     const a = new Game({ seed: 3 });
     randomLog(a, 99, 600);
-    // drop the first walk: everything after it lands somewhere else
+    // drop the first walk: right after it, the player is somewhere else (compared early: given
+    // long enough, two random walks can both end pressed into the same corner of the room)
     const first = a.log.findIndex((c) => c.cmd.t === 'move');
     const log = a.log.filter((_, i) => i !== first);
-    expect(Game.replay(3, 1, log, 600).hash()).not.toBe(a.hash());
+    const at = a.log[first].tick + 20;
+    expect(Game.replay(3, 1, log, at).hash()).not.toBe(Game.replay(3, 1, a.log, at).hash());
   });
 
   it('walks at 3 m/s and stops at walls', () => {
@@ -55,7 +57,8 @@ describe('sim scaffold', () => {
     // walk into the south wall for 10 s: the capsule stays inside the room
     g.submit(0, { t: 'move', mx: 0, mz: 1000, yaw: 0 });
     for (let i = 0; i < 600; i++) g.step();
-    expect(p.z).toBeLessThanOrEqual(FLOOR_1.d / 2 - 0.2 - PLAYER_R + 1e-9);
+    const main = FLOOR_1.rooms[0];
+    expect(p.z).toBeLessThanOrEqual(main.z1 - 0.2 - PLAYER_R + 1e-9);
   });
 
   it('pushes a circle out of boxes and circles', () => {

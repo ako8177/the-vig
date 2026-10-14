@@ -261,9 +261,186 @@ def sign(R, name, tier, loss, w=96):
     return s
 
 
+
+
+# ---- the main floor (DECISIONS #65): a casino carpet, cream damask, a coffered ceiling
+
+def carpet_floor(R):
+    """64x64, 2 m: indigo carpet, gold medallions with pink hearts, teal scrolls between them."""
+    s = Sprite(64, 64, palette=PAL)
+    s.rect(0, 0, 63, 63, R["indigo"])
+    s.noise(0, 0, 63, 63, R["ink"], density=0.07, seed=21)
+    # two medallions per tile (offset rows), so the pattern wraps at 64
+    for cx, cy in ((16, 16), (48, 48)):
+        for r, col in ((11, R["brassLo"]), (10, R["gold"]), (8, R["indigoHi"]), (5, R["brassLo"])):
+            s.circle(cx, cy, r, col)
+        s.circle(cx, cy, 3, R["pink"])
+        s.px(cx, cy, R["pinkHi"])
+        for dx, dy in ((0, -9), (0, 9), (-9, 0), (9, 0)):
+            s.px(cx + dx, cy + dy, R["pinkHi"])
+        for dx, dy in ((-6, -6), (6, -6), (-6, 6), (6, 6)):
+            s.px(cx + dx, cy + dy, R["gold"])
+    # teal scrolls in the spaces between
+    for cx, cy in ((48, 16), (16, 48)):
+        for i in range(-6, 7):
+            s.px((cx + i) % 64, (cy + (i * i) // 8 - 2) % 64, R["teal"])
+            s.px((cx + i) % 64, (cy - (i * i) // 8 + 2) % 64, R["teal"])
+        s.circle(cx, cy, 2, R["brassLo"])
+    return s
+
+
+def wall_floor(R):
+    """64x160 = 2 m wide x 5 m tall: cream damask paper, a gilt rail at 1.1 m, dark wood wainscot."""
+    s = Sprite(64, 160, palette=PAL)
+    rail = 160 - 36
+    s.rect(0, 0, 63, rail - 1, R["cream"])
+    # damask: a fleur in each 16x24 cell, offset every other row, in the paper's shadow tone
+    for row, y in enumerate(range(4, rail - 12, 24)):
+        for x in range(0, 64, 16):
+            cx = (x + (8 if row % 2 else 0)) % 64
+            for d in range(4):
+                s.px((cx - d) % 64, y + d, R["dust"]); s.px((cx + d) % 64, y + d, R["dust"])
+                s.px((cx - d) % 64, y + 8 - d, R["dust"]); s.px((cx + d) % 64, y + 8 - d, R["dust"])
+            s.line(cx, y + 8, cx, y + 13, R["dust"])
+            s.px(cx, y + 4, R["brassLo"])
+    s.noise(0, 0, 63, rail - 1, R["bone"], density=0.05, seed=31)
+    # a frieze under the ceiling
+    s.rect(0, 0, 63, 3, R["brassLo"])
+    s.line(0, 4, 63, 4, R["gold"])
+    # the gilt rail and the wainscot
+    s.rect(0, rail, 63, rail + 2, R["brassLo"])
+    s.line(0, rail, 63, rail, R["gold"])
+    s.rect(0, rail + 3, 63, 159, R["woodLo"])
+    for px0 in (2, 34):
+        s.rect(px0, rail + 7, px0 + 27, 154, R["wood"], fill=False)
+        s.rect(px0 + 2, rail + 9, px0 + 25, 152, R["woodLo"])
+        s.line(px0 + 2, rail + 9, px0 + 25, rail + 9, R["woodHi"])
+    s.rect(0, 156, 63, 159, R["ink"])
+    return s
+
+
+def ceiling_floor(R):
+    """64x64, 2 m: deep coffers in indigo with a gilt bead and a rosette at each center."""
+    s = Sprite(64, 64, palette=PAL)
+    s.rect(0, 0, 63, 63, R["ink"])
+    for x0 in (0, 32):
+        for y0 in (0, 32):
+            s.rect(x0 + 2, y0 + 2, x0 + 29, y0 + 29, R["indigo"])
+            s.rect(x0 + 2, y0 + 2, x0 + 29, y0 + 29, R["brassLo"], fill=False)
+            s.rect(x0 + 5, y0 + 5, x0 + 26, y0 + 26, R["indigoHi"], fill=False)
+            s.circle(x0 + 15, y0 + 15, 3, R["brassLo"])
+            s.px(x0 + 15, y0 + 15, R["gold"])
+    return s
+
+
+def planks(R):
+    """64x64, 2 m: the back room's floor, dark boards, worn pale where people stand, burns."""
+    s = Sprite(64, 64, palette=PAL)
+    for i, y0 in enumerate(range(0, 64, 8)):
+        s.rect(0, y0, 63, y0 + 7, R["woodLo"] if i % 2 else R["wood"])
+        s.line(0, y0, 63, y0, R["ink"])
+        joint = (i * 23) % 64
+        s.line(joint, y0, joint, y0 + 7, R["ink"])
+        for gx in range(3, 64, 11):
+            s.px((gx + i * 5) % 64, y0 + 3 + (gx % 3), R["woodLo"] if i % 2 == 0 else R["ink"])
+    s.noise(0, 0, 63, 63, R["smoke"], density=0.03, seed=41)
+    s.noise(0, 0, 63, 63, R["ink"], density=0.06, seed=42)
+    for bx, by in ((12, 20), (44, 50)):
+        s.px(bx, by, R["ink"]); s.px(bx + 1, by, R["night"])
+    return s
+
+
+def wall_back(R):
+    """64x128 = 2 m x 4 m: grimy plaster gone green-grey, water stains, a scuffed dark dado."""
+    s = Sprite(64, 128, palette=PAL)
+    rail = 128 - 34
+    s.rect(0, 0, 63, rail - 1, R["night"])
+    s.noise(0, 0, 63, rail - 1, R["smoke"], density=0.12, seed=51)
+    s.noise(0, 0, 63, rail - 1, R["ink"], density=0.08, seed=52)
+    # a water stain running down from the top
+    for i in range(0, 50):
+        x = 40 + (i * 7) % 5 - 2
+        s.px(x, i, R["ink"])
+        if i % 3 == 0:
+            s.px(x + 1, i, R["ink"])
+    s.rect(0, rail, 63, rail + 1, R["ink"])
+    s.rect(0, rail + 2, 63, 127, R["woodLo"])
+    s.noise(0, rail + 2, 63, 127, R["ink"], density=0.15, seed=53)
+    return s
+
+
+def marble(R):
+    """32x32: pale marble for the pillars and the bar top, grey veins."""
+    s = Sprite(32, 32, palette=PAL)
+    s.rect(0, 0, 31, 31, R["bone"])
+    s.noise(0, 0, 31, 31, R["dust"], density=0.10, seed=61)
+    x = 4
+    for y in range(32):
+        x = (x + (1 if (y * 7) % 5 < 2 else 0)) % 32
+        s.px(x, y, R["ash"])
+        if y % 4 == 0:
+            s.px((x + 1) % 32, y, R["ash"])
+    for y in range(10, 22):
+        s.px((20 + (y - 10) // 2) % 32, y, R["dust"])
+    return s
+
+
+def slot_face(R):
+    """32x64: a slot cabinet's front below the glass: buttons, a coin tray, a gilt trim."""
+    s = Sprite(32, 64, palette=PAL)
+    s.rect(0, 0, 31, 63, R["night"])
+    s.rect(0, 0, 31, 1, R["brass"])
+    s.rect(2, 4, 29, 12, R["ink"])
+    for i, col in enumerate((R["pinkHi"], R["marker"], R["soul"], R["gold"])):
+        s.rect(4 + i * 7, 6, 8 + i * 7, 10, col)
+    s.rect(4, 20, 27, 26, R["brassLo"])
+    s.rect(6, 22, 25, 25, R["ink"])
+    s.rect(0, 40, 31, 63, R["woodLo"])
+    s.rect(2, 44, 29, 60, R["wood"], fill=False)
+    return s
+
+
+def room_sign(R, name, tier, loss, word, w=128):
+    """An arch sign over a doorway: the room's name in its tier's neon, its loss glyph, a word."""
+    edge, core = R[tier], R[tier + "Hi"]
+    s = Sprite(w, 32, palette=PAL)
+    s.rect(0, 0, w - 1, 31, R["ink"])
+    tube_rect(s, 2, 2, w - 3, 29, edge, core)
+    icon(s, loss, 6, 6, edge, core)
+    tx0, tx1 = 30, w - 6
+    draw_text(s, name, tx0 + (tx1 - tx0 - text_w(name)) // 2, 7, core)
+    s.line(tx0 + 2, 17, tx1 - 2, 17, edge)
+    draw_text(s, word, tx0 + (tx1 - tx0 - text_w(word)) // 2, 20, edge)
+    return s
+
+
+def vig_sign(R, w=160):
+    """The house's own sign on the main floor's north wall: THE VIG in gold and white, no tier hue."""
+    s = Sprite(w, 40, palette=PAL)
+    s.rect(0, 0, w - 1, 39, R["ink"])
+    tube_rect(s, 2, 2, w - 3, 37, R["brass"], R["gold"])
+    tube_rect(s, 6, 6, w - 7, 33, R["brassLo"], R["cream"])
+    label = "THE VIG"
+    tw = text_w(label) * 2
+    x0 = (w - tw) // 2
+    # the name at 2x for weight
+    for ch in label:
+        rows = GLYPHS.get(ch, GLYPHS["?"])
+        for yy, row in enumerate(rows):
+            for xx, c in enumerate(row):
+                if c == "#":
+                    s.rect(x0 + xx * 2, 10 + yy * 2, x0 + xx * 2 + 1, 10 + yy * 2 + 1, R["white"])
+        x0 += (len(rows[0]) + 1) * 2
+    for i in range(10, w - 10, 8):
+        s.px(i, 30, R["gold"])
+    return s
+
+
 # ---------------------------------------------------------------- render
 
-ASSETS = {"carpet": carpet, "wall": wall, "felt": felt, "wood": wood, "brass": brass, "ceiling": ceiling, "cage": cage, "door": door}
+ASSETS = {"carpet": carpet, "wall": wall, "felt": felt, "wood": wood, "brass": brass, "ceiling": ceiling, "cage": cage, "door": door,
+          "carpet_floor": carpet_floor, "wall_floor": wall_floor, "ceiling_floor": ceiling_floor, "planks": planks, "wall_back": wall_back,
+          "marble": marble, "slot_face": slot_face}
 
 
 def sheet(images, path, scale=4, tile=True):
@@ -271,7 +448,7 @@ def sheet(images, path, scale=4, tile=True):
     cells = []
     for name, im in images:
         im = im.convert("RGBA")
-        if tile and name in ("carpet", "wall", "felt", "wood", "brass", "ceiling"):
+        if tile and name in ("carpet", "wall", "felt", "wood", "brass", "ceiling", "carpet_floor", "wall_floor", "ceiling_floor", "planks", "wall_back", "marble"):
             t = Image.new("RGBA", (im.width * 2, im.height * 2))
             for dx in (0, 1):
                 for dy in (0, 1):
@@ -306,7 +483,15 @@ for pid, colors in PAL_COLORS.items():
     s = sign(R, "COLLECTOR", "coll", "skull", w=128)
     s.save_png(str(OUT / pid / "sign_collector.png"))
     signs.append(("collector", s.composite()))
+    for fname, sp in (("sign_lounge", room_sign(R, "THE LOUNGE", "mid", "mark", "MID TABLES")),
+                      ("sign_back", room_sign(R, "THE BACK ROOM", "high", "skull", "HIGH TABLES")),
+                      ("sign_vig", vig_sign(R))):
+        sp.save_png(str(OUT / pid / f"{fname}.png"))
+        signs.append((fname, sp.composite()))
     sheet(made[:4], PREV / f"{pid}-surfaces-a.png", scale=4)
-    sheet(made[4:], PREV / f"{pid}-surfaces-b.png", scale=4)
+    sheet(made[4:8], PREV / f"{pid}-surfaces-b.png", scale=4)
+    sheet(made[8:12], PREV / f"{pid}-surfaces-c.png", scale=3)
+    sheet(made[12:], PREV / f"{pid}-surfaces-d.png", scale=4)
     sheet(signs[:4], PREV / f"{pid}-signs-a.png", scale=4, tile=False)
-    sheet(signs[4:], PREV / f"{pid}-signs-b.png", scale=4, tile=False)
+    sheet(signs[4:8], PREV / f"{pid}-signs-b.png", scale=4, tile=False)
+    sheet(signs[8:], PREV / f"{pid}-signs-c.png", scale=3, tile=False)

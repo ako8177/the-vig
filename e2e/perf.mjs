@@ -6,7 +6,7 @@ import { open, glInfo, OUT } from './launch.mjs';
 
 const { browser, page, errors, ev, wait } = await open({ extraFlags: ['--disable-gpu-vsync', '--disable-frame-rate-limit'] });
 const gl = await glInfo(page);
-await ev(() => { const a = window.__app; a.enter(); a.pose(0, 7.2, 0, -0.04); });
+await ev(() => { const a = window.__app; a.enter(); const sp = window.__floors.FLOOR_1.spawn; a.pose(sp.x, sp.z, 0, -0.04); });
 await wait(800);
 const scene = await ev(() => window.__app.view.measure());
 const sim = await ev(() => {

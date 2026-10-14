@@ -235,24 +235,36 @@ Milestone 1 review: 20 gave a lucky sample (80% where 200 say 64%). Thresholds a
 (DECISIONS #42, #57); the last run's numbers are in brackets.
 
 1. **Safe-only** bot (Bandit + Twenty-One at minimum stakes) makes night 1 at most 15% of the time
-   and ends the night poorer than it started on average [5%; mean bank $1,236 from $1,500].
+   and ends the night poorer than it started on average [4%; mean bank $1,239 from $1,500].
    Luck can carry a low table for a night now and then; expectation never does.
 2. **Mid-rotation** bot (Hi-Lo bursts of ≤ 5 rounds, out at 3 stacks, the Wheel while marked)
-   makes night 1 at least 50% of the time with ≥ 3 team marks suffered on average [63%; 5.3].
+   makes night 1 at least 50% of the time with ≥ 3 team marks suffered on average [69%; 5.6].
 3. **Red Line burst** bot (two six-round bursts once the bank holds $2,000, mid rotation around
    them) makes night 1 at least 60% of the time and more often than the mid rotation alone, and
-   loses a life on Red Line at least 20% of the time [70% vs 63%; 31%].
+   loses a life on Red Line at least 20% of the time [69% vs 69%; 28%]. **Watch this one**: on the
+   three-room floor (DECISIONS #65) the walk from the Lounge to the Back Room eats most of the
+   bursts' edge; if it stops holding, move a blood table nearer or derive a better burst rule.
 4. **Dead Man's** bot from a $1,000 bank goes broke at least 30% of the time [78%].
 5. **Circuit** (400 games): the sensible line (§6) wins 40–65%; activating blind costs more lives;
    Lead Apron takes any line's life cost to ≈ 0 [48% at 0.16 lives; blind 37% at 0.34; with the
    apron 0.00 and 0.00].
 6. **Collector's choice**: the decision bot gambles when holding Lucky Fuse or Lead Apron with
    more than one life, else pays; it must score at least as well as always-gamble and within
-   0.15 of always-pay (score = nights survived + lives/10) [1.85 vs 1.23 and 1.91]. The intended
+   0.15 of always-pay (score = nights survived + lives/10) [1.81 vs 1.24 and 1.88]. The intended
    lesson, that gambling with a fuse charm is *better*, does not hold yet (§7).
 7. **Ghost**: a two-player run where one becomes a ghost in the first minute still makes night 1
    at least 30% of the time when the survivor buys the soul back once the bank holds
-   quota × 0.5 + $1,000. A lower bound: the bot doesn't play the bought-back player [52%].
+   quota × 0.5 + $1,000. A lower bound: the bot doesn't play the bought-back player [45%].
+
+## 10. The bar (DECISIONS #67)
+
+The main floor's bar sells drinks for **cash from the bank**: Draft Beer $40 (25 s of buzz), Dry
+Martini $120 (50 s), Double Whiskey $200 (80 s), The Collector's Own $500 (150 s). Buzz stacks to
+**180 s** and counts down in floor time; at **90 s** you are as drunk as the screen gets (it swims
+and doubles, the camera sways, your walk wanders; a MILD setting softens it). In the slice a drink
+buys nothing but the feeling: it is a way to spend money that isn't a bet, which makes it the
+cheapest bad decision in the house. A drink that changes the odds (a "liquid courage") would be a
+charm by another name; if one is added it must be priced and derived here first.
 
 ## 9. What the slice must answer
 

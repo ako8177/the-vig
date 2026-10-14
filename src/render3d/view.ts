@@ -44,6 +44,8 @@ export class View3D {
   /** the frame: scene + bloom, output encoding, pixel pass to the screen */
   readonly composer: EffectComposer;
   readonly mix: ShaderPass;
+  /** the bar's work (DESIGN.md §10): the room swims, doubles and warms as you drink */
+  readonly drunk: ShaderPass;
   readonly pixel: ShaderPass;
   toggles: PassToggles = { bloom: true, pixel: true, lowRes: true };
   /** 'auto': a whole-number scale when it fills most of the window, else fit it; 'pixel': whole
@@ -57,6 +59,7 @@ export class View3D {
   private stash = new Map<Mesh, Material | Material[]>();
   /** the meshes drawn black in the glow pass, found once (invalidateGlow after the scene changes) */
   private dark: Mesh[] | null = null;
+  private skip: Mesh[] | null = null;
   private bg = new Color();
 
   constructor(readonly canvas: HTMLCanvasElement) {
@@ -85,6 +88,35 @@ export class View3D {
     );
     this.composer.addPass(this.mix);
     this.composer.addPass(new OutputPass());
+    this.drunk = new ShaderPass(
+      new ShaderMaterial({
+        uniforms: { tDiffuse: { value: null }, amount: { value: 0 }, time: { value: 0 } },
+        vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+        fragmentShader: [
+          'uniform sampler2D tDiffuse; uniform float amount; uniform float time; varying vec2 vUv;',
+          'void main() {',
+          '  float a = amount;',
+          '  vec2 uv = vUv;',
+          // the room swims: two slow waves across the frame
+          '  uv.x += sin(uv.y * 9.0 + time * 1.7) * 0.006 * a;',
+          '  uv.y += cos(uv.x * 7.0 + time * 1.3) * 0.005 * a;',
+          // and doubles: a second image drifting off the first
+          '  vec2 off = vec2(sin(time * 0.9), cos(time * 0.7)) * 0.014 * a;',
+          '  vec4 c1 = texture2D(tDiffuse, uv);',
+          '  vec4 c2 = texture2D(tDiffuse, uv + off);',
+          '  vec4 c = mix(c1, (c1 + c2) * 0.5, min(1.0, a * 0.9));',
+          // warmer, louder colors, and the edges closing in
+          '  float l = dot(c.rgb, vec3(0.299, 0.587, 0.114));',
+          '  c.rgb = mix(vec3(l), c.rgb, 1.0 + 0.45 * a);',
+          '  float v = smoothstep(0.85, 0.2, distance(vUv, vec2(0.5)));',
+          '  c.rgb *= mix(1.0, v, 0.55 * a);',
+          '  gl_FragColor = vec4(c.rgb, 1.0);',
+          '}',
+        ].join('\n'),
+      }),
+    );
+    this.drunk.enabled = false;
+    this.composer.addPass(this.drunk);
     this.pixel = makePixelPass();
     this.composer.addPass(this.pixel);
     this.setPalette(activePalette);
@@ -100,6 +132,7 @@ export class View3D {
   /** The scene's meshes changed (a room built or disposed): find the dark ones again. */
   invalidateGlow() {
     this.dark = null;
+    this.skip = null;
   }
 
   /** Mark an object (and its children) as glowing. */
@@ -135,15 +168,25 @@ export class View3D {
 
   /** Render the glow layer alone: everything else black (it still occludes), no background. */
   private renderGlow() {
+    // the glow pass draws the glowing meshes and, in black, only the rooms' shells to hide neon behind
+    // a wall: the furniture and the crowd sit it out (they were most of this pass's pixels)
     if (!this.dark) {
       this.dark = [];
+      this.skip = [];
       this.scene.traverse((o) => {
-        if (o instanceof Mesh && !o.layers.isEnabled(GLOW)) this.dark!.push(o);
+        if (!(o instanceof Mesh) || o.layers.isEnabled(GLOW)) return;
+        if (o.userData.occluder) this.dark!.push(o);
+        else this.skip!.push(o);
       });
     }
     for (const o of this.dark) {
       this.stash.set(o, o.material);
       o.material = this.black;
+    }
+    const hidden: Mesh[] = [];
+    for (const o of this.skip!) if (o.visible) {
+      o.visible = false;
+      hidden.push(o);
     }
     const bg = this.scene.background;
     this.scene.background = this.bg.set(0x000000);
@@ -151,8 +194,16 @@ export class View3D {
     this.scene.background = bg;
     for (const [m, mat] of this.stash) m.material = mat;
     this.stash.clear();
+    for (const o of hidden) o.visible = true;
     // UnrealBloomPass composites its result back into the composer's read buffer
     this.mix.uniforms.tGlow.value = this.glowComposer.readBuffer.texture;
+  }
+
+  /** How drunk the picture is, 0..1 (the pass is off when sober). */
+  setDrunk(amount: number, time: number) {
+    this.drunk.enabled = amount > 0.002;
+    this.drunk.uniforms.amount.value = amount;
+    this.drunk.uniforms.time.value = time;
   }
 
   render() {
@@ -209,6 +260,7 @@ export class View3D {
     this.composer.dispose();
     this.bloom.dispose();
     this.mix.dispose();
+    this.drunk.dispose();
     this.pixel.dispose();
     this.black.dispose();
     this.renderer.dispose();

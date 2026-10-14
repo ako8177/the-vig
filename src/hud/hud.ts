@@ -13,6 +13,7 @@ import { CHARMS, UPGRADES, CHARM_BY_ID, type CharmId, type UpgradeId } from '../
 import { MARK_BY_ID } from '../data/marks';
 import { ECONOMY } from '../data/economy';
 import { money } from '../panels/table';
+import { DRINKS } from '../data/drinks';
 
 export const HUD_W = 640;
 export const HUD_H = 360;
@@ -27,6 +28,8 @@ export interface Settings {
   sfx: number;
   scaling: 'auto' | 'pixel' | 'fill';
   bloom: boolean;
+  /** how hard a drink hits the screen: full, or mild for motion comfort (DESIGN.md §10) */
+  drunkFx: 'full' | 'mild';
 }
 
 export interface Meta {
@@ -64,6 +67,8 @@ export interface HudView {
   /** a yes/no card (calling the night early) */
   confirm: { title: string; lines: string[]; yes: string } | null;
   cage: { open: boolean; why: Map<string, string | null>; slots: number } | null;
+  /** the bar's menu, when it's open */
+  bar: { open: boolean; why: Map<string, string | null> } | null;
   toasts: Toast[];
   lesson: Lesson | null;
   banner: { text: string; sub: string; color: number; t: number } | null;
@@ -75,7 +80,8 @@ export interface HudView {
 
 export type HudAction =
   | { t: 'newRun' } | { t: 'screen'; to: Screen } | { t: 'resume' } | { t: 'buy'; item: string }
-  | { t: 'closeCage' } | { t: 'set'; settings: Partial<Settings> } | { t: 'quit' } | { t: 'confirm'; yes: boolean };
+  | { t: 'closeCage' } | { t: 'set'; settings: Partial<Settings> } | { t: 'quit' } | { t: 'confirm'; yes: boolean }
+  | { t: 'order'; drink: string } | { t: 'closeBar' };
 
 /** A mark's effect in a few words, for the HUD's list (the lesson card says it in full). */
 const MARK_SHORT: Record<string, (stacks: number) => string> = {
@@ -181,6 +187,7 @@ export class Hud {
       this.play(ui, v);
       this.drawParty(ui, dt);
       if (v.cage?.open) this.cage(ui, v, out);
+      if (v.bar?.open) this.bar(ui, v, out);
       if (v.confirm) this.confirm(ui, v, out);
       if (v.screen === 'results') this.results(ui, v, out);
       else if (v.overlay) this.pause(ui, v, out);
@@ -229,7 +236,11 @@ export class Hud {
       ui.text(c.name.toUpperCase(), HUD_W - 8, cy, C.collHi, { align: 'right' });
       cy += 9;
     }
-    if (me.overclock > 0) ui.text(`OVERCLOCK x2  ${Math.ceil(me.overclock / TICKS_PER_S)}S`, HUD_W - 8, cy, C.gold, { align: 'right' });
+    if (me.overclock > 0) {
+      ui.text(`OVERCLOCK x2  ${Math.ceil(me.overclock / TICKS_PER_S)}S`, HUD_W - 8, cy, C.gold, { align: 'right' });
+      cy += 9;
+    }
+    if (me.drunk > 0) ui.text(`${me.drunk > 90 * TICKS_PER_S ? 'DRUNK' : 'BUZZED'}  ${Math.ceil(me.drunk / TICKS_PER_S)}S`, HUD_W - 8, cy, C.pinkHi, { align: 'right' });
 
     // bottom left: active marks (marks may wear the mid tier's yellow: they are its price)
     const mine = s.marks.filter((m) => m.player === v.player || m.player === -1);
@@ -254,7 +265,7 @@ export class Hud {
         ui.text(odds, HUD_W / 2, py + 16, color, { align: 'center' });
       }
     }
-    if (v.screen === 'game' && s.phase === 'floor' && v.seated && !v.atCollector && !v.cage?.open) ui.text('E / ESC  STAND UP', HUD_W / 2, HUD_H - 12, C.ash, { align: 'center' });
+    if (v.screen === 'game' && s.phase === 'floor' && v.seated && !v.atCollector && !v.cage?.open && !v.bar?.open) ui.text('E / ESC  STAND UP', HUD_W / 2, HUD_H - 12, C.ash, { align: 'center' });
 
     // toasts rise from just under the crosshair; seated, from under the table's screen, and not
     // while a banner holds that space (critic F10)
@@ -276,7 +287,7 @@ export class Hud {
     }
 
     // a lesson card: two lines, the first time each thing happens (held back while the cage is open)
-    if (v.lesson && v.lesson.t > 0 && !v.cage?.open && !v.confirm && v.screen === 'game' && !this.party) {
+    if (v.lesson && v.lesson.t > 0 && !v.cage?.open && !v.bar?.open && !v.confirm && v.screen === 'game' && !this.party) {
       const l = v.lesson;
       const w = Math.max(textWidth(l.title), textWidth(l.body)) + 20;
       ui.panel((HUD_W - w) / 2, 40, w, 30, 'dark', { blocking: false, edge: C.coll });
@@ -339,6 +350,32 @@ export class Hud {
     if (ui.button('no', HUD_W / 2 + 10, y + h - 28, 100, 20, 'NOT YET (ESC)')) out.push({ t: 'confirm', yes: false });
   }
 
+  // ---------------------------------------------------------------- the bar
+
+  private bar(ui: UI, v: HudView, out: HudAction[]) {
+    const s = v.state!;
+    const me = s.players[v.player];
+    const w = 360, h = 200, x = (HUD_W - w) / 2, y = 70;
+    ui.fill(0, 0, HUD_W, HUD_H, C.ink, 0.45);
+    ui.panel(x, y, w, h, 'dark', { edge: C.pinkHi });
+    ui.text('THE BAR', x + 10, y + 7, C.pinkHi, { scale: 2 });
+    ui.text(`BANK ${money(s.bank)}`, x + w - 10, y + 10, C.gold, { align: 'right' });
+    ui.text('PAID FROM THE BANK. IT BUYS NOTHING BUT THE FEELING.', x + 10, y + 28, C.dust);
+    let ry = y + 42;
+    for (const d of DRINKS) {
+      const why = v.bar!.why.get(d.id) ?? null;
+      ui.panel(x + 8, ry, w - 16, 30, 'inset', { blocking: false });
+      ui.text(d.name.toUpperCase(), x + 14, ry + 5, C.white);
+      ui.text(money(d.price), x + 150, ry + 5, C.gold);
+      ui.text(`${d.buzzS} S  ${d.text}`, x + 14, ry + 17, C.pinkHi);
+      if (ui.button(`order-${d.id}`, x + w - 84, ry + 5, 70, 20, 'ORDER', { edge: C.pinkHi, disabled: !!why, tip: why ? cap(why) : `${money(d.price)} from the bank.` })) out.push({ t: 'order', drink: d.id });
+      ry += 34;
+    }
+    const buzz = Math.ceil(me.drunk / TICKS_PER_S);
+    ui.text(buzz ? `YOUR BUZZ: ${buzz} S` : 'STONE COLD SOBER', x + 10, y + h - 20, buzz ? C.pinkHi : C.ash);
+    if (ui.button('closebar', x + w - 110, y + h - 26, 100, 20, 'CLOSE (E)')) out.push({ t: 'closeBar' });
+  }
+
   // ---------------------------------------------------------------- around play
 
   private card(ui: UI, w: number, h: number, edge = C.coll) {
@@ -391,7 +428,7 @@ export class Hud {
 
   private settings(ui: UI, v: HudView, out: HudAction[]) {
     ui.fill(0, 0, HUD_W, HUD_H, C.ink, 0.7);
-    const { x, y } = this.card(ui, 360, 264);
+    const { x, y } = this.card(ui, 360, 288);
     ui.text('SETTINGS', HUD_W / 2, y + 8, C.collHi, { scale: 2, align: 'center' });
     const st = v.settings;
     let ry = y + 40;
@@ -414,8 +451,9 @@ export class Hud {
     const names = { auto: 'AUTO', pixel: 'PIXEL-PERFECT', fill: 'FILL WINDOW' };
     stepper('scale', 'SCREEN SCALING', names[st.scaling], () => out.push({ t: 'set', settings: { scaling: modes[(mi + 2) % 3] } }), () => out.push({ t: 'set', settings: { scaling: modes[(mi + 1) % 3] } }));
     stepper('bloom', 'NEON GLOW', st.bloom ? 'ON' : 'OFF', () => out.push({ t: 'set', settings: { bloom: !st.bloom } }), () => out.push({ t: 'set', settings: { bloom: !st.bloom } }));
+    stepper('drunk', 'DRUNK EFFECTS', st.drunkFx === 'full' ? 'FULL' : 'MILD', () => out.push({ t: 'set', settings: { drunkFx: st.drunkFx === 'full' ? 'mild' : 'full' } }), () => out.push({ t: 'set', settings: { drunkFx: st.drunkFx === 'full' ? 'mild' : 'full' } }));
     ui.text('GLOW OFF RUNS FASTER ON A WEAK MACHINE.', HUD_W / 2, ry + 4, C.ash, { align: 'center' });
-    if (ui.button('back', HUD_W / 2 - 50, y + 234, 100, 20, 'BACK')) out.push({ t: 'screen', to: v.state ? 'game' : 'title' });
+    if (ui.button('back', HUD_W / 2 - 50, y + 258, 100, 20, 'BACK')) out.push({ t: 'screen', to: v.state ? 'game' : 'title' });
   }
 
   private pause(ui: UI, v: HudView, out: HudAction[]) {

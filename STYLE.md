@@ -31,6 +31,8 @@ A new color is a proposal in DECISIONS.md, never a quiet addition.
 | soul / soulLo | 32fad2 0dc8d9 | ghosts and souls |
 | marker / markerLo | 6e8ef0 5555e6 | markers, the cage's strip |
 | blood | ac0a48 | lives lost, overloads, snake eyes, and the red card suits (DECISIONS #37) |
+| cream / indigo / indigoHi | f7c3a0 1a0070 3c1e8e | THE FLOOR: damask walls, the medallion carpet (DECISIONS #65) |
+| pink / pinkHi / teal | d7198c fa5adc 05826c | the Lounge's coves, the crowd's coats, slot chase lights; never on a panel's odds |
 
 ## The tiers own their colors
 

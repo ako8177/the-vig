@@ -17,7 +17,7 @@ for (const pal of ['tano48']) {
   await ev((pal) => window.__app.setPalette(pal), pal);
   await wait(300);
   // the room from the door
-  await ev(() => window.__app.pose(0, 7.2, 0, -0.04));
+  await ev(() => { const sp = window.__floors.FLOOR_1.spawn; window.__app.pose(sp.x, sp.z, 0, -0.04); });
   await wait(400);
   await page.screenshot({ path: `${out}/${pal}-door.png` });
   // each tier's sign from 10 m, straight on, at eye height: crop the middle 320x180 of the 640x360 view

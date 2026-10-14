@@ -7,7 +7,9 @@ import type { PaletteId } from '../data/palette';
 
 export const TEXTURE_NAMES = [
   'carpet', 'wall', 'felt', 'wood', 'brass', 'ceiling', 'cage', 'door',
+  'carpet_floor', 'wall_floor', 'ceiling_floor', 'planks', 'wall_back', 'marble', 'slot_face',
   'sign_bandit', 'sign_twentyone', 'sign_hilo', 'sign_wheel', 'sign_redline', 'sign_deadman', 'sign_collector',
+  'sign_lounge', 'sign_back', 'sign_vig',
 ] as const;
 export type TextureName = (typeof TEXTURE_NAMES)[number];
 

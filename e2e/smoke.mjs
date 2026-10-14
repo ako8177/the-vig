@@ -32,7 +32,7 @@ await page.keyboard.up('KeyW');
 const z1 = await ev(() => window.__game.state.players[0].z);
 check(z0 - z1 > 1.5 && z0 - z1 < 4, `W walks forward (${(z0 - z1).toFixed(2)} m in ~1 s)`);
 
-await ev(() => window.__app.pose(-8, -0.7, 0, -0.1));
+await ev(() => { const h = window.__floors.FLOOR_1.tables.find((t) => t.table === 'hilo'); window.__app.pose(h.stand.x, h.stand.z, 0, -0.1); });
 await wait(100);
 await page.keyboard.press('KeyE');
 await wait(700);

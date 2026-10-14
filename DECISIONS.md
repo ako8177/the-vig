@@ -89,3 +89,40 @@ The owner played the live slice: the tables felt like "clicking for odds", the r
 - #62 2026-10-13: **Derivative flag (owner's request): "a wheel taking a lot of inspiration from Gamble With Your Friends."** PLAN.md's not-list rules out its machines and UI, so the quality taken is the spectacle (a big wheel everyone watches slow down), not its art or layout: a big-six wheel drawn for this game in the palette (amber mark wedges with the mark glyph, gold chips on paying wedges, brass pegs, a chasing lamp rim, a pointer at the top), its odds down the left. The owner can push further; this note is the line.
 - #63 2026-10-13: **Every round is a small show, timed to its sound** (`src/data/feel.ts` holds the beats; panels animate and `src/app/sounds.ts` builds the sounds from it): Hi-Lo's die is rattled, thrown, bounces five times on the baize (a thud each) and settles (1.6 s); Dead Man's two dice land a beat apart (2.2 s); Red Line riffles, deals and flips (2.1 s); the wheel spins three turns with a peg clack per slot (4.2 s); the Bandit's reels scroll and clunk to a stop in turn (1.8 s). Each `resolveS` stays inside its table's round time, so DESIGN.md §3's rates hold (pace tests re-run). **Wins scale**: any win flashes the panel gold and pops the amount with sparkles and a chime; ≥ $700 net is a BIG WIN (banner, coin shower, fanfare); ≥ $4,000 or 7-7-7 is a JACKPOT (screen flash, a long coin shower, a camera shake). Losses flash the rim and thud; a lost life flashes blood with a heartbeat.
 - #64 2026-10-13: **Playwright 1.48.2 → 1.63.0** (pinned exactly): Edge updated to 155 and no longer starts with 1.48's `--headless=old`. From Claude's tool sandbox the e2e scripts still need the sandbox off.
+
+### A beautiful first floor (2026-10-13/14, the owner's direction)
+
+The owner set a bigger plan (a house before the casino with a family, cars and a computer shop for
+charms delivered by post; more floors unlocking new games and higher limits; separate rooms by
+risk; a living crowd; a bar with drinks that make you drunk) and asked to start with a beautiful
+first floor. Two standing rules bend to it, at the owner's word: **the milestone order** (this
+work is Milestone 4/8-ish content ahead of the M2 gate) and **the not-list** (PLAN.md bars
+borrowing Gamble With Your Friends' rooms and CloverPit's charms; the owner wants those as
+inspirations: the ideas are taken, never their names, numbers or art).
+
+- #65 2026-10-13: **Floor 1 is three rooms**: THE FLOOR (28 x 20 m, 5 m ceiling: the entrance, the
+  low tables, the bar, the cage, banks of slots, a slot carousel round a progressive-jackpot tower,
+  roulette and card tables, chandeliers, marble pillars, a roped aisle; an indigo-and-gold carpet,
+  cream damask walls, a coffered ceiling), THE LOUNGE through the north-west arch (Hi-Lo, the
+  Wheel; violet carpet, booths, a piano, a craps rail, pink coves, sconces) and THE BACK ROOM
+  through the north-east arch (Red Line, Dead Man's Hand, the Collector; dark planks, grimy
+  plaster, bare bulbs, smoke). The deeper you walk, the worse it costs. New palette roles for the
+  floor (cream, indigo, pink, teal: none a tier's hue). Replaces DECISIONS #18's one-room layout.
+- #66 2026-10-13: **A crowd of 52, presentation only** (never in the sim, so co-op needs nothing):
+  slot players, table players and dealers, a bartender, drinkers, smokers (embers glow, smoke
+  drifts), a pianist, walkers pacing clear lines, and railbirds by each table who turn to watch
+  when you sit there, cheer your wins (a big one brings in everyone within 9 m) and groan at big
+  losses. People who stand still are colliders (data/floors.ts); walkers aren't. One instanced draw.
+- #67 2026-10-13: **The bar sells drinks for cash** (DESIGN.md §10): $40-$500, buzz that stacks to
+  180 s and counts down in floor time; the picture swims and doubles, the camera sways, your walk
+  wanders (input-side: the sim sees ordinary moves); a MILD setting softens it. A new command,
+  `order`. A drink buys nothing but the feeling in the slice.
+- #68 2026-10-14: **Performance under software WebGL** (THREEJS-NOTES rule 13, >= 15 fps headless):
+  the bigger floor first ran at ~10 fps. Fixed by drawing only the rooms you can see (the room
+  you're in, plus the one through an arch within 9 m; each room merged per material on its own),
+  two point lights per room (lights off in rooms you can't see), merged meshes centered so the
+  renderer sorts them front to back, a glow pass that blocks with the rooms' shells only, and
+  no per-frame canvas uploads (the Collector's waiting screen redraws once a second, the crowd
+  poses at 30 Hz, the slot screens 5 times a second). Now 19-20 fps, 52 draw calls, 23k triangles.
+  Lesson recorded: a light-count test is meaningless while shaders recompile (frames drawn then are
+  half empty), and a browser pane running the game in parallel halves SwiftShader's numbers.

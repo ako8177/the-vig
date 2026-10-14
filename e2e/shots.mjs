@@ -10,9 +10,14 @@ const { browser, page, errors, ev, wait } = await open();
 console.log('GL:', await glInfo(page));
 await ev(() => window.__app.enter());
 
-const door = () => ev(() => { const a = window.__app; a.setToggles({ bloom: true, pixel: true, lowRes: true }); a.pose(0, 7.2, 0, -0.04); });
+const door = () => ev(() => { const a = window.__app; a.setToggles({ bloom: true, pixel: true, lowRes: true }); const sp = window.__floors.FLOOR_1.spawn; a.pose(sp.x, sp.z, 0, -0.04); });
 const SHOTS = {
   door,
+  // each room from its arch
+  lounge: async () => ev(() => window.__app.pose(-7.6, -2.8, 0.15, -0.05)),
+  backroom: async () => ev(() => window.__app.pose(8, -2.8, -0.15, -0.06)),
+  // the main floor from the carousel, looking back at the entrance
+  floor: async () => ev(() => window.__app.pose(0, 1.4, Math.PI, -0.02)),
   'door-nobloom': async () => { await door(); await ev(() => window.__app.setToggles({ bloom: false })); },
   'door-nopixel': async () => { await door(); await ev(() => window.__app.setToggles({ pixel: false })); },
   'door-fullres': async () => { await door(); await ev(() => window.__app.setToggles({ lowRes: false })); },
@@ -26,7 +31,7 @@ const SHOTS = {
   collector: async () => {
     await ev(() => { const a = window.__app; if (a.game.state.players[0].seat) a.game.submit(0, { t: 'stand' }); });
     await wait(700);
-    await ev(() => window.__app.pose(0, 3.6, 0, -0.32));
+    await ev(() => { const co = window.__floors.FLOOR_1.collector; window.__app.pose(co.stand.x, co.stand.z + 2, 0, -0.25); });
   },
   // the lights dropping at 0:00, seen from the Collector's seat
   midnight: async () => {

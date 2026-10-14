@@ -123,13 +123,31 @@ player and the same shared bank; the slice is single player and the architecture
 co-op from the first commit (the sim takes commands, never input; every roll comes from the
 seeded RNG). Voice is not included; people use Discord.
 
+## The owner's direction (2026-10-13)
+
+The owner has set a bigger shape for the game; it is built in order, a floor at a time:
+
+- **A house before the casino**: your family, a car or two, a computer where you order charms and
+  items (CloverPit is the owner's inspiration for the charms: our own names and numbers); the order
+  is delivered by post in front of the house; you pick it up and take it to the casino; the car
+  out front takes you there.
+- **Floors you unlock with money**: each introduces new games and brings back old ones at higher
+  limits and more risk. Games planned include blackjack, roulette, craps, slots, case opening,
+  a peg-drop board and a crash game.
+- **Rooms by risk on every floor**: a bright main floor for the low tables, a room for the mid,
+  an ominous back room for the high (floor 1 is built this way: DECISIONS #65).
+- **A living casino**: a crowd that plays, watches you, drinks and smokes; a bar whose drinks
+  make you drunk.
+
 ## The not-list
 
 - Not Buckshot Roulette: no shotgun, no live/blank shells, no two-chair duel as the frame. The
   Circuit is a panel of circuits with inspect/reroute/activate and a ghost role.
 - Not CloverPit: no slot-machine-only economy, no lever-pull core loop, no borrowed charm names
-  or numbers. Our slots are one low table among six.
-- Not Gamble With Your Friends: no borrowed machines, rooms, quota numbers or UI.
+  or numbers. Our slots are one low table among many. (Its charms are the owner's inspiration
+  for ours: the idea of items that bend the odds, not its items.)
+- Not Gamble With Your Friends: no borrowed machines, quota numbers or UI. (A house before the
+  casino and rooms by risk are the owner's inspiration from it: the idea, not its rooms.)
 - No real-money anything, no purchases, no odds hidden from the player.
 - No borrowed numbers: every RTP, quota and cost derives from `DESIGN.md`.
 - Nothing past Milestone 1 before the Milestone 2 gate.

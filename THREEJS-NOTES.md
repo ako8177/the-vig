@@ -1,6 +1,6 @@
 # Three.js notes — The Vig
 
-Read every session. First person, one room per floor, tables you walk up to.
+Read every session. First person, a floor of connected rooms (floor 1: three; DECISIONS #65), tables you walk up to.
 
 ## What Three.js is, in a paragraph
 
@@ -69,3 +69,12 @@ the HUD. `e2e/coverage.mjs` lists every model and texture requested.
 
 Physics engines (the room is boxes), skeletal animation, real shadows, a free third-person
 camera, voice chat, a server, in-app purchases of any kind, hiding odds for "mystery".
+
+## Since floor 1 became three rooms (DECISIONS #65, #68)
+
+- Draw only the rooms you can see: each room is its own merged group, shown (and its point lights
+  on) when you're in it or within 9 m of its arch. Two point lights a room, eight at most in all.
+- Merged meshes are centered on their own middle so the renderer sorts them front to back.
+- The glow pass blocks neon with the rooms' shells only (`userData.occluder`), not the furniture.
+- No canvas re-upload every frame: a panel or screen that only shows a clock redraws once a second.
+- The crowd (`src/render3d/npcs.ts`) is one instanced draw posed at 30 Hz.

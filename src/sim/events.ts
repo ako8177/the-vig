@@ -33,5 +33,6 @@ export type SimEvent =
   | { t: 'over'; won: boolean; why: string }
   | { t: 'bought'; player: PlayerId; item: string; kind: 'charm' | 'upgrade' }
   | { t: 'overclock'; player: PlayerId }
+  | { t: 'drank'; player: PlayerId; drink: string }
   /** a command the sim refused, and why (out of range, seat taken, ...) */
   | { t: 'refused'; player: PlayerId; cmd: string; why: string };

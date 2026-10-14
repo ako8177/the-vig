@@ -76,11 +76,13 @@ const SC = {
   'hud-howto': async () => ev(() => { window.__app.screen = 'howto'; }),
   'hud-settings': async () => ev(() => { window.__app.screen = 'settings'; }),
   'hud-enter': async () => ev(() => { window.__app.newRun(7); }),
-  'hud-walking': async () => ev(() => { const a = window.__app; a.enter(); a.pose(0, 7.2, 0, -0.04); }),
+  'hud-walking': async () => ev(() => { const a = window.__app; a.enter(); const sp = window.__floors.FLOOR_1.spawn; a.pose(sp.x, sp.z, 0, -0.04); }),
   // standing at Hi-Lo's stand point, facing it: the seat prompt shows
-  'hud-prompt': async () => ev(() => window.__app.pose(-8, -0.7, 0, -0.1)),
-  'hud-cage-prompt': async () => ev(() => window.__app.pose(9.3, -1, -Math.PI / 2, 0)),
-  'hud-cage': async () => ev(() => { const a = window.__app; a.game.state.markers = 7; a.game.state.players[0].charms = ['leadapron']; a.cageOpen = true; }),
+  'hud-prompt': async () => ev(() => { const h = window.__floors.FLOOR_1.tables.find((t) => t.table === 'hilo'); window.__app.pose(h.stand.x, h.stand.z, 0, -0.1); }),
+  'hud-cage-prompt': async () => ev(() => { const c = window.__floors.FLOOR_1.cageStand; window.__app.pose(c.x, c.z, -Math.PI / 2, 0); }),
+  'hud-bar': async () => ev(() => { const a = window.__app; const b = window.__floors.FLOOR_1.barStand; a.pose(b.x, b.z, Math.PI / 2, 0); a.barOpen = true; }),
+  'hud-drunk': async () => ev(() => { const a = window.__app; a.barOpen = false; a.game.state.players[0].drunk = 80 * 60; const sp = window.__floors.FLOOR_1.spawn; a.pose(sp.x, sp.z, 0, -0.04); }),
+  'hud-cage': async () => ev(() => { const a = window.__app; a.game.state.players[0].drunk = 0; a.game.state.markers = 7; a.game.state.players[0].charms = ['leadapron']; a.cageOpen = true; }),
   'hud-marks': async () => ev(() => {
     const a = window.__app;
     a.cageOpen = false;

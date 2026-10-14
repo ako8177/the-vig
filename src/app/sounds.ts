@@ -119,6 +119,12 @@ export function defineSounds(a: Audio) {
     { f: 240, dur: 0.5, at: 0.45, vol: 0.06, type: 'noise', q: 0.6 },
   ]);
   a.define('chips', () => cascade(6, 0.25, 0, 0.03).map((n) => ({ ...n, f: n.f * 0.6 })));
+  // a pour, ice, a clink of glasses
+  a.define('pour', () => [
+    ...Array.from({ length: 10 }, (_, i) => ({ f: rnd(500, 900), dur: 0.06, at: i * 0.05, vol: 0.03, type: 'noise' as const, q: 4 })),
+    { f: 3100, dur: 0.12, at: 0.6, vol: 0.04, type: 'triangle' },
+    { f: 4150, dur: 0.18, at: 0.62, vol: 0.03, type: 'triangle' },
+  ]);
 
   // ---- the room: somewhere across the floor, another machine pays
   a.define('distant', () => {

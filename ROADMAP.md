@@ -37,6 +37,18 @@ Exit: a new player finishes or loses a three-night run in 15–20 minutes with a
 and lesson cards at: first mark, first team mark, first blood-table warning, 0:00. Pace tests
 pass. Screenshots in `e2e/out/`, looked at.
 
+## The owner's plan (2026-10-13): reordered at the owner's word
+
+Floor 1's three rooms, the crowd and the bar are built (DECISIONS #65-#68). Next, in the owner's
+order (each to be specified in DESIGN.md before it's built):
+
+1. **The house**: the starting place before each trip to the casino. A family, a car or two, a
+   computer whose shop sells charms and items; the order arrives by post out front; you carry it
+   to the car; the car takes you to the casino. (Replaces the cage as the charm shop.)
+2. **Floors by money**: winning enough opens the next floor down, with new games and higher
+   limits. Games: blackjack, roulette, craps, slots, case opening, a peg-drop board, crash.
+3. Then the gate (Milestone 2 below) on the bigger game.
+
 ## Milestone 2 — The gate
 
 `indie-critic` reviews against `DESIGN.md` §9 and the not-list. The owner plays it, then a

@@ -22,7 +22,7 @@ const TANO48 = [
 const ROLES = [
   'ink', 'night', 'smoke', 'ash', 'dust', 'bone', 'white',
   'low', 'lowHi', 'lowLo', 'mid', 'midHi', 'midLo', 'high', 'highHi', 'highLo', 'coll', 'collHi', 'collLo',
-  'felt', 'feltLo', 'baize', 'baizeHi', 'baizeLo', 'wood', 'woodHi', 'woodLo', 'brass', 'brassLo', 'gold', 'blood',
+  'felt', 'feltLo', 'baize', 'baizeHi', 'baizeLo', 'cream', 'indigo', 'indigoHi', 'pink', 'pinkHi', 'teal', 'wood', 'woodHi', 'woodLo', 'brass', 'brassLo', 'gold', 'blood',
   'soul', 'soulLo', 'marker', 'markerLo', 'carpet', 'carpetLo', 'wall', 'wallHi',
 ] as const;
 export type Role = (typeof ROLES)[number];
@@ -41,6 +41,9 @@ const CAST: Record<PaletteId, Record<Role, string>> = {
     // the dice tables' tray: a dark baize the owner asked for (DECISIONS #60), far darker than the
     // low tier's neon 00e60f, drawn unlit in the 2D panels so no lamp can push it toward the neon
     baize: '005a20', baizeHi: '287d08', baizeLo: '024637',
+    // the main floor's look (DECISIONS #65): cream damask, an indigo carpet with gold and pink,
+    // teal accents; none of them a tier's hue
+    cream: 'f7c3a0', indigo: '1a0070', indigoHi: '3c1e8e', pink: 'd7198c', pinkHi: 'fa5adc', teal: '05826c',
     felt: '303232', feltLo: '1f1d1e', wood: '642808', woodHi: 'c86900', woodLo: '511806',
     brass: 'f8d280', brassLo: 'c86900', gold: 'f8d280', blood: 'ac0a48',
     soul: '32fad2', soulLo: '0dc8d9', marker: '6e8ef0', markerLo: '5555e6',

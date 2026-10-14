@@ -1,8 +1,11 @@
 // The cage (DESIGN.md §5): markers buy charms (worn by the buyer, one a slot) and permanent upgrades.
-// Open all night, from its window on the east wall; the choice is when to stop gambling and shop.
+// Open all night, from its window by the entrance; the choice is when to stop gambling and shop.
+// The bar (DESIGN.md §10) is the floor's other counter: cash buys a drink, and the drink a buzz.
 import type { Game, System } from '../Game';
 import type { PlayerState } from '../state';
-import { CAGE_RADIUS, FLOOR_1 } from '../../data/floors';
+import { BAR_RADIUS, CAGE_RADIUS, FLOOR_1 } from '../../data/floors';
+import { BUZZ, DRINK_BY_ID, type DrinkId } from '../../data/drinks';
+import { ticks } from '../rules';
 import { CHARM_BY_ID, UPGRADE_BY_ID, type CharmId, type UpgradeId } from '../../data/charms';
 import { ECONOMY } from '../../data/economy';
 
@@ -14,6 +17,24 @@ export function atCage(p: PlayerState): boolean {
   const c = FLOOR_1.cageStand;
   const dx = p.x - c.x, dz = p.z - c.z;
   return dx * dx + dz * dz <= CAGE_RADIUS * CAGE_RADIUS;
+}
+
+/** Close enough to the bar to order. */
+export function atBar(p: PlayerState): boolean {
+  const c = FLOOR_1.barStand;
+  const dx = p.x - c.x, dz = p.z - c.z;
+  return dx * dx + dz * dz <= BAR_RADIUS * BAR_RADIUS;
+}
+
+/** Why a player can't order this drink now, or null if they can. */
+export function cantOrder(g: Game, p: PlayerState, drink: string): string | null {
+  const d = DRINK_BY_ID.get(drink as DrinkId);
+  if (!d) return 'no such drink';
+  if (g.state.phase !== 'floor') return 'the bar is shut';
+  if (p.ghost) return "the bartender can't see you";
+  if (!atBar(p)) return 'walk to the bar';
+  if (g.state.bank < d.price) return 'the bank is short';
+  return null;
 }
 
 /** Why a player can't buy this now, or null if they can. */
@@ -40,8 +61,17 @@ export function cantBuy(g: Game, p: PlayerState, item: string): string | null {
 
 export const cage: System = {
   id: 'cage',
-  handles: ['buy'],
+  handles: ['buy', 'order'],
   command(g, p, cmd) {
+    if (cmd.t === 'order') {
+      const why = cantOrder(g, p, cmd.drink);
+      if (why) return g.emit({ t: 'refused', player: p.id, cmd: 'order', why });
+      const d = DRINK_BY_ID.get(cmd.drink as DrinkId)!;
+      g.state.bank -= d.price;
+      p.drunk = Math.min(ticks(BUZZ.maxS), p.drunk + ticks(d.buzzS));
+      g.emit({ t: 'drank', player: p.id, drink: d.id });
+      return;
+    }
     if (cmd.t !== 'buy') return;
     const why = cantBuy(g, p, cmd.item);
     if (why) return g.emit({ t: 'refused', player: p.id, cmd: 'buy', why });

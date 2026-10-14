@@ -2,7 +2,7 @@
 
 Read this first, every session.
 
-## Where things stand (2026-10-12)
+## Where things stand (2026-10-14)
 
 **Milestone 1 is done**: a playable single-player slice, three nights on floor 1 (PROGRESS.md has
 the list). It was playtested twice by the `indie-dev-critic` agent and reviewed once by the
@@ -14,6 +14,12 @@ green baize tray, a shuffle and flip, a real wheel, scrolling reels), wins scale
 with coins and a flash, and the static room bed became lounge music (DECISIONS #60-#64). The wheel
 takes Gamble With Your Friends' spectacle, not its art (#62, the owner's request, flagged). Ask the
 owner how it feels next: the timings live in `src/data/feel.ts`.
+
+**2026-10-14, a beautiful first floor**: the owner's bigger plan (PLAN.md, "The owner's direction":
+a house hub, a computer shop with postal delivery, a car, floors unlocked by money, new games) starts
+with floor 1 as three rooms by risk, a crowd of 52, and a bar with drinks that make you drunk
+(DECISIONS #65-#68). The milestone order and the not-list bent at the owner's word (written down in
+DECISIONS). Next in the owner's order: **the house** (ROADMAP, "The owner's plan").
 
 ## Waiting on the owner (ask before touching; CLAUDE.md's "ask before" list)
 
@@ -30,7 +36,8 @@ owner how it feels next: the timings live in `src/data/feel.ts`.
 
 ## Next (in order)
 
-1. Settle the owner's calls above; re-run `npx vitest run tests/pace.test.ts` after any number moves
+1. The house (ROADMAP, "The owner's plan"): specify it in DESIGN.md first (what the computer
+   sells, with what money, when the post arrives), then build. Also settle the owner's calls above; re-run `npx vitest run tests/pace.test.ts` after any number moves
    and write the derivation in DESIGN.md first.
 2. The design review's open items that are ours to decide (none started): team marks that push you
    to another tier (Cold Deck → mid payouts −15%; replace Blackout, a near no-op); upgrades bought
@@ -50,7 +57,7 @@ owner how it feels next: the timings live in `src/data/feel.ts`.
 - `npm run typecheck`, `npm test` (29 tests, ~10 s: sim, data validation, the pace tests on 200
   seeds, the songs compile), `npm run build`.
 - With a dev server up: `npm run e2e` (smoke: a whole night into night 2), `npm run screens`
-  (23 surfaces, overlap audit), `npm run shots` (door, Hi-Lo, the Collector, 0:00), `npm run perf`,
+  (25 surfaces, overlap audit), `npm run shots` (door, Hi-Lo, the Collector, 0:00, lounge, back room), `npm run perf`,
   `node e2e/palette.mjs`, `node e2e/coverage.mjs`. They drive Chrome if installed, else **Edge**
   (this PC), headless with SwiftShader (Playwright 1.63; 1.48 can't start Edge 155). From Claude's
   tool sandbox they need the sandbox off. Output in `e2e/out/` (ignored by git). For long sweeps or a
@@ -72,8 +79,10 @@ owner how it feels next: the timings live in `src/data/feel.ts`.
   economy, stats).
 - `src/data/`: palette, tables, floors, economy, marks, charms (and upgrades), wheels, circuit.
   Every number names its DESIGN.md section; `tests/data.test.ts` enforces it.
-- `src/render3d/`: view (renderer, selective bloom at half size, letterbox scaling), pixelpass,
-  room (incl. the Collector's screen and `setMidnight`), textures, fpcam.
+- `src/render3d/`: view (renderer, selective bloom at half size, letterbox scaling, the drunk pass),
+  pixelpass, room (three rooms grouped for visibility, `lightRooms`, `update` for the roulette and
+  slot screens, the Collector's screen and `setMidnight`), npcs (the crowd), textures, fpcam.
+- `src/data/floors.ts`: rooms, doorways, props, NPC spots and colliders; `src/data/drinks.ts`.
 - `src/panels/`: `panel.ts` (redraw policy, sound hook), `table.ts` (the shared odds block, the
   win/loss celebration), `games.ts` (the six tables and their animations), `fx.ts` (dice, trays,
   sparkles), `collector.ts` (choice, Circuit, wheels, summary), `view.ts` (read-only state helpers).

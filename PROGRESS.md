@@ -2,6 +2,28 @@
 
 What is built. Newest first.
 
+## 2026-10-14 — A beautiful first floor (the owner's direction)
+
+The owner set a bigger plan (PLAN.md, "The owner's direction"; ROADMAP): a house before the casino,
+floors unlocked by money with new games, rooms by risk, a living crowd, a bar. Built now, floor 1
+(DECISIONS #65-#68):
+
+- **Three rooms**: THE FLOOR (entrance, the Bandit and Twenty-One, the bar, the cage, slot banks,
+  a slot carousel round a jackpot tower, a spinning roulette wheel, card tables, chandeliers,
+  marble pillars, an indigo-and-gold carpet, cream damask, a coffered ceiling, a VIG sign over the
+  door); THE LOUNGE through the left arch (Hi-Lo, the Wheel, booths, a piano, craps, pink coves);
+  THE BACK ROOM through the right arch (Red Line, Dead Man's Hand and the Collector under bare bulbs,
+  dark planks, smoke). Ten new textures and three signs (`pixel-art/vig-room/build.py`).
+- **A crowd of 52** (`src/render3d/npcs.ts`): slot and table players, dealers, a bartender,
+  drinkers, smokers, a pianist, walkers, and railbirds who turn to watch you and cheer or groan at
+  your results. Presentation only; one instanced draw.
+- **The bar**: E at the counter; four drinks ($40-$500) for a buzz up to 180 s: the picture swims
+  and doubles, the camera sways, your walk wanders. DRUNK EFFECTS: FULL / MILD in settings. New
+  command `order`, event `drank` (DESIGN.md §10).
+- Perf held at 19-20 fps headless, 52 draw calls (rooms you can't see aren't drawn).
+- 29 tests; e2e 13/13; screens 25 surfaces, 0 issues; shots (door, lounge, back room, floor) clean.
+  Pace: all §8 lessons hold; Red Line's edge over the mid rotation is now a tie (watched in §8).
+
 ## 2026-10-13 — The feel pass (after the owner's playtest)
 
 The owner: "gambling games need to be engaging and grabbing", the room had "a constant static

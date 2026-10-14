@@ -25,8 +25,10 @@ export class CollectorPanel extends Panel {
   }
 
   protected animating(v: PanelView) {
+    // on the floor it shows a clock: the once-a-second redraw covers it (a canvas upload every frame
+    // stalls a software renderer: DECISIONS #68)
     const s = v.state;
-    return s.phase === 'floor' || s.phase === 'midnight' || s.phase === 'wheel' || s.phase === 'circuit';
+    return s.phase === 'midnight' || s.phase === 'wheel' || s.phase === 'circuit';
   }
 
   protected draw(ui: UI, v: PanelView) {

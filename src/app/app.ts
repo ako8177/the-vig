@@ -10,8 +10,9 @@ import type { Command } from '../sim/commands';
 import type { SimEvent } from '../sim/events';
 import { TICKS_PER_S } from '../sim/state';
 import { OPEN_TABLES } from '../sim/systems/tables';
-import { atCage, cantBuy, slotsOf } from '../sim/systems/cage';
-import { FLOOR_1, USE_RADIUS } from '../data/floors';
+import { atBar, atCage, cantBuy, cantOrder, slotsOf } from '../sim/systems/cage';
+import { BUZZ, DRINKS, DRINK_BY_ID, type DrinkId } from '../data/drinks';
+import { FLOOR_1, USE_RADIUS, roomAt } from '../data/floors';
 import { TABLE_BY_ID, minBet } from '../data/tables';
 import { CHARMS, UPGRADES, CHARM_BY_ID, UPGRADE_BY_ID, type CharmId, type UpgradeId } from '../data/charms';
 import { MARK_BY_ID } from '../data/marks';
@@ -22,6 +23,7 @@ import { activePalette, C, TIER_NAME, TIER_ROLE, type PaletteId } from '../data/
 import { View3D, type PassToggles } from '../render3d/view';
 import { Textures } from '../render3d/textures';
 import { buildRoom, recolorNeon, setMidnight, type Room } from '../render3d/room';
+import { Crowd } from '../render3d/npcs';
 import { FirstPerson } from '../render3d/fpcam';
 import { Hud, HUD_W, HUD_H, type HudAction, type Lesson, type Meta, type Screen, type Settings, type Toast } from '../hud/hud';
 import { BanditPanel, DeadManPanel, HiLoPanel, RedLinePanel, TwentyOnePanel, WheelPanel } from '../panels/games';
@@ -35,7 +37,7 @@ import type { Pointer } from '../ui/ui';
 const ME = 0;
 const BASE_SENS = 0.0022;
 
-const DEFAULT_SETTINGS: Settings = { sens: 1, invert: false, master: 0.8, music: 0.6, sfx: 0.8, scaling: 'auto', bloom: true };
+const DEFAULT_SETTINGS: Settings = { sens: 1, invert: false, master: 0.8, music: 0.6, sfx: 0.8, scaling: 'auto', bloom: true, drunkFx: 'full' };
 const DEFAULT_META: Meta = { upgrades: [], runs: 0, wins: 0, bestNight: 0, lessons: [] };
 
 /** localStorage can be missing or throw (private windows, blocked storage): the game plays without it. */
@@ -73,6 +75,8 @@ export class App {
   readonly view: View3D;
   readonly tex: Textures;
   room: Room;
+  /** the people in the casino (presentation only: DECISIONS #66) */
+  crowd: Crowd;
   game: Game;
   readonly fp = new FirstPerson();
   readonly hud: Hud;
@@ -87,6 +91,7 @@ export class App {
   /** a lock request the browser refused (it holds the mouse back for ~1 s after Esc) */
   relock = false;
   cageOpen = false;
+  barOpen = false;
   /** a yes/no card on screen (calling the night) */
   confirm: { title: string; lines: string[]; yes: string } | null = null;
   /** the stand-up came from Esc: don't grab the mouse back (no user gesture) */
@@ -102,6 +107,8 @@ export class App {
   private prev = { x: 0, z: 0 };
   private wasLocked = false;
   private titleT = 0;
+  /** the room the camera was last in (a doorway is in none) */
+  private lastRoom: string = 'floor';
   /** seconds to the next distant win across the floor */
   private ambientIn = 6;
   /** the camera's shake (a jackpot), decaying */
@@ -115,6 +122,7 @@ export class App {
     this.view = new View3D(canvas);
     this.tex = new Textures(activePalette);
     this.room = buildRoom(this.view.scene, FLOOR_1, this.tex);
+    this.crowd = new Crowd(this.view.scene, FLOOR_1);
     this.hud = new Hud(hudCanvas);
     this.hud.ui.sfx = (id) => this.audio.sfx(id);
     this.game = new Game({ seed: 1, upgrades: this.meta.upgrades });
@@ -178,7 +186,7 @@ export class App {
 
   /** Walking the floor, mouse free: a click should take the mouse. */
   private wantsLock() {
-    return this.screen === 'game' && this.game.state.phase === 'floor' && !this.fp.seated && !this.cageOpen && !this.confirm && !this.input.locked;
+    return this.screen === 'game' && this.game.state.phase === 'floor' && !this.fp.seated && !this.cageOpen && !this.barOpen && !this.confirm && !this.input.locked;
   }
 
   private resetCamera() {
@@ -251,7 +259,14 @@ export class App {
     const walking = s.phase === 'floor' && !this.fp.seated && !this.cageOpen;
     const fwd = walking ? (i.isDown('forward') ? 1 : 0) - (i.isDown('back') ? 1 : 0) : 0;
     const strafe = walking ? (i.isDown('right') ? 1 : 0) - (i.isDown('left') ? 1 : 0) : 0;
-    const w = this.fp.walk(fwd, strafe);
+    let w = this.fp.walk(fwd, strafe);
+    // a drunk's feet wander: the walk turns a little, back and forth (input-side; the sim sees moves)
+    const dk = this.drunkness();
+    if (dk > 0 && (w.mx || w.mz)) {
+      const a = Math.sin(this.game.tick / 37) * 0.45 * dk + Math.sin(this.game.tick / 13) * 0.15 * dk;
+      const c = Math.cos(a), sn = Math.sin(a);
+      w = { mx: Math.round(w.mx * c - w.mz * sn), mz: Math.round(w.mx * sn + w.mz * c) };
+    }
     const yaw = Math.round(this.fp.yaw * 1000);
     const sm = this.sentMove;
     if (s.phase === 'floor' && (w.mx !== sm.mx || w.mz !== sm.mz || (Math.abs(yaw - sm.yaw) > 20 && (w.mx || w.mz)))) {
@@ -300,6 +315,11 @@ export class App {
           if (!mine) break;
           const o = e.outcome;
           const net = o.ret - o.bet;
+          // the railbirds (and, for a big result, the room) react
+          {
+            const pl = FLOOR_1.tables.find((x) => x.table === o.table);
+            if (pl && net !== 0) this.crowd.react(o.table, net > 0, Math.abs(net) >= FEEL.bigWin || !!o.lifeLost, pl.stand);
+          }
           if (net > 0) {
             // a win should feel like one: the bigger it is, the more the room shows it (DECISIONS #63)
             const jackpot = net >= FEEL.jackpot || (o.table === 'bandit' && o.reels?.every((r) => r === 0));
@@ -364,6 +384,7 @@ export class App {
           break;
         case 'midnight':
           this.cageOpen = false;
+          this.barOpen = false;
           this.confirm = null;
           this.banner = { text: '0:00', sub: 'THE COLLECTOR CALLS YOU TO HIS TABLE.', color: C.collHi, t: 2.5 };
           a.sfx('midnight');
@@ -409,6 +430,11 @@ export class App {
             if (!this.meta.upgrades.includes(e.item as UpgradeId)) this.meta.upgrades.push(e.item as UpgradeId);
             save('vig.meta', this.meta);
           }
+          break;
+        case 'drank':
+          if (e.player !== ME) break;
+          a.sfx('pour');
+          this.toast(`${DRINK_BY_ID.get(e.drink as DrinkId)!.name.toUpperCase()}. CHEERS.`, C.pinkHi);
           break;
         case 'overclock':
           if (e.player === ME) this.toast('OVERCLOCKED: STAKES AND WINS x2 FOR THE FIRST 60 S OF THE NIGHT', C.gold);
@@ -471,6 +497,8 @@ export class App {
         case 'resume': this.input.lock(); break;
         case 'buy': this.send({ t: 'buy', item: a.item }); break;
         case 'closeCage': this.closeCage(); break;
+        case 'closeBar': this.closeBar(); break;
+        case 'order': this.send({ t: 'order', drink: a.drink }); break;
         case 'confirm':
           this.confirm = null;
           if (a.yes) this.send({ t: 'callit' });
@@ -519,6 +547,23 @@ export class App {
     this.input.lock();
   }
 
+  private openBar() {
+    this.barOpen = true;
+    this.input.unlock();
+    this.audio.sfx('click');
+  }
+
+  private closeBar() {
+    this.barOpen = false;
+    this.input.lock();
+  }
+
+  /** How drunk you look, 0..1 (the setting can soften it). */
+  private drunkness(): number {
+    const d = this.me().drunk / (BUZZ.fullS * TICKS_PER_S);
+    return Math.min(1, d) * (this.settings.drunkFx === 'mild' ? 0.35 : 1);
+  }
+
   private frame(dt: number, alpha: number) {
     const i = this.input;
     const s = this.game.state;
@@ -526,12 +571,14 @@ export class App {
 
     if (inGame && s.phase === 'floor') {
       // Esc while walking: the browser drops pointer lock; we pause (THREEJS-NOTES rule 2)
-      if (this.wasLocked && !i.locked && !this.fp.seated && !this.cageOpen && !this.confirm) this.paused = true;
-      if (i.lockFailed && !i.locked && !this.fp.seated && !this.cageOpen) this.relock = true;
+      if (this.wasLocked && !i.locked && !this.fp.seated && !this.cageOpen && !this.barOpen && !this.confirm) this.paused = true;
+      if (i.lockFailed && !i.locked && !this.fp.seated && !this.cageOpen && !this.barOpen) this.relock = true;
       const l = i.takeLook();
       if (i.locked) this.fp.look(l.dx, this.settings.invert ? -l.dy : l.dy);
       if (this.cageOpen) {
         if (i.wasPressed('interact') || i.wasPressed('pause')) this.closeCage();
+      } else if (this.barOpen) {
+        if (i.wasPressed('interact') || i.wasPressed('pause')) this.closeBar();
       } else if (this.confirm) {
         if (i.wasPressed('pause')) this.confirm = null;
       } else if (this.fp.seated) {
@@ -543,6 +590,7 @@ export class App {
         const t = this.reachable();
         if (t) this.send({ t: 'sit', table: t });
         else if (atCage(this.me())) this.openCage();
+        else if (atBar(this.me())) this.openBar();
         else if (this.atCollectorTable()) this.askCallIt();
       }
     } else i.takeLook();
@@ -565,19 +613,47 @@ export class App {
     const p = this.me();
     if (this.screen === 'title' || this.screen === 'howto' || (this.screen === 'settings' && !this.started)) {
       this.titleT += dt;
-      this.fp.yaw = Math.sin(this.titleT * 0.12) * 0.35;
-      this.fp.pitch = 0.04;
-      this.fp.snap(this.view.camera, 0, 7.2);
+      // the title looks in from just inside the entrance, slowly taking in the floor
+      this.fp.yaw = Math.sin(this.titleT * 0.12) * 0.45;
+      this.fp.pitch = 0.08;
+      this.fp.snap(this.view.camera, FLOOR_1.spawn.x, FLOOR_1.spawn.z);
     } else {
       const x = this.prev.x + (p.x - this.prev.x) * alpha;
       const z = this.prev.z + (p.z - this.prev.z) * alpha;
       this.fp.apply(this.view.camera, x, z, dt);
     }
 
+    // the bar's work: the picture swims and the camera sways (less when seated: the panel must read)
+    {
+      const dk = inGame ? this.drunkness() : 0;
+      const tt = performance.now() / 1000;
+      this.view.setDrunk(dk * (this.fp.seated ? 0.45 : 1), tt);
+      if (dk > 0) {
+        const k = this.fp.seated ? 0.35 : 1;
+        this.view.camera.rotateZ(Math.sin(tt * 0.9) * 0.06 * dk * k);
+        this.view.camera.position.y += Math.sin(tt * 1.7) * 0.04 * dk * k;
+      }
+    }
     // the 0:00 drop
     const dark = inGame && s.phase !== 'floor' ? 1 : 0;
     this.dark += (dark - this.dark) * Math.min(1, dt * 1.5);
     setMidnight(this.room, this.dark);
+    this.room.update(dt, performance.now() / 1000);
+    // light the room you're in, and the one through an arch when you're near it (DECISIONS #68)
+    {
+      const cam = this.view.camera.position;
+      const here = roomAt(FLOOR_1, cam.x, cam.z)?.id ?? this.lastRoom;
+      this.lastRoom = here;
+      const lit = new Set<string>([here]);
+      // through an arch you see the next room once you're within 9 m of it; farther, it's a dark doorway
+      for (const dw of FLOOR_1.doorways) if (Math.hypot(cam.x - dw.x, cam.z - dw.z) < 9) lit.add(dw.to).add('floor');
+      this.room.lightRooms(lit);
+    }
+    {
+      const seatAt = inGame && p.seat ? FLOOR_1.tables.find((x) => x.table === p.seat) : undefined;
+      const camPos = this.view.camera.position;
+      this.crowd.update(dt, performance.now() / 1000, seatAt ? { table: seatAt.table, x: seatAt.stand.x, z: seatAt.stand.z } : null, { x: camPos.x, z: camPos.z });
+    }
     // the music dips at 0:00; somewhere across the floor, now and then, another machine pays
     this.audio.mood(this.screen === 'game' ? 1 - 0.65 * this.dark : 0.8);
     if (inGame && s.phase === 'floor' && this.started && !this.paused) {
@@ -622,15 +698,16 @@ export class App {
     }
 
     // the HUD
-    const near = inGame && s.phase === 'floor' && !this.fp.seated && this.started && !this.cageOpen;
+    const near = inGame && s.phase === 'floor' && !this.fp.seated && this.started && !this.cageOpen && !this.barOpen;
     const t = near ? this.reachable() : null;
     const cagePrompt = near && !t && atCage(p) ? { title: 'E  THE CAGE', odds: `CHARMS AND UPGRADES FOR MARKERS  (${s.markers} ${'\u0013'})`, color: C.marker }
-      : near && !t && this.atCollectorTable() ? { title: 'E  CALL IT', odds: 'END THE NIGHT NOW: THE COLLECTOR COMES AT ONCE', color: C.coll } : null;
+      : near && !t && this.atCollectorTable() ? { title: 'E  CALL IT', odds: 'END THE NIGHT NOW: THE COLLECTOR COMES AT ONCE', color: C.coll }
+      : near && !t && atBar(p) ? { title: 'E  THE BAR', odds: 'DRINKS FOR CASH. THEY HIT THE SCREEN.', color: C.pinkHi } : null;
     // nothing left to bet: say where to go (critic F1)
     if (inGame && s.phase === 'floor' && this.started && s.bank < 100 && !Object.values(s.tables).some((x) => x.pending)) this.teach('broke');
     const b = this.view.box.css;
     const hp: Pointer = { x: ((i.mouse.x - b.x) / b.w) * HUD_W, y: ((i.mouse.y - b.y) / b.h) * HUD_H, down: i.mouse.down[0], pressed: i.mouse.pressed[0] };
-    const overlay = this.screen === 'game' && s.phase === 'floor' && !this.fp.seated && !this.cageOpen
+    const overlay = this.screen === 'game' && s.phase === 'floor' && !this.fp.seated && !this.cageOpen && !this.barOpen
       ? (!this.started ? 'enter' : this.relock ? 'relock' : this.paused ? 'paused' : null)
       : null;
     const acts = this.hud.draw(
@@ -639,6 +716,7 @@ export class App {
         seated: this.fp.seated, atCollector: atColl,
         prompt: t ? this.promptFor(t) : cagePrompt,
         overlay: this.confirm ? null : overlay, confirm: this.confirm, cage: inGame && s.phase === 'floor' ? this.cageView() : null,
+        bar: inGame && s.phase === 'floor' ? { open: this.barOpen, why: new Map(DRINKS.map((d) => [d.id, cantOrder(this.game, p, d.id)])) } : null,
         toasts: this.toasts, lesson: this.lesson, banner: this.banner, settings: this.settings, meta: this.meta, dark: this.dark,
       },
       hp, dt, i,
@@ -707,6 +785,7 @@ export class App {
   dispose() {
     this.loop.stop();
     this.room.dispose();
+    this.crowd.dispose();
     this.view.invalidateGlow();
     for (const { tex, mesh } of this.panels.values()) {
       tex.dispose();
