@@ -64,7 +64,8 @@ export class Chatter {
     this.filter.type = 'lowpass';
     this.filter.frequency.value = 1700;
     this.bus = ctx.createGain();
-    this.bus.gain.value = 0.9;
+    // measured: 3.5 puts a group you stand beside a few dB under the music (DECISIONS #78)
+    this.bus.gain.value = 3.5;
     this.filter.connect(this.bus);
     this.bus.connect(this.audio.sfxBus);
     for (const g of this.groups) {
