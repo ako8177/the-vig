@@ -7,16 +7,25 @@ bleed you, the risky ones pay, and the price of losing climbs from money to mark
 
 **Play the current build: https://ako8177.github.io/the-vig/**
 (Chrome, Edge or Firefox on a PC. NEW RUN, then click to step onto the floor; WASD walk, mouse look,
-E to sit at a table or open the cage, E or Esc to stand. Make the quota by 0:00.)
+E to sit at a table, open the cage or order at the bar, E or Esc to stand. Make the quota by 0:00.)
 
 ## Where it's at
 
 Milestone 1 is done: a playable single-player slice. Three six-minute nights on floor 1, six tables
 with printed odds (the Bandit, Twenty-One, Hi-Lo Dice, the Wheel of Marks, Red Line, Dead Man's
 Hand), marks, lives, the cage (charms and permanent upgrades), the Collector at 0:00 (pay, or
-gamble on the Circuit for the Boon or the Bane), and a results screen. Placeholder models; no
-co-op yet (Milestone 3, after the Milestone 2 gate). See `ROADMAP.md` for the plan and
-`PROGRESS.md` for what exists.
+gamble on the Circuit for the Boon or the Bane), and a results screen. Since then:
+
+- **The feel pass**: every table animates (dice on green baize, a shuffle and flip, a real wheel,
+  scrolling reels); wins scale up to BIG WIN and JACKPOT; lounge music.
+- **A beautiful first floor**: three rooms by risk. THE FLOOR (low tables, slot banks, a jackpot
+  carousel, roulette, the bar, the cage), THE LOUNGE (mid tables) and THE BACK ROOM (high tables
+  and the Collector). A crowd of 52 plays, drinks, smokes and watches you; the bar's drinks make
+  you drunk (a MILD setting softens it).
+
+Next, the owner's plan: a house before the casino (a computer shop for charms, delivered by post,
+a car to drive there), then more floors unlocked by money with new games. No co-op yet. See
+`ROADMAP.md` for the plan and `PROGRESS.md` for what exists.
 
 ## Run it on your own PC
 
