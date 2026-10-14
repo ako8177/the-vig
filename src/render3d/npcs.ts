@@ -371,8 +371,8 @@ export class Crowd {
       box(16, J.knR, 0, -LEG.shin / 2, 0, 0.12, LEG.shin, 0.13);
       box(17, J.knL, 0, -LEG.shin - LEG.foot / 2, -0.045, 0.12, LEG.foot, 0.23);
       box(18, J.knR, 0, -LEG.shin - LEG.foot / 2, -0.045, 0.12, LEG.foot, 0.23);
-      // a card player brings a chair (room.ts's card tables have none of their own)
-      const chair = role === 'table' ? 1 : 0;
+      // a seated card player brings a chair (room.ts's card tables have none); craps is played standing
+      const chair = role === 'table' && seated ? 1 : 0;
       box(19, J.root, 0, seatTop - 0.03, -0.08, 0.44 * chair, 0.06 * chair, 0.42 * chair);
       box(20, J.root, 0, (seatTop - 0.06) / 2, -0.08, 0.06 * chair, (seatTop - 0.06) * chair, 0.06 * chair);
 

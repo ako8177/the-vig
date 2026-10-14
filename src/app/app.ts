@@ -23,6 +23,8 @@ import { activePalette, C, TIER_NAME, TIER_ROLE, type PaletteId } from '../data/
 import { View3D, type PassToggles } from '../render3d/view';
 import { Textures } from '../render3d/textures';
 import { buildRoom, recolorNeon, setMidnight, type Room } from '../render3d/room';
+import { TablePlay } from '../render3d/tableplay';
+import { Chatter } from './chatter';
 import { Crowd } from '../render3d/npcs';
 import { FirstPerson } from '../render3d/fpcam';
 import { Hud, HUD_W, HUD_H, type HudAction, type Lesson, type Meta, type Screen, type Settings, type Toast } from '../hud/hud';
@@ -77,6 +79,9 @@ export class App {
   room: Room;
   /** the people in the casino (presentation only: DECISIONS #66) */
   crowd: Crowd;
+  /** the crowd's own games on the felt, and their talk (DECISIONS #78) */
+  tablePlay: TablePlay;
+  chatter: Chatter;
   game: Game;
   readonly fp = new FirstPerson();
   readonly hud: Hud;
@@ -123,10 +128,12 @@ export class App {
     this.tex = new Textures(activePalette);
     this.room = buildRoom(this.view.scene, FLOOR_1, this.tex);
     this.crowd = new Crowd(this.view.scene, FLOOR_1);
+    this.tablePlay = new TablePlay(this.view.scene, FLOOR_1);
     this.hud = new Hud(hudCanvas);
     this.hud.ui.sfx = (id) => this.audio.sfx(id);
     this.game = new Game({ seed: 1, upgrades: this.meta.upgrades });
     defineSounds(this.audio);
+    this.chatter = new Chatter(this.audio, FLOOR_1);
     for (const p of [new BanditPanel(), new TwentyOnePanel(), new HiLoPanel(), new WheelPanel(), new RedLinePanel(), new DeadManPanel(), new CollectorPanel()]) this.mountPanel(p);
     this.applySettings();
     this.resetCamera();
@@ -651,6 +658,9 @@ export class App {
       const yaw = this.view.camera.rotation.y;
       this.crowd.update(dt, performance.now() / 1000, seatAt ? { table: seatAt.table, x: seatAt.stand.x, z: seatAt.stand.z } : null,
         { x: cam.x, z: cam.z, fx: -Math.sin(yaw), fz: -Math.cos(yaw) }, lit);
+      // the crowd's games: a card or a chip landing near you is heard, softer with distance
+      for (const h of this.tablePlay.update(dt, performance.now() / 1000, lit, { x: cam.x, z: cam.z })) this.audio.sfx(h.sound, 0.45 * (1 - h.dist / 6), 0.9 + Math.random() * 0.2);
+      this.chatter.update({ x: cam.x, z: cam.z, yaw }, lit, this.dark);
     }
     // the music dips at 0:00; somewhere across the floor, now and then, another machine pays
     this.audio.mood(this.screen === 'game' ? 1 - 0.65 * this.dark : 0.8);
@@ -784,6 +794,7 @@ export class App {
     this.loop.stop();
     this.room.dispose();
     this.crowd.dispose();
+    this.tablePlay.dispose();
     this.view.invalidateGlow();
     for (const { tex, mesh } of this.panels.values()) {
       tex.dispose();

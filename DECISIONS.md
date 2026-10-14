@@ -182,3 +182,14 @@ inspirations: the ideas are taken, never their names, numbers or art).
   every table +5%; sized so a whole buzz spent at that tier about pays the drink back (DESIGN.md
   §10). Replaces #67's "a drink buys nothing but the feeling". It is not a charm (no slot, no
   markers, one system plus the screen swimming), so pillar 3 doesn't bind it.
+- #78 2026-10-14: **The crowd plays, and talks** (the owner: "lets get them actually playing, maybe
+  some background noise emulating talking when passing by groups of people"). Presentation only:
+  every decorative table with players runs its game on a loop (render3d/tableplay.ts): the card
+  tables deal, hit, turn the hole card and pay or take; the back room's poker deals hole cards, a
+  flop, a turn, a river and pushes the pot; the craps shooter throws two dice the length of the
+  table; roulette fills its layout and a ball rides the wheel and drops. Four instanced draws for
+  the floor; a table in an unseen room isn't drawn; cards and chips landing within 6 m are heard.
+  The static chip columns on the felt are gone (the bets are live now). Craps players stand.
+  The talk (app/chatter.ts) is synthesized, no recordings: each cluster of people gets two or
+  three voices (a buzz through two vowel formants, syllables and phrases, the odd laugh), muffled,
+  heard within 9 m, panned to where they stand, hushed at 0:00. On the SFX volume.

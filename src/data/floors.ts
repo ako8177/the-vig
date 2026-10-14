@@ -266,8 +266,8 @@ const npcs: NpcSpot[] = [
     return { role: 'slots', x: Math.sin(a) * r, z: 5.6 + Math.cos(a) * r, yaw: a, seated: true, room: 'floor' };
   }),
   // THE LOUNGE
-  { role: 'table', x: -8.4, z: -11.8, yaw: N, seated: true, room: 'lounge' },
-  { role: 'table', x: -6, z: -11.8, yaw: N, seated: true, room: 'lounge' },
+  { role: 'table', x: -8.4, z: -11.75, yaw: N, seated: false, room: 'lounge' },
+  { role: 'table', x: -6, z: -11.75, yaw: N, seated: false, room: 'lounge' },
   { role: 'dealer', x: -7.2, z: -14.2, yaw: S, seated: false, room: 'lounge' },
   { role: 'booth', x: -12.9, z: -4.4, yaw: Wd, seated: true, room: 'lounge' },
   { role: 'booth', x: -12.9, z: -5.8, yaw: Wd, seated: true, room: 'lounge' },

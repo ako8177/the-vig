@@ -385,8 +385,6 @@ export function buildRoom(scene: Scene, floor: Floor, tx: Textures): Room {
   }
 
   // ---------------------------------------------------------------- decorations
-  const chipsGeo = keep(new CylinderGeometry(0.035, 0.035, 0.08, 8));
-  const chipMats = [C.pinkHi, C.marker, C.white, C.ink, C.teal].map((r) => lambert(null, hexOf(r)));
   const crystal: { x: number; y: number; z: number; big: boolean }[] = [];
   for (const p of floor.props) buildProp(p);
 
@@ -407,12 +405,7 @@ export function buildRoom(scene: Scene, floor: Floor, tx: Textures): Room {
       add(new BoxGeometry(w + 0.04, 0.08, 0.08), flat(C.woodLo), p.x, 0.9, p.z + d / 2, 'decorim');
       add(new BoxGeometry(w + 0.04, 0.08, 0.08), flat(C.woodLo), p.x, 0.9, p.z - d / 2, 'decorim');
     }
-    // stacks of chips on the felt
-    for (let i = 0; i < 6; i++) {
-      const cx = p.x + (((i * 37) % 10) / 10 - 0.5) * (w * 0.6), cz = p.z + (((i * 53) % 10) / 10 - 0.5) * (d * 0.5);
-      const h = 1 + (i % 3);
-      for (let k = 0; k < h; k++) add(chipsGeo.clone(), chipMats[(i + k) % chipMats.length], cx, 0.93 + k * 0.08, cz, 'chips');
-    }
+    // the chips on the felt are the crowd's own bets now, moving with their game (tableplay.ts)
   }
 
   function buildProp(p: Prop) {
