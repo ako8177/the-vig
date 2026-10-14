@@ -12,7 +12,7 @@ import { blackoutLeft, lossTextOf } from './view';
 import { ICON } from '../ui/font';
 import { BAR, CELLS, GRID, PAYS, STAR, SEVEN, STRIP, gridPays } from '../sim/tables/bandit';
 import { WHEEL_COUNT, WHEEL_LAYOUT, WHEEL_PAYS, WHEEL_SLOTS, type WheelColor } from '../sim/tables/wheel';
-import { handValue } from '../sim/tables/twentyone';
+import { RESHUFFLE_AT, SHOE_SIZE, handValue, options } from '../sim/tables/twentyone';
 import { hiloMarkSOf, streakLimitOf, streakRisk } from './view';
 import type { Card, Outcome } from '../sim/state';
 import { HILO_MARK } from '../data/marks';
@@ -129,10 +129,11 @@ const CW = 30, CH = 20;
 // ---------------------------------------------------------------- Twenty-One
 
 export class TwentyOnePanel extends TablePanel {
-  /** cards on the cloth so far: the rest are still coming out of the shoe, one every FEEL.deal.gap */
-  private seenP = 0;
+  /** cards on the cloth so far, per hand and the dealer's: the rest are still coming out of the
+   *  shoe, one every FEEL.deal.gap */
+  private seenH: number[] = [];
   private seenD = 0;
-  /** the dealer's hole card turned over; when the last card came down (s); a hand in play last frame */
+  /** the dealer's hole card turned over; when the last card came down (s); a round in play last frame */
   private holeUp = false;
   private lastAt = -1e9;
   private live = false;
@@ -146,24 +147,25 @@ export class TwentyOnePanel extends TablePanel {
     return super.animating(v) || this.dealing(v);
   }
 
-  /** The hands the cards are heading for: the one in play (hole down) or the last settled. */
-  private target(v: PanelView): { player: Card[]; dealer: Card[]; hole: boolean } | null {
+  /** The hands the cards are heading for: the round in play (hole down) or the last settled. */
+  private target(v: PanelView): { hands: Card[][]; dealer: Card[]; hole: boolean; active: number; bets: number[] } | null {
     const hand = this.tableState(v).hand;
-    if (hand && hand.stage === 'play') return { player: hand.player, dealer: hand.dealer, hole: true };
+    if (hand && hand.stage === 'play') return { hands: hand.hands.map((h) => h.cards), dealer: hand.dealer, hole: true, active: hand.active, bets: hand.hands.map((h) => h.bet) };
     const { o } = this.shown(v);
-    if (o?.player21) return { player: o.player21, dealer: o.dealer21!, hole: false };
+    if (o?.hands21) return { hands: o.hands21.map((h) => h.cards), dealer: o.dealer21!, hole: false, active: -1, bets: o.hands21.map((h) => h.bet) };
     return null;
   }
 
   private dealing(v: PanelView) {
     const t = this.target(v);
-    return !!t && (this.seenP < t.player.length || this.seenD < t.dealer.length || (!t.hole && !this.holeUp));
+    return !!t && (t.hands.some((h, i) => (this.seenH[i] ?? 0) < h.length) || this.seenD < t.dealer.length || (!t.hole && !this.holeUp));
   }
 
   /**
-   * Bring the cloth up to the hand, one card at a time: the deal goes you, dealer, you, dealer (face
-   * down); a hit slides in; at the stand the hole card turns over, then the dealer draws. Each card
-   * snaps down with a sound, so a hand you can't see is one you can hear.
+   * Bring the cloth up to the round, one card at a time: the deal goes you, dealer, you, dealer
+   * (face down); a hit or a double slides in; a split parts the pair and each hand gets its card;
+   * at the stand the hole card turns over, then the dealer draws. Each card snaps down with a
+   * sound, so a hand you can't see is one you can hear.
    */
   private step(v: PanelView) {
     const ts = this.tableState(v);
@@ -171,24 +173,33 @@ export class TwentyOnePanel extends TablePanel {
     const t = this.target(v);
     const now = v.tick / TICKS_PER_S;
     if (!this.started || !t) {
-      // a panel opening on a hand already dealt shows it as it is
+      // a panel opening on a round already dealt shows it as it is
       this.started = true;
-      this.seenP = t?.player.length ?? 0;
+      this.seenH = t ? t.hands.map((h) => h.length) : [];
       this.seenD = t?.dealer.length ?? 0;
       this.holeUp = !!t && !t.hole;
     } else if (live && !this.live) {
-      // a new hand: the chips go down, the cloth is cleared
-      this.seenP = this.seenD = 0;
+      // a new round: the chips go down, the cloth is cleared
+      this.seenH = [0];
+      this.seenD = 0;
       this.holeUp = false;
       this.lastAt = now - FEEL.deal.gap * 0.6;
       this.sound('chips', 0.6);
     }
     this.live = live;
-    if (!t || now - this.lastAt < FEEL.deal.gap) return;
-    const opening = this.seenP < 2 || this.seenD < 2;
-    if (opening && this.seenP <= this.seenD && this.seenP < t.player.length) this.seenP++;
+    if (!t) return;
+    if (this.seenH.length < t.hands.length) {
+      // the split: the pair parts, one card to each hand, and a second stake goes down
+      this.seenH = t.hands.map((_, i) => (i === 0 ? Math.min(this.seenH[0] ?? 0, 1) : 1));
+      this.sound('chips', 0.5);
+    }
+    if (now - this.lastAt < FEEL.deal.gap) return;
+    const h0 = this.seenH[0] ?? 0;
+    const opening = t.hands.length === 1 && (h0 < 2 || this.seenD < 2);
+    const more = t.hands.findIndex((h, i) => (this.seenH[i] ?? 0) < h.length);
+    if (opening && h0 <= this.seenD && h0 < t.hands[0].length) this.seenH[0] = h0 + 1;
     else if (opening && this.seenD < t.dealer.length) this.seenD++;
-    else if (this.seenP < t.player.length) this.seenP++;
+    else if (more >= 0) this.seenH[more] = (this.seenH[more] ?? 0) + 1;
     else if (!t.hole && !this.holeUp && this.seenD >= 2) {
       this.holeUp = true;
       this.lastAt = now;
@@ -200,11 +211,12 @@ export class TwentyOnePanel extends TablePanel {
     this.sound('card', 1, 0.94 + Math.random() * 0.12);
   }
 
-  private row(ui: UI, label: string, cards: Card[], shown: number, hideHole: boolean, x: number, now: number, dealer: boolean) {
+  /** One hand's cards and its label; `gap` is the fan between cards. */
+  private row(ui: UI, label: string, cards: Card[], shown: number, hideHole: boolean, x: number, gap: number, now: number, dealer: boolean, col: number = C.dust) {
     const y = PLAY_Y + 14;
     const vis = cards.slice(0, shown);
     const total = handValue(hideHole ? vis.slice(0, 1) : vis).total;
-    ui.text(`${label} ${vis.length ? (hideHole && vis.length > 1 ? total + ' +?' : total) : ''}`, x, PLAY_Y + 2, C.dust);
+    ui.text(`${label} ${vis.length ? (hideHole && vis.length > 1 ? total + ' +?' : total) : ''}`, x, PLAY_Y + 2, col);
     const since = now - this.lastAt;
     vis.slice(0, 6).forEach((c, i) => {
       // the newest card drops onto the cloth; the hole card turns over edge-on
@@ -212,28 +224,38 @@ export class TwentyOnePanel extends TablePanel {
       const drop = newest ? Math.round((1 - clamp01(since / (FEEL.deal.gap * 0.7))) * -8) : 0;
       if (dealer && i === 1 && !hideHole && since < FEEL.deal.gap && this.holeUp && shown === 2) {
         const k = clamp01(since / (FEEL.deal.gap * 0.8));
-        drawCard(ui, x + i * 18, y, k < 0.5 ? null : c, 24 * Math.abs(Math.cos(k * Math.PI)));
+        drawCard(ui, x + i * gap, y, k < 0.5 ? null : c, 24 * Math.abs(Math.cos(k * Math.PI)));
         return;
       }
-      drawCard(ui, x + i * 18, y + drop, hideHole && i === 1 ? null : c);
+      drawCard(ui, x + i * gap, y + drop, hideHole && i === 1 ? null : c);
     });
   }
 
   protected drawPlay(ui: UI, v: PanelView) {
     this.step(v);
-    const hand = this.tableState(v).hand;
+    const ts = this.tableState(v);
     const t = this.target(v);
     const now = v.tick / TICKS_PER_S;
     if (t) {
-      this.row(ui, 'DEALER', t.dealer, this.seenD, !this.holeUp, 12, now, true);
-      this.row(ui, 'YOU', t.player, this.seenP, false, 168, now, false);
-      if (hand && hand.stage === 'play') ui.text(`BET ${money(hand.bet)}`, PANEL_W - 12, PLAY_Y + 2, C.gold, { align: 'right' });
+      this.row(ui, 'DEALER', t.dealer, this.seenD, !this.holeUp, 12, 18, now, true);
+      const two = t.hands.length > 1;
+      t.hands.forEach((cards, i) => {
+        // after a split the two hands sit side by side, fanned tighter; the one in play is gold
+        const x = two ? 160 + i * 80 : 168;
+        const label = two ? `${i + 1}:` : 'YOU';
+        const doubled = t.bets[i] > (ts.hand?.bet ?? t.bets[i]) ? ' x2' : '';
+        this.row(ui, label + doubled, cards, this.seenH[i] ?? 0, false, x, two ? 12 : 18, now, false, two && i === t.active ? C.gold : C.dust);
+      });
+      if (ts.hand && ts.hand.stage === 'play') ui.text(`BET ${money(t.bets.reduce((a, b) => a + b, 0))}`, PANEL_W - 12, PLAY_Y + 52, C.gold, { align: 'right' });
     } else {
       ui.text('PLACE A BET TO DEAL.', PANEL_W / 2, PLAY_Y + 24, C.dust, { align: 'center' });
       if (!this.dark(v)) ui.text('NATURAL (A + 10) PAYS 3:2. A WIN PAYS 1:1.', PANEL_W / 2, PLAY_Y + 36, C.ash, { align: 'center' });
     }
-    // the verdict waits for the last card
-    if (!this.dealing(v)) this.result(ui, v);
+    // the shoe: how deep it is, so a counter can count
+    const left = ts.shoe?.length ?? SHOE_SIZE;
+    ui.text(`SHOE: ${left} OF ${SHOE_SIZE} LEFT${left < RESHUFFLE_AT ? ', SHUFFLE NEXT' : ''}`, 12, PLAY_Y + 52, C.ash);
+    // the verdict waits for the last card, and the last round's goes once a new one is dealt
+    if (!this.dealing(v) && ts.hand?.stage !== 'play') this.result(ui, v);
   }
 
   protected drawControls(ui: UI, v: PanelView) {
@@ -241,8 +263,14 @@ export class TwentyOnePanel extends TablePanel {
     const tier = TIER_ROLE[this.def.tier];
     if (hand && hand.stage === 'play') {
       const off = !v.active || v.state.phase !== 'floor';
-      if (ui.button('hit', 70, CTRL_Y, 84, 20, 'HIT', { edge: tier.base, disabled: off, tip: 'Take a card.' })) this.send({ t: 'call', table: 'twentyone', call: 'hit' });
-      if (ui.button('stand', 166, CTRL_Y, 84, 20, 'STAND', { edge: tier.base, disabled: off, tip: 'The dealer draws to 17 (hits soft 17).' })) this.send({ t: 'call', table: 'twentyone', call: 'stand' });
+      const can = options(hand);
+      const cost = hand.hands[hand.active]?.bet ?? 0;
+      const short = v.state.bank < cost;
+      const call = (c: string) => this.send({ t: 'call', table: 'twentyone', call: c });
+      if (ui.button('hit', 12, CTRL_Y, 70, 20, 'HIT', { edge: tier.base, disabled: off, tip: 'Take a card.' })) call('hit');
+      if (ui.button('stand', 88, CTRL_Y, 70, 20, 'STAND', { edge: tier.base, disabled: off, tip: 'Stop here. The dealer draws to 17 (hits soft 17).' })) call('stand');
+      if (ui.button('double', 164, CTRL_Y, 70, 20, 'DOUBLE', { edge: tier.base, disabled: off || !can.double || short, tip: can.double ? `Stake ${money(cost)} more, take one card, stand.` : 'Only on your first two cards.' })) call('double');
+      if (ui.button('split', 240, CTRL_Y, 68, 20, 'SPLIT', { edge: tier.base, disabled: off || !can.split || short, tip: can.split ? `Stake ${money(cost)} more: two hands, one card each.` : 'Only a pair, once.' })) call('split');
       return;
     }
     [100, 200, 300].forEach((amount, i) => {

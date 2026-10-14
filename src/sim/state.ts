@@ -74,15 +74,27 @@ export interface Outcome {
   card?: Card;
   call?: string;
   slot?: number;
-  player21?: Card[];
+  /** Twenty-One: each of your hands (two after a split) and the dealer's */
+  hands21?: { cards: Card[]; bet: number; ret: number }[];
   dealer21?: Card[];
   streak?: number;
 }
 
-/** A Twenty-One hand in progress. */
-export interface Hand21 {
+/** One of your Twenty-One hands: its cards, its stake (doubled or not), finished or not. */
+export interface PlayerHand21 {
+  cards: Card[];
   bet: number;
-  player: Card[];
+  done: boolean;
+  /** a split ace: one card and it stands */
+  aces: boolean;
+}
+
+/** A Twenty-One round in progress: your hands (two after a split), the one in play, the dealer's. */
+export interface Hand21 {
+  /** the stake you dealt in with */
+  bet: number;
+  hands: PlayerHand21[];
+  active: number;
   dealer: Card[];
   /** 'play': your move; 'done': waiting for the result tick */
   stage: 'play' | 'done';
@@ -95,6 +107,8 @@ export interface TableState {
   last: Outcome | null;
   rounds: number;
   hand: Hand21 | null;
+  /** Twenty-One's shoe: the cards left, as codes (code % 52: rank = floor / 4 + 1, suit = % 4) */
+  shoe?: number[];
 }
 
 export interface CircuitSlot {

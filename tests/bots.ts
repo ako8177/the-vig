@@ -7,7 +7,7 @@ import { NIGHT_TICKS, TICKS_PER_S } from '../src/sim/state';
 import { FLOOR_1 } from '../src/data/floors';
 import { TABLE_BY_ID } from '../src/data/tables';
 import { SPRINT } from '../src/sim/systems/movement';
-import { best, handValue } from '../src/sim/tables/twentyone';
+import { advise, cardValue, options } from '../src/sim/tables/twentyone';
 import type { CharmId } from '../src/data/charms';
 
 /** 200 seeds: 20 gave a lucky sample (the M1 design review measured 80% where 200 said 64%). */
@@ -86,10 +86,13 @@ export class Bot {
     if (table === 'twentyone') {
       this.g.submit(this.id, { t: 'bet', table, amount: this.bet21 });
       this.step();
-      for (let k = 0; k < 10 && this.g.state.tables.twentyone.hand?.stage === 'play'; k++) {
+      for (let k = 0; k < 20 && this.g.state.tables.twentyone.hand?.stage === 'play'; k++) {
         const h = this.g.state.tables.twentyone.hand!;
-        const v = handValue(h.player);
-        this.g.submit(this.id, { t: 'call', table, call: best(v.total, v.soft, Math.min(10, h.dealer[0].r)).hit ? 'hit' : 'stand' });
+        const can = options(h);
+        // basic strategy; a double or split it can't stake is a hit or a stand
+        let call: string = advise(h.hands[h.active].cards, cardValue(h.dealer[0]), can.double, can.split);
+        if ((call === 'double' || call === 'split') && this.g.state.bank < h.hands[h.active].bet) call = advise(h.hands[h.active].cards, cardValue(h.dealer[0]), false, false);
+        this.g.submit(this.id, { t: 'call', table, call });
         this.step();
       }
     } else {

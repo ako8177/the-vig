@@ -10,11 +10,11 @@ export const MIDNIGHT_S = 3;
 
 export function midnight(g: Game) {
   const s = g.state;
-  // an unfinished Twenty-One hand stands where it is
+  // an unfinished Twenty-One round stands every hand where it is
   const hand = s.tables.twentyone.hand;
   if (hand && hand.stage === 'play') {
     const owner = s.players.find((p) => p.seat === 'twentyone') ?? s.players[0];
-    const o = MODULE_BY_ID.get('twentyone')!.start(g, owner, { t: 'call', table: 'twentyone', call: 'stand' });
+    const o = MODULE_BY_ID.get('twentyone')!.start(g, owner, { t: 'call', table: 'twentyone', call: 'leave' });
     if (o && typeof o !== 'string') s.tables.twentyone.pending = o;
   }
   for (const id in s.tables) land(g, id);

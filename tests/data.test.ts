@@ -12,7 +12,7 @@ import { BUZZ, DRINKS } from '../src/data/drinks';
 import { MODULES, MODULE_BY_ID } from '../src/sim/tables';
 import { Game } from '../src/sim/Game';
 import { FLOOR_1 } from '../src/data/floors';
-import { best, handValue } from '../src/sim/tables/twentyone';
+import { advise, cardValue, options } from '../src/sim/tables/twentyone';
 import { TIER_ROLE } from '../src/data/palette';
 
 const NAMES_DESIGN = /DESIGN\.md §\d/;
@@ -74,15 +74,17 @@ describe('data validation', () => {
           o = m.start(g, p, { t: 'bet', table: 'twentyone', amount: 100 });
           while (o === null) {
             const h = g.state.tables.twentyone.hand!;
-            const v = handValue(h.player);
-            const up = Math.min(10, h.dealer[0].r);
-            o = m.start(g, p, { t: 'call', table: 'twentyone', call: best(v.total, v.soft, up).hit ? 'hit' : 'stand' });
+            const can = options(h);
+            o = m.start(g, p, { t: 'call', table: 'twentyone', call: advise(h.hands[h.active].cards, cardValue(h.dealer[0]), can.double, can.split) });
           }
         } else if (m.id === 'hilo') o = m.start(g, p, { t: 'call', table: 'hilo', call: i % 2 ? 'hi' : 'lo' });
         else if (m.id === 'redline') o = m.start(g, p, { t: 'call', table: 'redline', call: i % 2 ? 'red' : 'black' });
         else o = m.start(g, p, { t: 'spin', table: m.id });
         if (!o || typeof o === 'string') throw new Error(`${m.id}: ${o}`);
-        const x = o.ret / o.bet;
+        // per $1 of the opening bet (a double or a split stakes more on the same round, as in
+        // every blackjack house edge); every other table stakes once
+        const opening = m.id === 'twentyone' ? g.state.tables.twentyone.hand!.bet : o.bet;
+        const x = 1 + (o.ret - o.bet) / opening;
         ret += x;
         sq += x * x;
         bet++;

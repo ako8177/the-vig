@@ -170,3 +170,10 @@ inspirations: the ideas are taken, never their names, numbers or art).
   derived here from the low-tier rule (RTP 0.9504 enumerated over 4^9 grids; no line over 10x), not
   from CloverPit, and the symbols are the Bandit's own. Grid size is data for later floors (owner
   picked 3x3 here, bigger grids later). The panel drops its rule line to fit the grid.
+- #76 2026-10-14: **Twenty-One deals from a real 6-deck shoe, with double and split** (the owner:
+  "emulate real card odds"; picked shoe + double + split). Cards without replacement, reshuffle at
+  a quarter left, H17 with a peek, double any two (and after a split), split once, split aces one
+  card. RTP 0.9921 by DP with every option (was 0.9736); 400k shoe hands measure 0.9929. The data
+  test measures blackjack per $1 of the opening bet, the way every house edge is quoted. The shoe
+  lives in the sim state (seeded, replayable); the panel shows two hands after a split and the
+  shoe's depth.

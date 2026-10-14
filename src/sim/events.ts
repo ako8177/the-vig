@@ -12,7 +12,7 @@ export type SimEvent =
   /** a round's result landed */
   | { t: 'round'; player: PlayerId; outcome: Outcome }
   /** Twenty-One: a card was dealt */
-  | { t: 'card'; player: PlayerId; to: 'player' | 'dealer' }
+  | { t: 'shuffle'; table: string }
   | { t: 'mark'; player: PlayerId; id: MarkId; stacks: number }
   | { t: 'tax'; amount: number }
   | { t: 'life'; player: PlayerId; delta: number; lives: number; why: string }

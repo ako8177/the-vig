@@ -53,7 +53,7 @@ Rates assume one player at the table continuously.
 | Table | Tier | Bet | Round | Win p | Pays | RTP | EV/round | EV/min | Losing costs |
 |---|---|---|---|---|---|---|---|---|---|
 | The Bandit | low | $100 | 2.5 s | 0.259 (0.294 incl. money back) | 3×3 pattern table below | 0.9504 | −$5 | −$120 | the bet |
-| Twenty-One | low | $100–300 | 8 s | ≈0.43 | 2× (1:1), 2.5× natural (3:2) | 0.974 | −$5 at $200 | −$39 | the bet |
+| Twenty-One | low | $100–300 | 8 s | ≈0.43 (push ≈0.09) | 2× (1:1), 2.5× natural (3:2); double and split stake more | 0.992 | −$1.60 at $200 | −$12 | the bet (or the doubled / split stakes) |
 | Hi-Lo Dice | mid | $200 | 3 s | 0.50 | 2.4× | 1.20 | +$40 | +$800 (unmarked) | the bet + 1 **mark** |
 | Wheel of Marks | mid | $300 | 5 s | 0.48 | 0.5× / 1.5× / 2.5× / 6× by color | 1.16 | +$48 | +$580 | the bet + 1 **team mark** (6 of 25); black returns half |
 | Red Line | high | $500 | 6 s | 0.50 | 2.5× | 1.25 | +$125 | +$1,250 | the bet; **3 losses in a row cost a life** |
@@ -74,11 +74,17 @@ it), and a 100k-round seeded run must land within 4 standard errors of it.
   something back on 29.4%. No line pays more than 10× ($1,000): the low-tier ceiling of
   DECISIONS #38 holds for everything but the 1-in-50,000 grid. The grid size is data (`GRID`): a
   better casino's machine can be 5×5 or 6×6 with its own derivation here.
-- **Twenty-One**: an endless shoe (every card an independent draw of 13 ranks), hit or stand
-  only (no doubles, no splits), the dealer hits soft 17, a natural pays 3:2, ties push, a dealer
-  natural beats everything but a player natural. With the best hit/stand play the return is
-  **0.9736** (computed by dynamic programming over the endless shoe; DECISIONS #32); worse play
-  returns less. Win ≈ 0.43, push ≈ 0.09.
+- **Twenty-One** (DECISIONS #76, the owner's "real card odds"): a **6-deck shoe** (312 cards)
+  shuffled by the sim's RNG and dealt without replacement, a fresh shuffle when fewer than 78 are
+  left at the start of a hand; the dealer hits soft 17 and peeks (a dealer natural ends the hand
+  before you act); a natural pays 3:2; ties push. You may **hit, stand, double** on any first two
+  cards (after a split too) and **split a pair once** (any two ten-value cards count; split aces
+  take one card each; 21 after a split is not a natural). Basic strategy's return, by dynamic
+  programming over an endless shoe with every option, is **0.9921**; 400,000 hands from the real
+  shoe measure 0.9929 (σ ≈ 0.002): the shoe's depletion is a whisker in the player's favor, and
+  the shoe count is printed on the felt, so a counter can lean on it. Win ≈ 0.43, push ≈ 0.09. It
+  was 0.9736 (endless shoe, hit/stand only): the low tier still bleeds (−$1.60 a $200 hand),
+  just slowly, as a real one does; safe-only still makes night 1 8% of the time (§8 test 1).
 - **Hi-Lo Dice**: one die; call HI (4–6) or LO (1–3). p = 1/2 exactly, pays 2.4×.
 - **Wheel of Marks** (DECISIONS #74, the owner's colors): 25 slots, **8 red 1.5×, 3 purple 2.5×,
   1 gold 6×, 7 black 0.5× (half the bet back), 6 marks 0 + a team mark**. Σ = 12 + 7.5 + 6 + 3.5 =

@@ -40,7 +40,7 @@ export function standUp(g: Game, p: PlayerState) {
   const t21 = g.state.tables.twentyone;
   if (table === 'twentyone' && t21.hand?.stage === 'play' && !t21.pending) {
     const mod = MODULE_BY_ID.get('twentyone')!;
-    const o = mod.start(g, p, { t: 'call', table, call: 'stand' });
+    const o = mod.start(g, p, { t: 'call', table, call: 'leave' });
     if (o && typeof o !== 'string') {
       t21.pending = o;
       t21.until = g.tick + ticks(mod.def.resolveS);

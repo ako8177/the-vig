@@ -47,9 +47,9 @@ export const TABLES: TableDef[] = [
   },
   {
     id: 'twentyone', name: 'Twenty-One', sign: '21', tier: 'low', loss: 'coin', bet: [100, 300], roundS: 8, resolveS: 0.6,
-    winP: 0.43, pays: null, rtp: 0.974, paysText: '1:1, NATURAL 3:2', lossText: 'THE BET',
-    howText: 'HIT OR STAND. DEALER HITS SOFT 17. TIES PUSH.',
-    derivation: 'DESIGN.md §3: low tier; endless shoe, H17, hit/stand only, 3:2 natural → RTP 0.9736 with best play',
+    winP: 0.43, pays: null, rtp: 0.9921, paysText: '1:1, NATURAL 3:2', lossText: 'THE BET (MORE IF YOU DOUBLE OR SPLIT)',
+    howText: '6 DECKS. HIT, STAND, DOUBLE, SPLIT. DEALER HITS SOFT 17.',
+    derivation: 'DESIGN.md §3: low tier; 6-deck shoe, H17, peek, double any two (and after a split), split once, 3:2 → basic strategy RTP 0.9921 (endless-shoe DP; 400k shoe hands measure 0.9929)',
   },
   {
     id: 'hilo', name: 'Hi-Lo Dice', sign: 'HI-LO', tier: 'mid', loss: 'mark', bet: 200, roundS: 3, resolveS: FEEL.dice.s,
