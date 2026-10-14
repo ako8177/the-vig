@@ -2,6 +2,18 @@
 
 What is built. Newest first.
 
+## 2026-10-14 — The Collector's table: the lever duel, his death, the cinematic
+
+The owner's design (DECISIONS #80-#82): at 0:00 you sit across from the Collector; he speaks; pay,
+or challenge him. The table turns over to ten levers wired to a battery; you take turns pulling;
+a live lever shocks whoever pulled it (lightning on your screen, a scream; he convulses). Two
+shocks kill him: you keep the quota, spin the Boon (a real wheel now), and the next night a new
+Collector sits down. Two for you: a life, the quota, the Bane. Killing a Collector unlocks his
+charm for good (the first's: the Insulated Kit, two free wire traces); the run's ending counts
+the dead. Checks: typecheck clean, 34 tests (duel and house sim tests, pace tests 5 and 6
+re-derived), screens sweep 0 issues, e2e smoke green, the scene played headless and every beat
+looked at (the choice, the flip, both shocks, his death, your loss, the wheel).
+
 ## 2026-10-14 — The owner's big batch: tables, sprint, drinks, a playing crowd, the house
 
 From the owner's third round of notes (DECISIONS #72-#79), each its own commit:

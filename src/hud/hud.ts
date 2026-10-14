@@ -4,7 +4,7 @@
 // the title, how to play, settings, the cage, pause and the results. It returns what was clicked;
 // the app turns that into commands or screens. It never touches the sim's state.
 import { UI, type Pointer } from '../ui/ui';
-import { C, TIER_ROLE } from '../data/palette';
+import { C, PALETTE, TIER_ROLE } from '../data/palette';
 import { ICON, textWidth } from '../ui/font';
 import type { State } from '../sim/state';
 import { TICKS_PER_S } from '../sim/state';
@@ -14,6 +14,8 @@ import { MARK_BY_ID } from '../data/marks';
 import { ECONOMY } from '../data/economy';
 import { money } from '../panels/table';
 import { DRINKS } from '../data/drinks';
+import type { DuelHud } from '../app/duelscene';
+import { COLLECTORS, ENDINGS } from '../data/collectors';
 
 export const HUD_W = 640;
 export const HUD_H = 360;
@@ -38,6 +40,9 @@ export interface Meta {
   wins: number;
   bestNight: number;
   lessons: string[];
+  /** charms unlocked by killing Collectors, and the endings seen (DECISIONS #81) */
+  unlocked: string[];
+  endings: string[];
 }
 
 export interface Toast {
@@ -76,6 +81,8 @@ export interface HudView {
   meta: Meta;
   /** 0..1, how dark the room is (the 0:00 drop) */
   dark: number;
+  /** the Collector's scene: his words, the duel's tally, the lever under your hand, the current */
+  duel: DuelHud | null;
 }
 
 export type HudAction =
@@ -269,10 +276,12 @@ export class Hud {
       }
     }
     if (v.screen === 'game' && s.phase === 'floor' && v.seated && !v.atCollector && !v.cage?.open && !v.bar?.open) ui.text('E / ESC  STAND UP', HUD_W / 2, HUD_H - 12, C.ash, { align: 'center' });
+    if (v.duel) this.duelLayer(ui, v.duel);
 
     // toasts rise from just under the crosshair; seated, from under the table's screen, and not
     // while a banner holds that space (critic F10)
-    const ty = v.seated ? HUD_H - 30 : HUD_H / 2 + 40;
+    // at the Collector's table his words hold the bottom of the screen: toasts rise from the middle
+    const ty = v.duel?.status || v.duel?.subtitle ? HUD_H / 2 - 10 : v.seated ? HUD_H - 30 : HUD_H / 2 + 40;
     const bannerUp = !!v.banner && v.banner.t > 0;
     if (!(v.seated && bannerUp)) v.toasts.forEach((t, i) => {
       const a = Math.min(1, t.t);
@@ -290,7 +299,8 @@ export class Hud {
     }
 
     // a lesson card: two lines, the first time each thing happens (held back while the cage is open)
-    if (v.lesson && v.lesson.t > 0 && !v.cage?.open && !v.bar?.open && !v.confirm && v.screen === 'game' && !this.party) {
+    const scene = s.phase === 'midnight' || s.phase === 'choice' || s.phase === 'circuit';
+    if (v.lesson && v.lesson.t > 0 && !scene && !v.cage?.open && !v.bar?.open && !v.confirm && v.screen === 'game' && !this.party) {
       const l = v.lesson;
       // at most LESSON_W wide, the body wrapped, so the card never covers the status column on the right
       const lines: string[] = [];
@@ -306,13 +316,62 @@ export class Hud {
     }
   }
 
+  // ---------------------------------------------------------------- the Collector's scene (DECISIONS #82)
+
+  private duelLayer(ui: UI, d: DuelHud) {
+    // the current through you: the screen flashes cold and white lightning crawls in from its edges
+    if (d.zap > 0) {
+      const ctx = this.ctx;
+      ui.fill(0, 0, HUD_W, HUD_H, C.soulLo, 0.08 + 0.18 * d.zap * Math.random());
+      ctx.lineWidth = 1;
+      for (let n = 0; n < 3 + Math.floor(d.zap * 6); n++) {
+        ctx.strokeStyle = PALETTE[[C.white, C.soul, C.markerLo][n % 3]];
+        ctx.beginPath();
+        const edge = Math.floor(Math.random() * 4);
+        let x = edge === 0 ? 0 : edge === 1 ? HUD_W : Math.random() * HUD_W;
+        let y = edge === 2 ? 0 : edge === 3 ? HUD_H : Math.random() * HUD_H;
+        ctx.moveTo(x, y);
+        for (let k = 0; k < 9; k++) {
+          x += (HUD_W / 2 - x) * 0.18 + (Math.random() - 0.5) * 40;
+          y += (HUD_H / 2 - y) * 0.18 + (Math.random() - 0.5) * 40;
+          ctx.lineTo(Math.round(x), Math.round(y));
+        }
+        ctx.stroke();
+      }
+    }
+    // the tally: your shocks and his, out of two; whose pull it is
+    if (d.status) {
+      const st = d.status;
+      const pips = (n: number, max: number) => ICON.bolt.repeat(n) + '-'.repeat(Math.max(0, max - n));
+      const line = `YOU ${pips(st.you, st.youMax)}    HIM ${pips(st.him, st.himMax)}    ${st.live} OF ${st.levers} LIVE${st.traces ? `    TRACES ${st.traces}` : ''}`;
+      const w = textWidth(line) + 20;
+      ui.panel((HUD_W - w) / 2, 46, w, 26, 'dark', { blocking: false, edge: C.coll });
+      ui.text(line, HUD_W / 2, 50, C.collHi, { align: 'center' });
+      ui.text(st.turn === 'you' ? 'YOUR PULL' : st.turn === 'him' ? 'HIS PULL' : '', HUD_W / 2, 61, st.turn === 'you' ? C.white : C.dust, { align: 'center' });
+    }
+    if (d.prompt) {
+      const w = textWidth(d.prompt) + 16;
+      ui.panel((HUD_W - w) / 2, HUD_H - 72, w, 14, 'dark', { blocking: false, edge: C.collLo });
+      ui.text(d.prompt, HUD_W / 2, HUD_H - 69, C.white, { align: 'center' });
+    }
+    // his words, at the bottom of the screen
+    if (d.subtitle && d.subtitle.text) {
+      const t = d.subtitle;
+      const w = Math.min(HUD_W - 40, Math.max(textWidth(t.text), textWidth(t.name)) + 24);
+      const y = HUD_H - 50;
+      ui.panel((HUD_W - w) / 2, y, w, t.name ? 34 : 22, 'dark', { blocking: false, edge: t.name ? t.color : C.smoke });
+      if (t.name) ui.text(t.name, HUD_W / 2, y + 4, t.color, { align: 'center' });
+      ui.text(t.text, HUD_W / 2, y + (t.name ? 18 : 7), C.white, { align: 'center' });
+    }
+  }
+
   // ---------------------------------------------------------------- the cage
 
   private cage(ui: UI, v: HudView, out: HudAction[]) {
     const s = v.state!;
     const me = s.players[v.player];
     const cg = v.cage!;
-    const w = 420, h = 292, x = (HUD_W - w) / 2, y = 38;
+    const w = 420, h = 318, x = (HUD_W - w) / 2, y = 38;
     ui.fill(0, 0, HUD_W, HUD_H, C.ink, 0.5);
     ui.panel(x, y, w, h, 'dark', { edge: C.marker });
     const home = s.phase === 'home';
@@ -323,26 +382,33 @@ export class Hud {
     for (const c of CHARMS) {
       const worn = me.charms.includes(c.id as CharmId);
       const why = cg.why.get(c.id) ?? null;
-      ui.panel(x + 8, ry, w - 16, 30, 'inset', { blocking: false });
-      ui.text(c.name.toUpperCase(), x + 14, ry + 4, worn ? C.collHi : C.white);
-      ui.text(`${c.price} ${ICON.marker}`, x + 120, ry + 4, C.marker);
-      ui.text(c.text[0], x + 150, ry + 4, C.bone);
-      ui.text(c.text[1], x + 150, ry + 16, C.bone);
-      ui.text(c.systems.join(' + ').toUpperCase(), x + 14, ry + 16, C.ash);
-      if (ui.button(`buy-${c.id}`, x + w - 74, ry + 5, 60, 20, worn ? 'WORN' : home ? 'ORDER' : 'BUY', { edge: C.marker, disabled: !!why, tip: worn ? 'You wear it.' : why ? cap(why) : home ? `Costs ${c.price} markers. The post brings it to the mailbox.` : `Costs ${c.price} markers.` })) out.push({ t: 'buy', item: c.id });
-      ry += 33;
+      // a locked charm shows who guards it (DECISIONS #81): kill him at his game and it's in the pool
+      const locked = c.unlock !== undefined && !s.unlocked.includes(c.id);
+      ui.panel(x + 8, ry, w - 16, 26, 'inset', { blocking: false });
+      ui.text(c.name.toUpperCase(), x + 14, ry + 3, locked ? C.smoke : worn ? C.collHi : C.white);
+      ui.text(`${c.price} ${ICON.marker}`, x + 120, ry + 3, locked ? C.smoke : C.marker);
+      if (locked) {
+        ui.text('LOCKED. KILL ' + COLLECTORS[c.unlock!].name, x + 150, ry + 3, C.ash);
+        ui.text('AT HIS GAME TO ADD IT, FOR GOOD.', x + 150, ry + 14, C.ash);
+      } else {
+        ui.text(c.text[0], x + 150, ry + 3, C.bone);
+        ui.text(c.text[1], x + 150, ry + 14, C.bone);
+      }
+      ui.text(c.systems.join(' + ').toUpperCase(), x + 14, ry + 14, C.ash);
+      if (ui.button(`buy-${c.id}`, x + w - 74, ry + 3, 60, 20, locked ? 'LOCKED' : worn ? 'WORN' : home ? 'ORDER' : 'BUY', { edge: C.marker, disabled: !!why, tip: worn ? 'You wear it.' : why ? cap(why) : home ? `Costs ${c.price} markers. The post brings it to the mailbox.` : `Costs ${c.price} markers.` })) out.push({ t: 'buy', item: c.id });
+      ry += 29;
     }
     ui.text('UPGRADES: PERMANENT, FOR EVERY RUN FROM NOW ON.', x + 10, ry + 2, C.dust);
     ry += 13;
     for (const u of UPGRADES) {
       const owned = s.upgrades.includes(u.id);
       const why = cg.why.get(u.id) ?? null;
-      ui.panel(x + 8, ry, w - 16, 18, 'inset', { blocking: false });
+      ui.panel(x + 8, ry, w - 16, 17, 'inset', { blocking: false });
       ui.text(u.name.toUpperCase(), x + 14, ry + 5, owned ? C.collHi : C.white);
       ui.text(`${u.price} ${ICON.marker}`, x + 120, ry + 5, C.marker);
       ui.text(u.text, x + 150, ry + 5, C.bone);
-      if (ui.button(`buy-${u.id}`, x + w - 74, ry + 1, 60, 16, owned ? 'OWNED' : home ? 'ORDER' : 'BUY', { edge: C.marker, disabled: !!why, tip: owned ? 'Yours for good.' : why ? cap(why) : `Costs ${u.price} markers.` })) out.push({ t: 'buy', item: u.id });
-      ry += 20;
+      if (ui.button(`buy-${u.id}`, x + w - 74, ry + 1, 60, 15, owned ? 'OWNED' : home ? 'ORDER' : 'BUY', { edge: C.marker, disabled: !!why, tip: owned ? 'Yours for good.' : why ? cap(why) : `Costs ${u.price} markers.` })) out.push({ t: 'buy', item: u.id });
+      ry += 19;
     }
     const solo = s.players.length === 1;
     if (!home) ui.text(solo ? `${ICON.soul} SOULS: BOUGHT BACK HERE FOR 50% OF THE QUOTA (CO-OP).` : `${ICON.soul} SOUL BUYBACK: 50% OF THE QUOTA`, x + 10, ry + 4, C.soulLo);
@@ -406,7 +472,7 @@ export class Hud {
     if (ui.button('howto', bx, 158, 140, 20, 'HOW TO PLAY')) out.push({ t: 'screen', to: 'howto' });
     if (ui.button('settings', bx, 184, 140, 20, 'SETTINGS')) out.push({ t: 'screen', to: 'settings' });
     const m = v.meta;
-    const record = m.runs ? `RUNS ${m.runs}   WALKED OUT ${m.wins}   BEST NIGHT ${m.bestNight}` : 'NO RUNS YET';
+    const record = m.runs ? `RUNS ${m.runs}   WALKED OUT ${m.wins}   BEST NIGHT ${m.bestNight}   ENDINGS ${m.endings.length} OF ${ENDINGS.length}` : 'NO RUNS YET';
     ui.text(record, HUD_W / 2, 220, C.dust, { align: 'center' });
     if (m.upgrades.length) ui.text(`UPGRADES: ${m.upgrades.map((u) => UPGRADES.find((x) => x.id === u)!.name.toUpperCase()).join(', ')}`, HUD_W / 2, 232, C.collHi, { align: 'center' });
     ui.text('WASD WALK   SHIFT SPRINT   MOUSE LOOK   E USE   ESC PAUSE', HUD_W / 2, 330, C.ash, { align: 'center' });
@@ -429,8 +495,8 @@ export class Hud {
       ['', 0],
       ['HIGH-TABLE WINS EARN MARKERS. SPEND THEM AT THE CAGE (EAST WALL) ON CHARMS.', C.marker],
       ['', 0],
-      ['MADE THE QUOTA? PAY IT, OR GAMBLE: PAY IT AND PLAY THE CIRCUIT AGAINST HIM.', C.collHi],
-      ['HE TAKES THE LOWEST CIRCUIT HE TRUSTS. LOOK AHEAD OF HIM; ROUTE OVERLOADS INTO HIS PATH.', C.dust],
+      ['MADE THE QUOTA? PAY HIM, OR CHALLENGE HIM: TEN LEVERS, THREE LIVE, TAKE TURNS.', C.collHi],
+      ['TWO SHOCKS AND HE DIES: KEEP THE QUOTA. TWO FOR YOU: A LIFE, AND YOU PAY.', C.dust],
       ['WIN FOR THE BOON WHEEL. LOSE FOR THE BANE WHEEL AND A STEEPER QUOTA.', C.dust],
       ['', 0],
       ['SURVIVE THREE NIGHTS. LOSE YOUR LAST LIFE AND THE HOUSE KEEPS YOU.', C.white],

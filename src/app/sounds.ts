@@ -137,6 +137,33 @@ export function defineSounds(a: Audio) {
     { f: 4150, dur: 0.18, at: 0.62, vol: 0.03, type: 'triangle' },
   ]);
 
+  // ---- the Collector's table (DECISIONS #82): the top lifting and turning over, landing; a lever
+  // thrown; the battery spitting; the current through someone
+  a.define('flip', () => [
+    { f: 300, to: 900, dur: 0.5, vol: 0.05, type: 'noise', q: 0.8 },
+    { f: 180, dur: 0.15, at: 0.05, vol: 0.08, type: 'noise', q: 1 },
+    ...Array.from({ length: 6 }, (_, i) => ({ f: rnd(1500, 3000), dur: 0.03, at: 0.3 + i * 0.09, vol: 0.04, type: 'noise' as const, q: 3 })),
+  ]);
+  a.define('thunk', [
+    { f: 140, dur: 0.18, vol: 0.22, type: 'noise', q: 0.8 },
+    { f: 75, to: 40, dur: 0.25, vol: 0.14, type: 'sine' },
+    { f: 2200, dur: 0.04, at: 0.02, vol: 0.05, type: 'noise', q: 3 },
+  ]);
+  a.define('lever', () => [
+    { f: rnd(700, 900), dur: 0.05, vol: 0.09, type: 'triangle' },
+    { f: 1800, dur: 0.03, vol: 0.06, type: 'noise', q: 3 },
+    { f: 260, dur: 0.1, at: 0.06, vol: 0.14, type: 'noise', q: 1.2 },
+    { f: 110, to: 70, dur: 0.12, at: 0.06, vol: 0.08, type: 'sine' },
+  ]);
+  a.define('spark', () => Array.from({ length: 5 + Math.floor(Math.random() * 5) }, () => ({ f: rnd(3000, 6500), dur: 0.015, at: rnd(0, 0.2), vol: 0.05, type: 'noise' as const, q: 2.5 })));
+  a.define('zap', () => [
+    // mains hum under a storm of crackle, cut off hard
+    { f: 55, dur: 1.2, vol: 0.09, type: 'square' },
+    { f: 110, dur: 1.2, vol: 0.06, type: 'sawtooth' },
+    { f: 1200, to: 200, dur: 1.2, vol: 0.05, type: 'noise', q: 0.6 },
+    ...Array.from({ length: 34 }, (_, i) => ({ f: rnd(2500, 7000), dur: 0.02, at: i * 0.034 + rnd(0, 0.02), vol: 0.07, type: 'noise' as const, q: 2 })),
+  ]);
+
   // ---- the room: somewhere across the floor, another machine pays
   a.define('distant', () => {
     const root = [72, 74, 77, 79][Math.floor(Math.random() * 4)];

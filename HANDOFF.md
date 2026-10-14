@@ -21,6 +21,13 @@ with floor 1 as three rooms by risk, a crowd of 52, and a bar with drinks that m
 (DECISIONS #65-#68). The milestone order and the not-list bent at the owner's word (written down in
 DECISIONS). Next in the owner's order: **the house** (ROADMAP, "The owner's plan").
 
+**2026-10-14, the Collector's table** (DECISIONS #80-#82): the owner's lever duel, Collectors who
+die and are replaced, charm unlocks, endings, and the cinematic scene. **Ask the owner**: always
+challenging now beats paying by a lot (DESIGN.md §7: 37% vs 12% survive all three nights); if
+paying should stay a real choice, which lever (the odds, what a win keeps, what a loss costs)?
+Also flagged: the scene is Buckshot Roulette's by the owner's request (#80). Next Collectors need
+their own games and charms (data/collectors.ts has the slots).
+
 **2026-10-14, the owner's big batch** (DECISIONS #72-#79): raw mouse look; Shift sprint; the
 Wheel pays by color; the Bandit is a 3x3 grid; Twenty-One is a real 6-deck shoe with double and
 split; drinks give an edge; the crowd plays and talks; and **the house** is built (the run starts

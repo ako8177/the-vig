@@ -203,3 +203,31 @@ inspirations: the ideas are taken, never their names, numbers or art).
   tests/home.test.ts plays the flow. e2e's `enter()` drives through the real command path;
   `enter(true)` stays home. Lesson cards are now capped at 420 px and wrap, so they never cover
   the status column.
+- #80 2026-10-14: **The Circuit is the owner's lever duel.** Ten levers, three live, turns, you
+  first; he picks at random; two shocks each: yours costs a life and the quota, his kills him and
+  you keep the quota. Reroute and inspect are gone (the owner chose "just pull"); tracing returns
+  only through the Insulated Kit (#81). The lost gamble's +10-40% surcharge is gone (the owner's
+  call). **Derivative flag (CLAUDE.md):** the owner asked for Buckshot Roulette's reveal by name:
+  the table top turning over to show the game, turns at a deadly device, the dealer's banter, and
+  electrocution as the price are that game's signature scene. DECISIONS #52 had moved the
+  Circuit away from it (positions, his visible next pick); the owner's "just pull, he picks at
+  random" moves it back. What stays ours: the levers, the knotted wires and battery, the quota
+  you keep, the Collectors who die and are replaced, the charm pool they guard. Measured: 51% at
+  random, 73% with the Kit; always challenging now beats paying (DESIGN.md §7, an open question).
+- #81 2026-10-14: **Collectors die and are replaced; they guard charms; their deaths choose the
+  ending.** A new `collector` in the sim state (who sits tonight, dead or not) and `killed`;
+  `unlocked` charms come in from meta like upgrades. Roster, endings and lines in
+  data/collectors.ts. The Insulated Kit (two free traces a duel; rubber soles: Sticky Floor can't
+  slow you, its second system for pillar 3) is the first Collector's. The shop shows locked
+  charms and who guards them; the title counts endings seen.
+- #82 2026-10-14: **The Collector's scene** (the owner's cinematic). He sits across the table (a
+  hatted figure with burning eyes, his color per Collector); his words type out with a
+  synthesized murmur; at the choice you lean in to his screen, at his lines you sit back. Challenge
+  him and the top lifts and turns over to the levers (render3d/duel.ts): ten levers, a battery
+  that sparks, a junction box, the wires knotted. The duel's music (app/tension.ts) replaces the
+  lounge's and ends with the duel. A live lever throws an arc: on you, the screen crackles with
+  lightning and shakes and you cry out (app/voice.ts, kept moderate); on him, he convulses and cries
+  out, and his comment follows. His second shock: he dies mid-sentence and slumps, eyes out. Your
+  second: "...still breathing? Curious." and on to the punishment. Lesson cards wait while he
+  talks; toasts rise from the middle so his words keep the bottom. The face-down screen keeps a
+  plain button readout (the screens sweep, and anyone without the levers).

@@ -102,7 +102,7 @@ export class CollectorPanel extends Panel {
       ['NOTHING PAID YET. HIS GAME:', C.bone],
       [`${r.levers} LEVERS, ${live} LIVE. TAKE TURNS.`, C.dust],
       [`TWO SHOCKS EACH. YOU WIN ~${Math.round(odds * 100)}%`, C.dust],
-      [`DEAD LEVER: +$${r.safeBank} AND A MARKER`, C.gold],
+      [`DEAD ONE: +$${r.safeBank}, +1 MARKER`, C.gold],
       ...(last
         ? ([['WIN: HE DIES, KEEP THE QUOTA,', T.hi], ['A FREE PERMANENT UPGRADE', T.hi], [`LOSE: A LIFE ${ICON.heart}, PAY THE QUOTA`, C.blood]] as [string, number][])
         : ([['WIN: HE DIES, KEEP THE QUOTA,', T.hi], ['AND SPIN THE BOON WHEEL', T.hi], [`LOSE: A LIFE ${ICON.heart}, PAY, THE BANE`, C.blood]] as [string, number][])),

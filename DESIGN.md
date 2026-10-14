@@ -191,69 +191,54 @@ Derived check (§8 test 5): Lead Apron takes the Circuit's life cost to ≈ 0 fo
 **Upgrades** (permanent across runs, bought with markers at the cage, saved with the settings):
 a fourth charm slot (6), +$500 starting bank every night (4), Hi-Lo marks last 20 s (4).
 
-## 6. The Circuit (floor 1 rules)
+## 6. The Circuit (floor 1 rules): the lever duel
 
-A panel of **10 circuits, 2 overloaded** (DECISIONS #52; it was 7), shuffled by the seeded RNG.
-**Players vs the Collector**,
-alternating turns, players first (the team picks who acts each turn; a ghost may only inspect).
+The owner's game (DECISIONS #80). Under the Collector's table: **10 levers, 3 wired live** to a
+battery, shuffled by the seeded RNG, the wires knotted so you can't follow one. You and he
+**take turns pulling one**, you first. **A dead lever pays the puller's side** (you: **+$300 and
++1 marker**; Marker Magnet makes it 2). **A live lever shocks whoever pulled it.** **Your second
+shock ends it: a life, and the quota is paid** (Lead Apron saves the life, not the duel). **His
+second shock kills him: you keep the quota.** He picks a lever **at random** (the owner: "not
+simply up from 1"); so do you, unless the **Insulated Kit** gives you **two free wire traces** a
+duel (a trace shows one lever live or dead; it doesn't use your turn; a lever you traced live
+you only pull with nothing else left).
 
-- **Inspect** a circuit: costs **$100** (or 1 marker with Marker Magnet); its state is shown to
-  the whole team. Uses the turn.
-- **Reroute**: swap two circuits' positions blind. Uses the turn. The team sees which two
-  moved (what it knew moves with them); **the Collector remembers positions, not circuits**, so
-  after a reroute his memory of those two positions is wrong. Rerouting a revealed overload
-  into his next pick is how you blow his fuse.
-- **Activate** a circuit: safe → **+$300 and +1 marker** to the team, the circuit is spent;
-  overloaded → the activator **loses 1 life** (floor 1 house rule; floor 2 switches to bank
-  damage), the circuit is spent. **A revealed overload can't be activated by the team**: the only
-  way to spend it is to route him into it.
-- The **Collector** has **2 fuses**. He never inspects; he sees what the team inspects (it is
-  shown at the table) and remembers it by position. **He activates the lowest-numbered circuit he
-  doesn't believe overloaded** (DECISIONS #52; it was "the one left alone longest"), so his next
-  move is always visible, and he passes when he trusts nothing left. An overload he activates
-  costs him a fuse; a safe one scores for him.
-- **End**: when both overloads are spent, or the Collector is out of fuses, or every living
-  player is out of lives, or the team has no circuit left to play. **Win** if the Collector is out
-  of fuses, or if the team activated more safe circuits than he did. Ties go to the house.
-- The screen prints his rule and the win rule every turn.
-
-Measured (400 games): **looking at his next pick, cashing safes you know and routing overloads you
-know into his path wins ≈ 48%** at ≈ 0.16 lives a game; activating blind wins ≈ 37% at ≈ 0.34 lives.
-The line is about positions, which Buckshot Roulette's shells don't have (the review's derivative
-flag; DECISIONS #52). Sweeping the panel: with as many overloads as he has fuses the team wins
-37–51% as the panel grows from 7 to 12; with more overloads than fuses the trap wins 83–91%; with
-one fuse it always wins. He uses what he sees only to avoid revealed overloads (DECISIONS #41: a
-Collector who also took the safes you revealed made inspecting pointless). The pace test checks
-the band, and the choice screen prints "you win about 48%".
+Measured (400 games, tests/pace.test.ts test 5): **pulling at random wins 51%** (the model: a coin
+flip, 50%); **with the Kit 73%** (model 76%); the Bane's fourth live lever: model **42%**. A
+duel costs you 0.49 lives on average (0 with the Lead Apron). No information, no positions: the
+decision is whether to sit down at all, and the Kit is the only lever on the odds.
 
 ## 7. The Collector's choice and the wheels
 
-Made quota → **Pay** (quota leaves the bank; next ×1.5) or **Gamble** (play the Circuit).
-Win: quota paid, spin the **Boon wheel**. Lose: quota paid, next quota ×1.5 then
-**+10–40%**, spin the **Bane wheel**.
+Made quota → **Pay** (quota leaves the bank; next ×1.5) or **Challenge him** (DECISIONS #80): the
+duel, nothing paid up front. **Win: he dies, the quota stays in your bank** (its overshoot still
+pays markers), and you spin the **Boon wheel**. **Lose: a life, the quota is paid, the Bane
+wheel.** The lost gamble's +10–40% on the next quota is **gone** (the owner's call). The wheels are
+real wheels now: six wedges, a pointer, a spin that slows onto the slot the sim drew.
 
-Boon (6 slots): everyone +1 life · +$1,000 · +3 markers · a random charm · next quota −20% ·
-all marks cleared and the team is mark-immune next night.
+**The Collectors (DECISIONS #81).** The one you kill is replaced the next night: THE COLLECTOR,
+THE AUDITOR, THE RECEIVER (data/collectors.ts; one model with other eyes for now). Each will have
+his own signature game; only the Circuit exists, so every one plays it. **The first time you kill
+a Collector, his charm joins the pool for every run after** (the first's: the Insulated Kit; the
+computer shows locked charms and who guards them). **A run's ending** counts the Collectors you
+killed before walking out: none, PAID IN FULL; one or two, AN EMPTY CHAIR; three, THE HOUSE IS
+YOURS.
+
+Boon (6 slots): everyone +1 life · +$1,000 · +3 markers · a random charm (from the pool) · next
+quota −20% · all marks cleared and the team is mark-immune next night.
 
 Bane (6 slots, all last the next night): Cold Deck all night · one random living player −1
 life now · blood tables kill on **two** losses · Hi-Lo marks last 60 s · soul buyback 75% (solo:
-the next bank starts $500 lower, DECISIONS #51) · the Circuit has 3 overloads **and he 3 fuses**
-(with 3 fuses he can't be blown out, so the team must out-cash him: ≈ 28%; DECISIONS #52).
+the next bank starts $500 lower, DECISIONS #51) · the Circuit has **4 live levers** (42%).
 
-**The last night** has no tomorrow for a wheel to touch (DECISIONS #50): won, the Circuit takes a
-free permanent upgrade from the house's ledger; lost, it costs only what it cost (lives, a turn of
-your bank). The choice card says so.
+**The last night** has no tomorrow for a wheel to touch (DECISIONS #50): won, he dies, you keep
+the quota and the house's ledger gives a free permanent upgrade; lost, a life and the quota.
 
-Details for the slice: lives cap at **5** (the Boon and Lucky Fuse can lift you past 3). "A random
-charm" goes to the player with a free slot (none free: +3 markers instead). "Next quota −20%"
-applies after the ×1.5. In the Circuit, a solo player takes every team turn. A broke player can
-end the night early from the Collector's table ("call it", DECISIONS #49).
-
-Intended: gambling is the right call when the team has a charm that fires on overloads or a
-strong bank cushion; paying is right at 2 lives with no charms. **Measured (§8 test 6): not yet.**
-Always paying scores 2.09, deciding by charms 1.98, always gambling 1.35 (survive-all-three: 38%,
-30%, 15%). A lost gamble's +10–40% on the next quota outweighs a 48% Circuit and the Boon. The
-lever is the surcharge, which is part of the quota curve: the owner's call (§2).
+**Measured (§8 test 6): challenging now beats paying.** Always challenging scores 2.01 (nights +
+lives/10) and survives all three nights 37% of the time; always paying 1.57 and 12%. A won duel is
+worth the whole quota, and at 50% that outweighs a life plus the Bane. **Open for the owner**: if
+paying should stay a real choice, the levers are the duel's odds (a fourth live lever: 42%), what a
+win keeps (half the quota), or what a loss costs. Nothing changed until the owner says.
 
 ## 8. Derived checks (pace tests, 200 seeds)
 
@@ -276,13 +261,13 @@ Milestone 1 review: 20 gave a lucky sample (80% where 200 say 64%). Thresholds a
    (64% vs 66%). The lesson stands as a rule a player can follow: the blood table is for the night
    you're losing, and a burst costs a life about one time in three (DECISIONS #73).
 4. **Dead Man's** bot from a $1,000 bank goes broke at least 30% of the time [78%].
-5. **Circuit** (400 games): the sensible line (§6) wins 40–65%; activating blind costs more lives;
-   Lead Apron takes any line's life cost to ≈ 0 [48% at 0.16 lives; blind 37% at 0.34; with the
-   apron 0.00 and 0.00].
-6. **Collector's choice**: the decision bot gambles when holding Lucky Fuse or Lead Apron with
-   more than one life, else pays; it must score at least as well as always-gamble and within
-   0.15 of always-pay (score = nights survived + lives/10) [1.81 vs 1.24 and 1.88]. The intended
-   lesson, that gambling with a fuse charm is *better*, does not hold yet (§7).
+5. **Circuit** (400 games, the lever duel): pulling at random wins 40–60%, the Insulated Kit's
+   traces at least 65%, and Lead Apron takes the life cost to ≈ 0 [51% at 0.49 lives; the Kit 73%;
+   the apron 0.00].
+6. **Collector's choice** (re-derived, DECISIONS #80): always challenging must survive at least
+   as well as always paying, and the charm-based decision bot stay within 0.15 of paying
+   [challenge 2.01, decide 1.60, pay 1.57]. A won duel keeps the quota, so the challenge is now
+   the strong play; whether that's right is the owner's question (§7).
 7. **Ghost**: a two-player run where one becomes a ghost in the first minute still makes night 1
    at least 30% of the time when the survivor buys the soul back once the bank holds
    quota × 0.5 + $1,000. A lower bound: the bot doesn't play the bought-back player [45%].

@@ -27,6 +27,9 @@ import { buildHome, type Home } from '../render3d/home';
 import { CAR_STAND as CAR_STAND_AT, FAMILY, HOME_SPAWN } from '../data/home';
 import { atCar, atComputer, atMailbox } from '../sim/systems/home';
 import type { Floor } from '../data/floors';
+import { buildDuel, type Duel } from '../render3d/duel';
+import { DuelScene, type DuelHud } from './duelscene';
+import { COLLECTORS } from '../data/collectors';
 import { TablePlay } from '../render3d/tableplay';
 import { Chatter } from './chatter';
 import { Crowd } from '../render3d/npcs';
@@ -44,7 +47,7 @@ const ME = 0;
 const BASE_SENS = 0.0022;
 
 const DEFAULT_SETTINGS: Settings = { sens: 1, invert: false, master: 0.8, music: 0.6, sfx: 0.8, scaling: 'auto', bloom: true, drunkFx: 'full' };
-const DEFAULT_META: Meta = { upgrades: [], runs: 0, wins: 0, bestNight: 0, lessons: [] };
+const DEFAULT_META: Meta = { upgrades: [], runs: 0, wins: 0, bestNight: 0, lessons: [], unlocked: [], endings: [] };
 
 /** localStorage can be missing or throw (private windows, blocked storage): the game plays without it. */
 function load<T>(key: string, def: T): T {
@@ -75,7 +78,7 @@ const LESSONS: Record<string, [string, string]> = {
   mark: ['YOU ARE MARKED', '-5% ON YOUR HI-LO PAYOUTS A STACK. AT 4 STACKS HI-LO LOSES: GO SPIN THE WHEEL.'],
   teammark: ['A TEAM MARK', 'THE WHEEL PAYS, BUT ITS LOSSES HIT EVERYONE. IT LASTS 45 S.'],
   blood: ['A BLOOD TABLE', 'IT PAYS BEST, AND LOSING CAN COST A LIFE. READ THE SCREEN BEFORE YOU BET.'],
-  midnight: ['0:00. THE COLLECTOR.', `SHORT: A LIFE PER ${money(ECONOMY.shortfallPerLife.v)} AND THE BANK. MADE IT: PAY, OR GAMBLE ON THE CIRCUIT.`],
+  midnight: ['0:00. THE COLLECTOR.', `SHORT: A LIFE PER ${money(ECONOMY.shortfallPerLife.v)} AND THE BANK. MADE IT: PAY HIM, OR CHALLENGE HIM AT HIS GAME.`],
   markers: ['MARKERS', 'SPEND THEM ON THE COMPUTER AT HOME: CHARMS THAT CROSS THE ROOM, BY POST.'],
   broke: ['BROKE', "NOTHING LEFT TO BET? WALK TO THE COLLECTOR'S TABLE IN THE MIDDLE AND PRESS E TO CALL IT."],
 };
@@ -95,6 +98,10 @@ export class App {
   /** the house and the family in it (DECISIONS #79) */
   home: Home;
   family: Crowd;
+  /** the Collector, his table and its levers, and the scene played at it (DECISIONS #82) */
+  duel: Duel;
+  duelScene: DuelScene;
+  private duelHud: DuelHud | null = null;
   game: Game;
   readonly fp = new FirstPerson();
   readonly hud: Hud;
@@ -144,11 +151,13 @@ export class App {
     this.tablePlay = new TablePlay(this.view.scene, FLOOR_1);
     this.home = buildHome(this.view.scene, this.tex);
     this.family = new Crowd(this.view.scene, { npcs: FAMILY } as unknown as Floor);
+    this.duel = buildDuel(this.view.scene, FLOOR_1);
     this.hud = new Hud(hudCanvas);
     this.hud.ui.sfx = (id) => this.audio.sfx(id);
     this.game = new Game({ seed: 1, upgrades: this.meta.upgrades });
     defineSounds(this.audio);
     this.chatter = new Chatter(this.audio, FLOOR_1);
+    this.duelScene = new DuelScene(this.audio, this.duel, this.room, this.fp, (c) => this.send(c), (objs) => this.view.pickObject(objs, this.input.mouse.x, this.input.mouse.y));
     for (const p of [new BanditPanel(), new TwentyOnePanel(), new HiLoPanel(), new WheelPanel(), new RedLinePanel(), new DeadManPanel(), new CollectorPanel()]) this.mountPanel(p);
     this.applySettings();
     this.resetCamera();
@@ -223,7 +232,8 @@ export class App {
   // ---------------------------------------------------------------- runs
 
   newRun(seed = (Date.now() ^ Math.floor(Math.random() * 0x7fffffff)) >>> 0) {
-    this.game = new Game({ seed, upgrades: this.meta.upgrades, home: true });
+    this.game = new Game({ seed, upgrades: this.meta.upgrades, home: true, unlocked: this.meta.unlocked as CharmId[] });
+    this.duelScene.reset(this.game.state);
     this.screen = 'game';
     this.started = false;
     this.paused = false;
@@ -306,6 +316,7 @@ export class App {
   private handle(events: SimEvent[]) {
     const a = this.audio;
     for (const e of events) {
+      this.duelScene.event(e, this.game.state);
       const mine = !('player' in e) || e.player === ME || e.player === -1;
       switch (e.t) {
         case 'sat': {
@@ -411,7 +422,7 @@ export class App {
           a.sfx('midnight');
           this.input.unlock();
           if (this.fp.seated) this.fp.stand(this.view.camera);
-          this.fp.sit(this.view.camera, FLOOR_1.collector.eye, FLOOR_1.collector.look);
+          // the scene seats you across from him (duelscene.ts)
           this.teach('midnight');
           break;
         case 'shortfall':
@@ -420,11 +431,19 @@ export class App {
         case 'paid':
           a.sfx('chip');
           break;
-        case 'circuit':
-          a.sfx(e.action === 'inspect' ? 'inspect' : e.action === 'reroute' ? 'click' : e.over ? 'overload' : 'safe');
+        case 'killed':
+          this.toast(`${COLLECTORS[Math.min(e.idx, COLLECTORS.length - 1)].name} IS DEAD`, C.collHi);
           break;
-        case 'circuitEnd':
-          a.sfx(e.won ? 'boon' : 'bane');
+        case 'unlocked': {
+          const c = CHARM_BY_ID.get(e.charm as CharmId);
+          if (c) this.toast(`NEW IN THE SHOP, FOR GOOD: ${c.name.toUpperCase()}`, C.soul);
+          if (!this.meta.unlocked.includes(e.charm)) this.meta.unlocked.push(e.charm);
+          save('vig.meta', this.meta);
+          break;
+        }
+        case 'ending':
+          if (!this.meta.endings.includes(e.id)) this.meta.endings.push(e.id);
+          save('vig.meta', this.meta);
           break;
         case 'spinning':
           a.sfx('spin');
@@ -694,6 +713,9 @@ export class App {
         this.view.camera.position.y += Math.sin(tt * 1.7) * 0.04 * dk * k;
       }
     }
+    // the Collector's scene: his words, the levers, the current (DECISIONS #82)
+    this.duelHud = inGame ? this.duelScene.frame(dt, s, this.view.camera, { x: i.mouse.x, y: i.mouse.y, left: i.mouse.pressed[0], right: i.mouse.pressed[2] }) : null;
+    if (inGame) this.duelScene.applyCamera(this.view.camera, dt);
     // the 0:00 drop
     const dark = inGame && s.phase !== 'floor' && s.phase !== 'home' ? 1 : 0;
     this.dark += (dark - this.dark) * Math.min(1, dt * 1.5);
@@ -727,7 +749,7 @@ export class App {
       this.chatter.update({ x: cam.x, z: cam.z, yaw }, lit, this.dark);
     }
     // the music dips at 0:00; somewhere across the floor, now and then, another machine pays
-    this.audio.mood(this.screen === 'game' ? 1 - 0.65 * this.dark : 0.8);
+    this.audio.mood(this.screen === 'game' ? (this.duelScene.tension.playing ? 0.02 : 1 - 0.65 * this.dark) : 0.8);
     if (inGame && s.phase === 'floor' && this.started && !this.paused) {
       this.ambientIn -= dt;
       if (this.ambientIn <= 0) {
@@ -748,7 +770,8 @@ export class App {
     for (const { panel, tex, mesh } of this.panels.values()) {
       const active = inGame && (panel.table === 'collector' ? atColl : p.seat === panel.table);
       let ptr: Pointer | null = null;
-      if (active) {
+      // while his table is turned over the mouse is on the levers, not the face-down screen
+      if (active && !(panel.table === 'collector' && this.duelScene.blocksPanel)) {
         const uv = this.view.pickUV(mesh, i.mouse.x, i.mouse.y);
         ptr = uv ? { x: uv.x * PANEL_W, y: (1 - uv.y) * PANEL_H, down: i.mouse.down[0], pressed: i.mouse.pressed[0] } : null;
       }
@@ -761,7 +784,9 @@ export class App {
     this.toasts = this.toasts.filter((t) => t.t > 0);
     if (this.banner) this.banner.t -= dt;
     if (this.lesson) this.lesson.t -= dt;
-    if ((!this.lesson || this.lesson.t <= 0) && this.lessonQueue.length && inGame && (this.started || s.phase !== 'floor')) {
+    // a lesson waits while the Collector talks and plays (his scene owns the screen: DECISIONS #82)
+    const scene = s.phase === 'midnight' || s.phase === 'choice' || s.phase === 'circuit';
+    if ((!this.lesson || this.lesson.t <= 0) && this.lessonQueue.length && inGame && !scene && (this.started || s.phase !== 'floor')) {
       const id = this.lessonQueue.shift()!;
       const [title, body] = LESSONS[id];
       this.lesson = { id, title, body, t: 7 };
@@ -795,7 +820,7 @@ export class App {
         prompt: t ? this.promptFor(t) : cagePrompt,
         overlay: this.confirm ? null : overlay, confirm: this.confirm, cage: inGame && walks(s.phase) ? this.cageView() : null,
         bar: inGame && s.phase === 'floor' ? { open: this.barOpen, why: new Map(DRINKS.map((d) => [d.id, cantOrder(this.game, p, d.id)])) } : null,
-        toasts: this.toasts, lesson: this.lesson, banner: this.banner, settings: this.settings, meta: this.meta, dark: this.dark,
+        toasts: this.toasts, lesson: this.lesson, banner: this.banner, settings: this.settings, meta: this.meta, dark: this.dark, duel: this.duelHud,
       },
       hp, dt, i,
     );

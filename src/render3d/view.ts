@@ -250,6 +250,14 @@ export class View3D {
     return hit?.uv ?? null;
   }
 
+  /** The first of `objs` under a CSS-pixel point (the Collector's levers), or null. */
+  pickObject(objs: Object3D[], cssX: number, cssY: number): Object3D | null {
+    const p = this.ndc(cssX, cssY);
+    if (!p) return null;
+    this.ray.setFromCamera(p, this.camera);
+    return this.ray.intersectObjects(objs, false)[0]?.object ?? null;
+  }
+
   /** Draw calls and triangles of the scene alone (one plain render), for e2e/perf.mjs. */
   measure(): { calls: number; triangles: number } {
     const r = this.renderer;

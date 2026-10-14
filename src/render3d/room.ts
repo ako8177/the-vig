@@ -51,6 +51,8 @@ export interface Room {
   group: Group;
   /** the screen mesh a table's panel is mapped onto, by table id */
   screens: Map<string, Mesh>;
+  /** the frame round the Collector's screen (it hides while his table is turned over) */
+  collectorFrame: Mesh;
   /** the room's lights, for the 0:00 drop */
   lights: PointLight[];
   /** which of `lights` is the Collector's violet one (it burns on at 0:00) */
@@ -546,6 +548,7 @@ export function buildRoom(scene: Scene, floor: Floor, tx: Textures): Room {
     group.add(crystalMesh);
   }
 
+  let collectorFrame: Mesh | undefined;
   // ---------------------------------------------------------------- the Collector's table, in the back room
   const co = floor.collector;
   add(uvRepeat(new CylinderGeometry(co.r, co.r * 0.9, co.h - 0.05, 16), 6, 1), lambert('wood'), co.x, (co.h - 0.05) / 2, co.z, 'collector');
@@ -559,18 +562,18 @@ export function buildRoom(scene: Scene, floor: Floor, tx: Textures): Room {
   const chairZ = (ch.z0 + ch.z1) / 2 + 0.2;
   add(new BoxGeometry(ch.x1 - ch.x0 - 0.1, 2.5, ch.z1 - ch.z0 - 0.1), lambert('wood', hexOf(C.smoke)), co.x, 1.25, chairZ - 0.2, 'collectorchair');
   add(new BoxGeometry(ch.x1 - ch.x0, 0.1, ch.z1 - ch.z0), flat(C.brass), co.x, 2.5, chairZ - 0.2, 'collectorchairtop');
-  const eyes = keep(new MeshBasicMaterial({ color: neonColor('coll') }));
-  glowing.add(eyes);
-  for (const dx of [-0.11, 0.11]) add(new BoxGeometry(0.07, 0.035, 0.02), eyes, co.x + dx, 1.62, chairZ - 0.06, 'eyes');
+  // he sits in it himself now (render3d/duel.ts), his eyes with him
   sign('sign_collector', 128, co.x, co.signY, co.z);
   {
     const sc = co.screen;
     const m = add(new PlaneGeometry(sc.w, sc.h), screenOff, sc.x, sc.y, sc.z, 'screen-collector');
     m.rotation.x = -sc.tilt;
-    const fr = add(new BoxGeometry(sc.w + 0.06, sc.h + 0.06, 0.03), lambert('wood'), sc.x, sc.y, sc.z, 'screenframe');
+    const fr = add(new BoxGeometry(sc.w + 0.06, sc.h + 0.06, 0.03), lambert('wood'), sc.x, sc.y, sc.z, 'anim-screenframe');
     fr.rotation.x = -sc.tilt;
     fr.translateZ(-0.02);
+    fr.userData.occluder = true;
     screens.set('collector', m);
+    collectorFrame = fr;
   }
 
   // ---------------------------------------------------------------- light: a dim hemisphere, ≤ 8 points
@@ -639,7 +642,7 @@ export function buildRoom(scene: Scene, floor: Floor, tx: Textures): Room {
   let screenT = 0;
   const reels = [0, 0, 0];
   return {
-    group, screens, lights, collLight, hemi, neon, base,
+    group, screens, collectorFrame: collectorFrame!, lights, collLight, hemi, neon, base,
     lightRooms(rooms) {
       lights.forEach((l, i) => (l.visible = rooms.has(lightRoom[i])));
       for (const [id, g] of roomGroups) g.visible = rooms.has(id);
