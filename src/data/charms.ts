@@ -1,9 +1,9 @@
-// Charms and upgrades, bought with markers at the cage (DESIGN.md §5). Pillar 3: every charm
+// Charms and upgrades, bought with markers from the computer at home (DESIGN.md §5). Pillar 3: every charm
 // declares effects on at least two systems; the data test enforces it.
 
 export type GameSystem = 'table' | 'circuit' | 'collector' | 'lives';
 
-export type CharmId = 'luckyfuse' | 'overclock' | 'leadapron' | 'magnet';
+export type CharmId = 'luckyfuse' | 'overclock' | 'leadapron' | 'magnet' | 'insulated';
 
 export interface CharmDef {
   id: CharmId;
@@ -13,19 +13,21 @@ export interface CharmDef {
   systems: GameSystem[];
   /** one line per side, as printed at the cage */
   text: string[];
+  /** locked until you kill this Collector (data/collectors.ts index) at his game, in any run */
+  unlock?: number;
   derivation: string;
 }
 
 export const CHARMS: CharmDef[] = [
   {
     id: 'luckyfuse', name: 'Lucky Fuse', price: 3, systems: ['circuit', 'collector', 'lives'],
-    text: ['WIN A CIRCUIT AFTER SURVIVING', 'AN OVERLOAD IN IT: +1 LIFE'],
-    derivation: 'DESIGN.md §5 (DECISIONS #53): win the Circuit having survived an overload in it, +1 life; price 3',
+    text: ['WIN A CIRCUIT AFTER TAKING', 'A SHOCK IN IT: +1 LIFE'],
+    derivation: 'DESIGN.md §5 (DECISIONS #53, #80): win the Circuit having taken a shock in it, +1 life; price 3',
   },
   {
     id: 'overclock', name: 'Overclock', price: 4, systems: ['circuit', 'table'],
-    text: ['SURVIVE AN OVERLOAD: STAKES AND', 'WINS x2, FIRST 60 S OF THE NIGHT'],
-    derivation: 'DESIGN.md §5 (DECISIONS #9, #54): stakes x2 (so wins x2, odds unchanged) for the next night\'s first 60 s after surviving an overload; price 4',
+    text: ['SURVIVE A SHOCK: STAKES AND', 'WINS x2, FIRST 60 S OF THE NIGHT'],
+    derivation: 'DESIGN.md §5 (DECISIONS #9, #54, #80): stakes x2 (so wins x2, odds unchanged) for the next night\'s first 60 s after surviving a shock; price 4',
   },
   {
     id: 'leadapron', name: 'Lead Apron', price: 3, systems: ['table', 'circuit', 'lives'],
@@ -34,8 +36,13 @@ export const CHARMS: CharmDef[] = [
   },
   {
     id: 'magnet', name: 'Marker Magnet', price: 3, systems: ['table', 'circuit'],
-    text: ['HIGH-TABLE WINS: x2 MARKERS', 'INSPECTING COSTS 1 MARKER, NOT $100'],
-    derivation: 'DESIGN.md §5 (DECISIONS #9): double markers from high-table wins; inspections cost a marker; price 3',
+    text: ['HIGH-TABLE WINS: x2 MARKERS', 'DEAD LEVERS IN THE CIRCUIT: x2 MARKERS'],
+    derivation: 'DESIGN.md §5 (DECISIONS #9, #80): double markers from high-table wins and from dead levers you pull; price 3',
+  },
+  {
+    id: 'insulated', name: 'Insulated Kit', price: 4, systems: ['circuit', 'table'], unlock: 0,
+    text: ['THE CIRCUIT: TRACE 2 WIRES FREE', 'RUBBER SOLES: STICKY FLOOR CAN\'T SLOW YOU'],
+    derivation: 'DESIGN.md §5 (DECISIONS #81): unlocked by killing the first Collector at the Circuit; two free traces a duel (you win 76%, not 50%); the team mark Sticky Floor doesn\'t slow its wearer; price 4',
   },
 ];
 

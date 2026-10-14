@@ -75,8 +75,10 @@ export const movement: System = {
     const ph = g.state.phase;
     if (ph !== 'floor' && ph !== 'home') return;
     const cols = ph === 'home' ? HOME_COLLIDERS : FLOOR_1.colliders;
-    const step = STEP * (hasTeamMark(g, 'sticky') ? STICKY : 1);
+    const sticky = hasTeamMark(g, 'sticky');
     for (const p of g.state.players) {
+      // the Insulated Kit's rubber soles don't stick (DECISIONS #81)
+      const step = STEP * (sticky && !p.charms.includes('insulated') ? STICKY : 1);
       if (p.seat || (p.mx === 0 && p.mz === 0)) continue;
       const k = p.run ? SPRINT : 1;
       let vx = p.mx / 1000, vz = p.mz / 1000;

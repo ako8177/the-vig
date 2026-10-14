@@ -53,6 +53,7 @@ export function cantBuy(g: Game, p: PlayerState, item: string): string | null {
   const charm = CHARM_BY_ID.get(item as CharmId);
   const up = UPGRADE_BY_ID.get(item as UpgradeId);
   if (charm) {
+    if (charm.unlock !== undefined && !s.unlocked.includes(charm.id)) return 'locked: kill a Collector at his game';
     const coming = pendingCharms(g, p.id);
     if (p.charms.includes(charm.id)) return 'already worn';
     if (coming.includes(charm.id)) return 'already in the post';

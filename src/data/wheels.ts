@@ -28,7 +28,7 @@ export const BANES: SlotDef<BaneId>[] = [
   { id: 'twoloss', label: 'TWO LOSSES', text: 'RED LINE TAKES A LIFE ON 2 LOSSES', derivation: 'DESIGN.md §7: Bane, blood tables kill on two losses' },
   { id: 'longmarks', label: 'LONG MARKS', text: 'HI-LO MARKS LAST 60 S', derivation: 'DESIGN.md §7: Bane, Hi-Lo marks last 60 s' },
   { id: 'dearsoul', label: 'DEAR SOULS', text: 'SOUL BUYBACK COSTS 75%', derivation: 'DESIGN.md §7: Bane, soul buyback 75%; solo, -$500 off the next bank (DECISIONS #51)' },
-  { id: 'overloads', label: '3 OVERLOADS', text: 'THE CIRCUIT HAS 3 OVERLOADS; HE HAS 3 FUSES', derivation: 'DESIGN.md §7: Bane, the Circuit has 3 overloads (and he 3 fuses: DECISIONS #52)' },
+  { id: 'overloads', label: '4 LIVE LEVERS', text: 'THE CIRCUIT HAS 4 LIVE LEVERS', derivation: 'DESIGN.md §7: Bane, the Circuit has 4 live levers of 10 (you win 42%: DECISIONS #80)' },
 ];
 
 /** Solo, Dear Souls has no soul to price: it docks the next night's bank instead (DECISIONS #51). */
@@ -36,7 +36,7 @@ export const DEAR_SOULS_SOLO = { label: 'DEAR SOULS', text: 'SOLO: THE NEXT BANK
 
 /** Boon and Bane numbers (DESIGN.md §7). */
 export const WHEEL = {
-  cash: 1000, markers: 3, discount: 0.2, dearSoul: 0.75, longMarksS: 60, twoLoss: 2, bigOverloads: 3,
+  cash: 1000, markers: 3, discount: 0.2, dearSoul: 0.75, longMarksS: 60, twoLoss: 2, bigOverloads: 4,
   /** seconds the wheel spins before it lands (presentation pacing, mirrored in the sim) */
   spinS: 3,
 };

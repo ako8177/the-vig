@@ -26,6 +26,10 @@ export type SimEvent =
   | { t: 'paid'; quota: number; overshootMarkers: number }
   | { t: 'circuit'; who: 'team' | 'coll'; action: 'inspect' | 'reroute' | 'activate'; slot: number; over?: boolean; text: string }
   | { t: 'circuitEnd'; won: boolean; why: string }
+  /** a Collector died at the table; a charm joined the pool for good */
+  | { t: 'killed'; idx: number }
+  | { t: 'ending'; id: string }
+  | { t: 'unlocked'; charm: string }
   | { t: 'spinning'; kind: 'boon' | 'bane'; slot: number; ticks: number }
   | { t: 'landed'; kind: 'boon' | 'bane'; id: string; text: string }
   | { t: 'summary'; summary: NightSummary }

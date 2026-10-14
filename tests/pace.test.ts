@@ -3,7 +3,7 @@
 import { describe, expect, it } from 'vitest';
 import { Game } from '../src/sim/Game';
 import { Bot, SEEDS, deadMan, midRotation, night, redBurst, safeOnly } from './bots';
-import { collectorPick, newCircuit } from '../src/sim/circuit';
+import { newCircuit } from '../src/sim/circuit';
 import type { CharmId } from '../src/data/charms';
 import { ECONOMY } from '../src/data/economy';
 import { buybackPrice } from '../src/sim/systems/lives';
@@ -61,69 +61,61 @@ describe('pace tests (DESIGN.md §8, 200 seeds)', () => {
     expect(broke / N).toBeGreaterThanOrEqual(0.3);
   });
 
-  /** Play one Circuit with a team policy; returns whether the team won. */
-  function circuit(seed: number, charms: CharmId[], policy: (g: Game, turn: number) => Act) {
-    const g = new Game({ seed });
+  /** Play one Circuit with a team policy; returns whether the team won and the lives it cost. */
+  function circuit(seed: number, charms: CharmId[], policy: (g: Game, r: () => number) => Act) {
+    const g = new Game({ seed, unlocked: ['insulated'] });
     const s = g.state;
     s.players[0].charms = [...charms];
     s.bank = 5000;
     s.phase = 'circuit';
     s.circuit = newCircuit(g);
     s.summary = { night: 1, quota: 3000, nextQuota: 0, bankAtMidnight: 5000, how: 'gambled', short: 0, livesTaken: 0, overshootMarkers: 0, circuit: null, wheel: null, ledger: null };
-    let turn = 0;
-    for (let k = 0; k < 2000 && s.phase === 'circuit' && !s.circuit!.done; k++) {
-      if (s.circuit!.turn === 'team') {
-        g.submit(0, cmdOf(policy(g, turn++)));
-      }
+    const r = rng(seed);
+    for (let k = 0; k < 4000 && s.phase === 'circuit' && !s.circuit!.done; k++) {
+      if (s.circuit!.turn === 'team') g.submit(0, cmdOf(policy(g, r)));
       g.step();
       g.drainEvents();
     }
     return { won: !!s.circuit?.done?.won, lost: 3 - s.players[0].lives };
   }
 
-  type Act = { t: 'inspect' | 'activate'; i: number } | { t: 'reroute'; i: number; j: number };
-  /**
-   * Sensible (DESIGN.md §6, DECISIONS #52): he takes the lowest-numbered circuit he trusts, so you
-   * can see his next move. Cash a safe you know; route an overload you know into his next pick;
-   * otherwise look at his next pick (up to `n` times); otherwise activate blind, away from him.
-   * `blindFirst`: activate blind on the very first turn (the Lead Apron line).
-   */
-  const sensible = (n: number, blindFirst = false) => (g: Game, turn: number): Act => {
-    const c = g.state.circuit!;
-    const open = c.slots.map((sl, i) => ({ sl, i })).filter(({ sl }) => !sl.spent);
-    const unknown = open.filter(({ sl }) => !sl.known);
-    const his = collectorPick(c);
-    if (blindFirst && turn === 0 && unknown.length) return { t: 'activate', i: unknown[unknown.length - 1].i };
-    const safe = open.find(({ sl }) => sl.known && !sl.over);
-    if (safe) return { t: 'activate', i: safe.i };
-    const bomb = open.find(({ sl }) => sl.known && sl.over);
-    if (bomb && his >= 0 && his !== bomb.i && !c.slots[his].known) return { t: 'reroute', i: bomb.i, j: his };
-    const looks = c.slots.filter((sl) => sl.known && sl.by === null).length;
-    if (looks < n && his >= 0 && !c.slots[his].known) return { t: 'inspect', i: his };
-    const blind = unknown.filter(({ i }) => i !== his);
-    const pick = (blind[blind.length - 1] ?? unknown[unknown.length - 1] ?? open.find(({ sl }) => !(sl.known && sl.over)) ?? open[0]);
-    return { t: 'activate', i: pick.i };
+  type Act = { t: 'inspect' | 'activate'; i: number };
+  /** a seeded coin for the bots' own picks (the sim's RNG stays the sim's) */
+  const rng = (seed: number) => {
+    let x = (seed * 2654435761) >>> 0 || 1;
+    return () => ((x = Math.imul(x ^ (x >>> 13), 1274126177) + 0x6d2b79f5 >>> 0) >>> 8) / 16777216;
   };
-  const cmdOf = (a: Act) =>
-    a.t === 'reroute' ? { t: 'reroute' as const, a: a.i, b: a.j } : a.t === 'inspect' ? { t: 'inspect' as const, circuit: a.i } : { t: 'activate' as const, circuit: a.i };
+  /**
+   * The only line there is (DESIGN.md §6, DECISIONS #80): pull at random; with the Insulated Kit's
+   * traces left, trace a lever before pulling and pull one you traced dead.
+   */
+  const pull = (g: Game, r: () => number): Act => {
+    const c = g.state.circuit!;
+    const up = c.levers.map((l, i) => ({ l, i })).filter(({ l }) => !l.pulled);
+    const dead = up.find(({ l }) => l.known && !l.live);
+    if (dead) return { t: 'activate', i: dead.i };
+    const unknown = up.filter(({ l }) => !l.known);
+    if (c.traces[0] > 0 && unknown.length > 1) return { t: 'inspect', i: unknown[Math.floor(r() * unknown.length)].i };
+    const pick = unknown.length ? unknown : up;
+    return { t: 'activate', i: pick[Math.floor(r() * pick.length)].i };
+  };
+  const cmdOf = (a: Act) => (a.t === 'inspect' ? { t: 'inspect' as const, circuit: a.i } : { t: 'activate' as const, circuit: a.i });
 
-  // one Circuit is close to a coin flip, so its band is measured on 400 games (±5%)
+  // one Circuit is a coin flip, so its band is measured on 400 games (±5%)
   const GAMES = Array.from({ length: 400 }, (_, i) => 77 + i * 7919);
 
-  it("5. the Circuit (400 games): watching his next pick wins 40-65%; activating blind costs more lives; Lead Apron takes any line's life cost to ~0", () => {
-    const play = (charms: CharmId[], blind: boolean) => {
-      const r = GAMES.map((s) => circuit(s, charms, sensible(1, blind)));
+  it("5. the Circuit (400 games): pulling at random wins 40-60%; the Insulated Kit's traces win at least 65%; Lead Apron takes the life cost to ~0", () => {
+    const play = (charms: CharmId[]) => {
+      const r = GAMES.map((s) => circuit(s, charms, pull));
       return { won: Math.round((count(r, (x) => x.won) / r.length) * 100), lost: r.reduce((a, x) => a + x.lost, 0) / r.length };
     };
-    const inspect = play([], false), blind = play([], true);
-    const aInspect = play(['leadapron'], false), aBlind = play(['leadapron'], true);
+    const bare = play([]), kit = play(['insulated']), apron = play(['leadapron']);
     const f = (x: { won: number; lost: number }) => `${x.won}% won, ${x.lost.toFixed(2)} lives`;
-    console.log(`  circuit: inspect first ${f(inspect)}; blind first ${f(blind)}; with lead apron: inspect first ${f(aInspect)}, blind first ${f(aBlind)}`);
-    expect(inspect.won).toBeGreaterThanOrEqual(40);
-    expect(inspect.won).toBeLessThanOrEqual(65);
-    expect(blind.lost).toBeGreaterThan(inspect.lost);
-    expect(aInspect.lost).toBeLessThanOrEqual(0.02);
-    expect(aBlind.lost).toBeLessThanOrEqual(0.02);
+    console.log(`  circuit: at random ${f(bare)}; with the kit ${f(kit)}; with lead apron ${f(apron)}`);
+    expect(bare.won).toBeGreaterThanOrEqual(40);
+    expect(bare.won).toBeLessThanOrEqual(60);
+    expect(kit.won).toBeGreaterThanOrEqual(65);
+    expect(apron.lost).toBeLessThanOrEqual(0.02);
   });
 
   const survived: Record<string, number[]> = { decide: [0, 0, 0, 0], pay: [0, 0, 0, 0], gamble: [0, 0, 0, 0] };
@@ -147,11 +139,9 @@ describe('pace tests (DESIGN.md §8, 200 seeds)', () => {
         const gamble = policy === 'gamble' || (policy === 'decide' && fuse && me.lives > 1);
         g.submit(0, { t: gamble ? 'gamble' : 'pay' });
         g.step();
-        let turn = 0;
-        for (let k = 0; k < 5000 && (s.phase as string) === 'circuit'; k++) {
-          if (s.circuit && !s.circuit.done && s.circuit.turn === 'team') {
-            g.submit(0, cmdOf(sensible(1, me.charms.includes('leadapron'))(g, turn++)));
-          }
+        const r = rng(seed + s.night);
+        for (let k = 0; k < 8000 && (s.phase as string) === 'circuit'; k++) {
+          if (s.circuit && !s.circuit.done && s.circuit.turn === 'team') g.submit(0, cmdOf(pull(g, r)));
           g.step();
         }
         if ((s.phase as string) === 'wheel') {
@@ -170,12 +160,15 @@ describe('pace tests (DESIGN.md §8, 200 seeds)', () => {
     return nights + s.players[0].lives / 10;
   }
 
-  it("6. the Collector's choice: gambling with a fuse charm and paying without one beats always-pay and always-gamble", () => {
+  it("6. the Collector's choice: challenging him survives at least as well as paying (a win keeps the quota)", () => {
+    // DECISIONS #80: a won challenge keeps the whole quota and the surcharge is gone, so the
+    // challenge is now worth taking far more often than not. Measured, and written down as an open
+    // question for the owner (HANDOFF.md): today always challenging beats always paying.
     const score = (p: 'decide' | 'pay' | 'gamble') => SEEDS.reduce((a, seed) => a + run(seed, p), 0) / SEEDS.length;
     const d = score('decide'), p = score('pay'), gb = score('gamble');
-    console.log(`  collector's choice (nights + lives/10): decide ${d.toFixed(2)}, always pay ${p.toFixed(2)}, always gamble ${gb.toFixed(2)}`);
+    console.log(`  collector's choice (nights + lives/10): decide ${d.toFixed(2)}, always pay ${p.toFixed(2)}, always challenge ${gb.toFixed(2)}`);
     console.log(`  nights survived 0/1/2/3: ${JSON.stringify(survived)}`);
-    expect(d).toBeGreaterThanOrEqual(gb);
+    expect(gb).toBeGreaterThanOrEqual(p);
     expect(d).toBeGreaterThanOrEqual(p - 0.15);
   });
 

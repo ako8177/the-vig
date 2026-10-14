@@ -35,6 +35,8 @@ export interface GameOpts {
   upgrades?: import('../data/charms').UpgradeId[];
   /** start at the house and go home between nights (the game); off for the pace bots */
   home?: boolean;
+  /** charms unlocked by killing Collectors in earlier runs (meta; DECISIONS #81) */
+  unlocked?: import('../data/charms').CharmId[];
 }
 
 export class Game {
@@ -54,7 +56,7 @@ export class Game {
   constructor(opts: GameOpts) {
     this.seed = opts.seed >>> 0;
     this.rng = new Rng(this.seed);
-    this.state = newState(opts.players ?? 1, opts.upgrades ?? [], opts.home ?? false);
+    this.state = newState(opts.players ?? 1, opts.upgrades ?? [], opts.home ?? false, opts.unlocked ?? []);
     for (const s of SYSTEMS) for (const t of s.handles) {
       if (this.owner.has(t)) throw new Error(`command ${t} owned by both ${this.owner.get(t)!.id} and ${s.id}`);
       this.owner.set(t, s);

@@ -1,22 +1,25 @@
 // The Collector (DESIGN.md §2, §6, §7): at 0:00, short of quota he takes a life per $2,000 short
-// and the bank; at or over it, the team pays, or gambles on the Circuit for the Boon or the Bane.
+// and the bank; at or over it, the team pays, or challenges him at the Circuit: win and he dies,
+// you keep the quota and spin the Boon; lose and it's a life, the quota and the Bane.
 import type { Game, System } from '../Game';
 import type { PlayerState } from '../state';
 import { MIDNIGHT_S } from './clock';
-import { payQuota, summarize } from './economy';
+import { overshoot, payQuota, summarize } from './economy';
 import { collectorAct, newCircuit, teamAct } from '../circuit';
 import { ECONOMY } from '../../data/economy';
 import { FLOOR_1 } from '../../data/floors';
 import { BANES, BOONS, DEAR_SOULS_SOLO, WHEEL } from '../../data/wheels';
 import { CHARMS, UPGRADES } from '../../data/charms';
+import { collectorOf } from '../../data/collectors';
 import { midnight } from './clock';
 import { addMarkers, gainLife, living, loseLife, ticks } from '../rules';
 
 /** How close to the Collector's table you must stand to call the night (m). */
 export const CALL_RADIUS = 1.6;
 
-/** The beat between the Circuit ending and the wheel coming up (s). */
-export const AFTER_CIRCUIT_S = 2;
+/** The beat between the Circuit ending and the wheel coming up (s): the shock, his last words or
+ *  yours, the table turning back over (presentation pacing in the sim). */
+export const AFTER_CIRCUIT_S = 6;
 
 function shortfall(g: Game) {
   const s = g.state;
@@ -51,7 +54,8 @@ function applyWheel(g: Game, kind: 'boon' | 'bane', slot: number): { id: string;
       case 'markers': addMarkers(g, WHEEL.markers, 'boon'); break;
       case 'charm': {
         const p = charmFor(g);
-        const free = p ? CHARMS.filter((c) => !p.charms.includes(c.id)) : [];
+        // only from the pool: a locked charm can't come off the wheel either
+        const free = p ? CHARMS.filter((c) => !p.charms.includes(c.id) && (!c.unlock || s.unlocked.includes(c.id))) : [];
         if (p && free.length) {
           const c = g.rng.pick(free);
           p.charms.push(c.id);
@@ -104,20 +108,21 @@ export const collector: System = {
       if (s.phase !== 'choice') return refuse('not now');
       if (p.ghost) return refuse('a ghost has no say');
       const bank = s.bank;
-      const over = payQuota(g);
       if (cmd.t === 'pay') {
+        const over = payQuota(g);
         summarize(g, { bankAtMidnight: bank, how: 'paid', short: 0, livesTaken: 0, overshootMarkers: over, circuit: null, wheel: null, ledger: null });
         return;
       }
+      // the challenge: nothing is paid yet. Win and you keep the quota; lose and it's his (DECISIONS #80)
       s.circuit = newCircuit(g);
-      s.summary = { night: s.night, quota: s.quota, nextQuota: 0, bankAtMidnight: bank, how: 'gambled', short: 0, livesTaken: 0, overshootMarkers: over, circuit: null, wheel: null, ledger: null };
+      s.summary = { night: s.night, quota: s.quota, nextQuota: 0, bankAtMidnight: bank, how: 'gambled', short: 0, livesTaken: 0, overshootMarkers: 0, circuit: null, wheel: null, ledger: null };
       s.phase = 'circuit';
       s.phaseAt = g.tick;
       return;
     }
     if (cmd.t === 'inspect' || cmd.t === 'reroute' || cmd.t === 'activate') {
       if (s.phase !== 'circuit') return refuse('no circuit');
-      const why = cmd.t === 'reroute' ? teamAct(g, p, 'reroute', cmd.a, cmd.b) : teamAct(g, p, cmd.t, cmd.circuit);
+      const why = cmd.t === 'reroute' ? teamAct(g, p, 'reroute', cmd.a) : teamAct(g, p, cmd.t, cmd.circuit);
       if (why) refuse(why);
       return;
     }
@@ -143,6 +148,20 @@ export const collector: System = {
       if (!c.done && c.turn === 'coll' && g.tick >= c.wait) collectorAct(g);
       if (c.done && s.phase === 'circuit' && g.tick - c.endedAt >= ticks(AFTER_CIRCUIT_S)) {
         s.summary!.circuit = c.done;
+        // won: he's dead, the quota stays in the bank (its overshoot still pays markers), and the
+        // first kill of each Collector puts his charm in the pool; lost: the quota is paid now
+        if (c.done.won) {
+          s.summary!.overshootMarkers = overshoot(g);
+          s.summary!.how = 'kept';
+          s.collector.dead = true;
+          s.killed.push(s.collector.idx);
+          g.emit({ t: 'killed', idx: s.collector.idx });
+          const charm = collectorOf(s.collector.idx).unlocks;
+          if (charm && !s.unlocked.includes(charm)) {
+            s.unlocked.push(charm);
+            g.emit({ t: 'unlocked', charm });
+          }
+        } else s.summary!.overshootMarkers = payQuota(g);
         // the last night: no tomorrow for a Boon or a Bane to touch. A win takes one permanent
         // upgrade from the house's ledger; a loss costs only what the Circuit cost (DECISIONS #50).
         if (s.night >= ECONOMY.nights.v) {
@@ -158,12 +177,11 @@ export const collector: System = {
             }
           }
           summarize(g, {
-            bankAtMidnight: part.bankAtMidnight, how: 'gambled', short: 0, livesTaken: 0, overshootMarkers: part.overshootMarkers,
+            bankAtMidnight: part.bankAtMidnight, how: part.how, short: 0, livesTaken: 0, overshootMarkers: part.overshootMarkers,
             circuit: c.done, wheel: null, ledger,
           });
           return;
         }
-        if (!c.done.won) s.nextExtra = ECONOMY.gambleLossMin.v + g.rng.next() * (ECONOMY.gambleLossMax.v - ECONOMY.gambleLossMin.v);
         s.wheel = { kind: c.done.won ? 'boon' : 'bane', slot: null, until: 0, applied: false };
         s.phase = 'wheel';
         s.phaseAt = g.tick;
@@ -175,7 +193,7 @@ export const collector: System = {
       g.emit({ t: 'landed', kind: w.kind, id: r.id, text: r.text });
       const part = s.summary!;
       summarize(g, {
-        bankAtMidnight: part.bankAtMidnight, how: 'gambled', short: 0, livesTaken: 0, overshootMarkers: part.overshootMarkers,
+        bankAtMidnight: part.bankAtMidnight, how: part.how, short: 0, livesTaken: 0, overshootMarkers: part.overshootMarkers,
         circuit: part.circuit, wheel: { kind: w.kind, id: r.id as never }, ledger: null,
       });
     }

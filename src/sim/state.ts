@@ -115,33 +115,32 @@ export interface TableState {
   shoe?: number[];
 }
 
-export interface CircuitSlot {
-  over: boolean;
-  spent: boolean;
-  /** the team has seen its state (inspected, or spent) */
+/** One lever under the Collector's table (DESIGN.md §6). */
+export interface Lever {
+  live: boolean;
+  pulled: boolean;
+  /** the team has seen whether it's live (pulled, or traced with the Insulated Kit) */
   known: boolean;
-  /** last tick the team touched it (inspect, reroute); -1 never */
-  touched: number;
-  /** who activated it */
   by: 'team' | 'coll' | null;
 }
 
 export interface CircuitState {
-  slots: CircuitSlot[];
-  /** what the Collector believes about each position (DESIGN.md §6: positions, not circuits) */
-  mem: (boolean | null)[];
-  fuses: number;
-  overloadsLeft: number;
-  teamSafe: number;
-  collSafe: number;
+  levers: Lever[];
+  /** how many are live */
+  live: number;
+  /** each player's shocks so far, and his */
+  shocks: number[];
+  hisShocks: number;
+  /** each player's free wire traces left (the Insulated Kit) */
+  traces: number[];
   turn: 'team' | 'coll';
-  /** the tick the Collector acts on */
+  /** the tick the Collector pulls on */
   wait: number;
   /** the latest action, as printed */
   log: string[];
   /** set when it's over */
   done: { won: boolean; why: string } | null;
-  /** players who activated an overload and lived (Lucky Fuse pays them if the team wins) */
+  /** players who took a shock and lived (Lucky Fuse pays them if the team wins) */
   survived: number[];
   /** the tick it ended (the wheel opens after a beat) */
   endedAt: number;
@@ -174,7 +173,7 @@ export interface NightSummary {
   quota: number;
   bankAtMidnight: number;
   /** what happened at the Collector's table */
-  how: 'paid' | 'gambled' | 'short';
+  how: 'paid' | 'gambled' | 'kept' | 'short';
   short: number;
   livesTaken: number;
   overshootMarkers: number;
@@ -229,8 +228,13 @@ export interface State {
   /** this night's Boon/Bane effects, and the next night's */
   mods: NightMods;
   next: NightMods;
-  /** a lost gamble's extra on the next quota (+10-40%) */
-  nextExtra: number;
+  /** who sits at the Collector's table tonight (an index into data/collectors.ts), and whether
+   *  he died at it (the next night brings the next one: DECISIONS #81) */
+  collector: { idx: number; dead: boolean };
+  /** the Collectors killed this run, by index (the ending counts them) */
+  killed: number[];
+  /** the charms in the pool (meta: unlocked by killing Collectors, passed in at the start) */
+  unlocked: CharmId[];
   /** a solo Bane: next night's bank starts this much lower (DECISIONS #51) */
   nextDock: number;
   circuit: CircuitState | null;
@@ -269,7 +273,7 @@ export function spawnOf(id: number, players: number) {
   return { x: sp.x + (id - (players - 1) / 2) * 0.8, z: sp.z, yaw: Math.round(sp.yaw * 1000) };
 }
 
-export function newState(players: number, upgrades: UpgradeId[] = [], home = false): State {
+export function newState(players: number, upgrades: UpgradeId[] = [], home = false, unlocked: CharmId[] = []): State {
   return {
     home,
     post: { orders: [], at: 0, box: [] },
@@ -290,7 +294,9 @@ export function newState(players: number, upgrades: UpgradeId[] = [], home = fal
     upgrades: [...upgrades],
     mods: { ...NO_MODS },
     next: { ...NO_MODS },
-    nextExtra: 0,
+    collector: { idx: 0, dead: false },
+    killed: [],
+    unlocked: [...unlocked],
     nextDock: 0,
     circuit: null,
     wheel: null,

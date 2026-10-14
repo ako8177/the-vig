@@ -17,8 +17,6 @@ export const ECONOMY = {
   bankFloor: n(1000, 'DESIGN.md §2 (DECISIONS #10): the bank carries over with a $1,000 floor'),
   shortfallPerLife: n(2000, 'DESIGN.md §2: one life per $2,000 short, rounded up (DECISIONS #55)'),
   overshootPerMarker: n(500, 'DESIGN.md §2: 1 marker per $500 over quota'),
-  gambleLossMin: n(0.1, 'DESIGN.md §2, §7: a lost gamble adds +10-40% on top of the x1.5'),
-  gambleLossMax: n(0.4, 'DESIGN.md §2, §7: a lost gamble adds +10-40% on top of the x1.5'),
   startLives: n(3, 'DESIGN.md §1: 3 lives per player (PLAN.md currencies)'),
   maxLives: n(5, 'DESIGN.md §7: lives cap at 5 (Boon and Lucky Fuse can lift you past 3)'),
   charmSlots: n(3, 'DESIGN.md §5: 3 charm slots per player'),

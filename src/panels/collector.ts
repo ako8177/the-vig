@@ -3,7 +3,8 @@
 // night's summary (DESIGN.md §2, §6, §7). Every price and consequence is printed before the button.
 import { Panel, PANEL_W, PANEL_H, type PanelView } from './panel';
 import type { UI } from '../ui/ui';
-import { C, TIER_ROLE } from '../data/palette';
+import { C, PALETTE, TIER_ROLE } from '../data/palette';
+import { out3 } from './fx';
 import { ICON } from '../ui/font';
 import { TICKS_PER_S } from '../sim/state';
 import { money } from './table';
@@ -16,8 +17,9 @@ import { rulesFor } from '../sim/circuit';
 const T = TIER_ROLE.coll;
 
 export class CollectorPanel extends Panel {
-  /** circuits picked on the panel (one to inspect or activate, two to reroute) */
+  /** kept for the phase change; the wheel's last peg under the pointer (a clack each) */
   private picked: number[] = [];
+  private lastPeg = -1;
   private lastPhase = '';
 
   constructor() {
@@ -60,7 +62,7 @@ export class CollectorPanel extends Panel {
     ui.text(money(s.quota), PANEL_W / 2, 52, C.gold, { scale: 3, align: 'center' });
     ui.text(`${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')} LEFT`, PANEL_W / 2, 82, C.bone, { scale: 2, align: 'center' });
     ui.text(`SHORT: A LIFE FOR EVERY ${money(ECONOMY.shortfallPerLife.v)}, AND THE BANK.`, PANEL_W / 2, 112, T.hi, { align: 'center' });
-    ui.text('MADE IT: PAY ME, OR GAMBLE ON THE CIRCUIT.', PANEL_W / 2, 124, C.dust, { align: 'center' });
+    ui.text('MADE IT: PAY ME, OR CHALLENGE ME FOR IT.', PANEL_W / 2, 124, C.dust, { align: 'center' });
     ui.text('DONE EARLY, OR BROKE? STAND HERE AND PRESS E TO CALL IT.', PANEL_W / 2, 146, C.ash, { align: 'center' });
   }
 
@@ -93,95 +95,53 @@ export class CollectorPanel extends Panel {
       [last ? '' : `NEXT NIGHT STARTS AT ${money(keep)}`, C.dust],
     ]);
     const r = rulesFor(s.floor);
-    const odds = s.mods.overloads3 ? WHEEL.bigOverloads : r.overloads;
-    card(164, 'GAMBLE', [
-      ['PAY, THEN PLAY THE CIRCUIT', C.bone],
-      [`${r.circuits} CIRCUITS, ${odds} OVERLOADED`, C.dust],
-      [`SAFE: +$${r.safeBank} AND A MARKER`, C.gold],
-      [`OVERLOAD: A LIFE ${ICON.heart}`, C.blood],
-      [`YOU WIN ABOUT ${Math.round(r.odds.win * 100)}%`, C.dust],
+    const live = s.mods.overloads3 ? WHEEL.bigOverloads : r.live;
+    const kit = me.charms.includes('insulated');
+    const odds = s.mods.overloads3 ? r.odds.bane : kit ? r.odds.withKit : r.odds.win;
+    card(164, 'CHALLENGE HIM', [
+      ['NOTHING PAID YET. HIS GAME:', C.bone],
+      [`${r.levers} LEVERS, ${live} LIVE. TAKE TURNS.`, C.dust],
+      [`TWO SHOCKS EACH. YOU WIN ~${Math.round(odds * 100)}%`, C.dust],
+      [`DEAD LEVER: +$${r.safeBank} AND A MARKER`, C.gold],
       ...(last
-        ? ([['WIN: A FREE PERMANENT UPGRADE', T.hi], ['LOSE: ONLY WHAT IT COST', T.hi]] as [string, number][])
-        : ([['WIN: THE BOON WHEEL', T.hi], ['LOSE: BANE, QUOTA +10-40%', T.hi]] as [string, number][])),
+        ? ([['WIN: HE DIES, KEEP THE QUOTA,', T.hi], ['A FREE PERMANENT UPGRADE', T.hi], [`LOSE: A LIFE ${ICON.heart}, PAY THE QUOTA`, C.blood]] as [string, number][])
+        : ([['WIN: HE DIES, KEEP THE QUOTA,', T.hi], ['AND SPIN THE BOON WHEEL', T.hi], [`LOSE: A LIFE ${ICON.heart}, PAY, THE BANE`, C.blood]] as [string, number][])),
     ]);
     const ghost = me.ghost;
     if (ui.button('pay', 8, 140, 148, 22, `PAY ${money(s.quota)}`, { edge: C.gold, disabled: ghost || !v.active, tip: ghost ? 'A ghost has no say.' : 'Pay and go on.' })) this.send({ t: 'pay' });
-    if (ui.button('gamble', 164, 140, 148, 22, 'GAMBLE', { edge: T.base, disabled: ghost || !v.active, tip: ghost ? 'A ghost has no say.' : 'The quota is paid either way.' })) this.send({ t: 'gamble' });
+    if (ui.button('gamble', 164, 140, 148, 22, 'CHALLENGE', { edge: T.base, disabled: ghost || !v.active, tip: ghost ? 'A ghost has no say.' : 'Play him for the quota.' })) this.send({ t: 'gamble' });
     const charms = me.charms.map((c) => CHARM_BY_ID.get(c)!.name.toUpperCase()).join(', ') || 'NONE';
     ui.text(`${ICON.heart.repeat(me.lives)}  CHARMS: ${charms}`, PANEL_W / 2, 167, C.dust, { align: 'center' });
   }
 
   private circuit(ui: UI, v: PanelView) {
+    // the table has turned over: the duel is played on the levers themselves (render3d/duel.ts);
+    // this screen, face down under them, keeps a plain readout and a row of buttons (the screens
+    // sweep and anyone without a mouse on the levers can still play it)
     const s = v.state;
     const c = s.circuit!;
     const me = s.players[v.player];
     const r = rulesFor(s.floor);
     ui.text('THE CIRCUIT', 86, 10, C.white);
-    ui.text(`HIS FUSES ${ICON.bolt.repeat(Math.max(0, c.fuses))}`, PANEL_W - 12, 10, T.hi, { align: 'right' });
-    ui.text(`YOU ${c.teamSafe}  HIM ${c.collSafe}`, PANEL_W / 2 + 40, 10, C.bone, { align: 'center' });
-    // the panel of circuits
-    const n = c.slots.length;
-    const gap = 3, tw = Math.min(36, Math.floor((PANEL_W - 20 - (n - 1) * gap) / n)), x0 = Math.round((PANEL_W - (n * tw + (n - 1) * gap)) / 2), y = 32;
+    ui.text(`YOU ${ICON.bolt.repeat(c.shocks[v.player])}${'-'.repeat(Math.max(0, r.playerShocks - c.shocks[v.player]))}  HIM ${ICON.bolt.repeat(c.hisShocks)}${'-'.repeat(Math.max(0, r.collShocks - c.hisShocks))}`, PANEL_W - 12, 10, T.hi, { align: 'right' });
     const myTurn = c.turn === 'team' && !c.done;
-    c.slots.forEach((sl, i) => {
-      const x = x0 + i * (tw + gap);
-      const sel = this.picked.includes(i);
-      const over = ui.hover(x, y, tw, 44);
-      let body = C.night, label = '?', col = C.dust;
-      if (sl.known) {
-        body = sl.over ? C.blood : C.soulLo;
-        label = sl.over ? 'OVER' : 'SAFE';
-        col = sl.over ? C.white : C.ink;
-      }
-      if (sl.spent) {
-        body = C.ink;
-        col = sl.over ? C.blood : C.soul;
-      }
-      ui.fill(x, y, tw, 44, sel ? C.white : over && myTurn && !sl.spent ? T.base : C.ink);
-      ui.fill(x + 1, y + 1, tw - 2, 42, body);
-      ui.text(ICON.bolt, x + tw / 2, y + 6, sl.spent ? C.smoke : col, { align: 'center' });
-      ui.text(label, x + tw / 2, y + 18, col, { align: 'center' });
-      if (sl.spent) ui.text(sl.by === 'team' ? 'YOU' : 'HIM', x + tw / 2, y + 30, C.ash, { align: 'center' });
-      ui.text(`#${i + 1}`, x + tw / 2, y + 47, C.ash, { align: 'center' });
-      if (v.active && myTurn && !sl.spent && over && ui.clicked) {
-        ui.eat();
-        if (sel) this.picked = this.picked.filter((k) => k !== i);
-        else this.picked = [...this.picked.slice(-1), i];
-      }
+    const n = c.levers.length, gap = 3, tw = Math.floor((PANEL_W - 20 - (n - 1) * gap) / n), x0 = Math.round((PANEL_W - (n * tw + (n - 1) * gap)) / 2);
+    c.levers.forEach((l, i) => {
+      const x = x0 + i * (tw + gap), y = 34;
+      const col = l.pulled ? (l.live ? C.blood : C.smoke) : l.known ? (l.live ? C.blood : C.soulLo) : C.night;
+      if (ui.button(`lever${i}`, x, y, tw, 40, `${i + 1}`, { edge: T.base, disabled: !v.active || !myTurn || l.pulled || me.ghost, tip: l.pulled ? (l.live ? 'Live.' : 'Dead.') : 'Pull it.' })) this.act({ t: 'activate', circuit: i });
+      ui.fill(x + 2, y + 32, tw - 4, 5, col);
     });
-    this.picked = this.picked.filter((i) => !c.slots[i].spent);
-
     if (c.done) {
-      ui.text(c.done.won ? 'YOU BEAT HIM' : 'THE HOUSE WINS', PANEL_W / 2, 92, c.done.won ? T.hi : C.blood, { scale: 2, align: 'center' });
-      ui.text(c.done.why, PANEL_W / 2, 112, C.bone, { align: 'center' });
-      ui.text(c.done.won ? 'THE BOON WHEEL IS NEXT.' : 'THE BANE WHEEL IS NEXT.', PANEL_W / 2, 124, C.dust, { align: 'center' });
+      ui.text(c.done.won ? 'HE IS DEAD' : 'THE HOUSE WINS', PANEL_W / 2, 92, c.done.won ? T.hi : C.blood, { scale: 2, align: 'center' });
+      ui.para(c.done.why, 20, 112, PANEL_W - 40, C.bone);
       return;
     }
-    // the actions: what each costs is on the button
-    const one = this.picked.length === 1 ? this.picked[0] : -1;
-    const known = one >= 0 && c.slots[one].known;
-    const magnet = me.charms.includes('magnet') && s.markers >= 1;
-    const cost = magnet ? `1 ${ICON.marker}` : money(r.inspectCost);
-    const off = !v.active || !myTurn;
-    const pickTip = 'Click a circuit first.';
-    const y2 = 96;
-    if (ui.button('inspect', 8, y2, 96, 20, `INSPECT ${cost}`, {
-      edge: T.base, disabled: off || one < 0 || known || me.ghost && false,
-      tip: off ? "Wait for your turn." : one < 0 ? pickTip : known ? 'Already known.' : 'See its state. He sees it too.',
-    })) this.act({ t: 'inspect', circuit: one });
-    if (ui.button('activate', 112, y2, 96, 20, 'ACTIVATE', {
-      edge: T.base, disabled: off || one < 0 || me.ghost,
-      tip: me.ghost ? 'A ghost may only inspect.' : off ? 'Wait for your turn.' : one < 0 ? pickTip : `Safe: +$${r.safeBank} and a marker. Overloaded: a life.`,
-    })) this.act({ t: 'activate', circuit: one });
-    if (ui.button('reroute', 216, y2, 96, 20, 'REROUTE', {
-      edge: T.base, disabled: off || this.picked.length !== 2 || me.ghost,
-      tip: off ? 'Wait for your turn.' : this.picked.length !== 2 ? 'Click two circuits to swap.' : 'Swap them. He remembers positions, not circuits.',
-    })) this.act({ t: 'reroute', a: this.picked[0], b: this.picked[1] });
-    // the rules, every turn (critic F5): what he does, and how you win
-    ui.text('HE TAKES THE LOWEST # HE TRUSTS; HE SKIPS OVERLOADS HE SAW.', 12, 120, C.collHi);
-    ui.text(`WIN: BLOW HIS ${r.fuses} FUSES, OR CASH MORE SAFES. TIES: HOUSE.`, 12, 130, C.collHi);
-    ui.text(myTurn ? 'YOUR TURN' : 'HIS TURN...', 12, 143, myTurn ? C.white : T.hi);
-    c.log.slice(0, 2).forEach((l, i) => ui.text(l, 70, 143 + i * 10, i === 0 ? C.bone : C.ash));
+    ui.text(`${c.live} OF ${n} ARE LIVE. TWO SHOCKS: YOU LOSE A LIFE AND PAY.`, 12, 86, C.collHi);
+    ui.text('TWO SHOCKS FOR HIM: HE DIES, YOU KEEP THE QUOTA.', 12, 96, C.collHi);
+    if (c.traces[v.player] > 0) ui.text(`INSULATED KIT: ${c.traces[v.player]} FREE TRACES (RIGHT-CLICK A LEVER)`, 12, 108, C.soul);
+    ui.text(myTurn ? 'YOUR PULL' : 'HIS PULL...', 12, 126, myTurn ? C.white : T.hi);
+    c.log.slice(0, 2).forEach((l, i) => ui.text(l, 80, 126 + i * 10, i === 0 ? C.bone : C.ash));
   }
 
   /** Send a Circuit action; the picks clear (critic F6: the next click shouldn't toggle a stale pick off). */
@@ -191,31 +151,57 @@ export class CollectorPanel extends Panel {
   }
 
   private wheel(ui: UI, v: PanelView) {
+    // a real wheel (the owner: "spin a wheel instead of the 6 random boxes"): six wedges, a pointer,
+    // a spin that slows onto the slot the sim drew; the six printed beside it, the landed one lit
     const s = v.state;
     const w = s.wheel!;
     const boon = w.kind === 'boon';
     const slots = boon ? BOONS : BANES;
     ui.text(boon ? 'THE BOON WHEEL' : 'THE BANE WHEEL', 86, 10, boon ? T.hi : C.blood);
-    ui.text(boon ? 'ONE OF SIX, EQUALLY LIKELY. IT HELPS.' : 'ONE OF SIX, EQUALLY LIKELY. IT LASTS ALL NEXT NIGHT.', PANEL_W / 2, 30, C.dust, { align: 'center' });
-    let lit = -1;
+    ui.text(boon ? 'SIX SLOTS, EQUALLY LIKELY. IT HELPS.' : 'SIX SLOTS, EQUALLY LIKELY. IT LASTS ALL NEXT NIGHT.', 12, 30, C.dust);
+    const cx = 236, cy = 100, rad = 58, th = (Math.PI * 2) / 6;
+    const rest = (k: number) => -Math.PI / 2 - (k + 0.5) * th;
+    let a = rest(0), lit = -1;
     if (w.slot !== null) {
       const left = Math.max(0, w.until - v.tick);
-      const total = WHEEL.spinS * TICKS_PER_S;
-      const t = 1 - left / total;
-      // the light runs round and slows onto the slot it landed on
-      const steps = Math.floor((1 - (1 - t) ** 2) * 24);
-      lit = left > 0 ? (w.slot + 24 - (24 - steps)) % 6 : w.slot;
+      const t = 1 - left / (WHEEL.spinS * TICKS_PER_S);
+      a = rest(w.slot) - (1 - out3(t)) * (Math.PI * 2 * 4);
+      if (left <= 0) lit = w.slot;
+      const under = ((Math.floor((-Math.PI / 2 - a) / th) % 6) + 6) % 6;
+      if (left > 0 && under !== this.lastPeg && v.active) this.sound('peg', 0.6, boon ? 1.1 : 0.8);
+      this.lastPeg = under;
     }
+    const ctx = ui.ctx;
+    ctx.fillStyle = PALETTE[C.woodLo];
+    ctx.beginPath();
+    ctx.arc(cx, cy, rad + 5, 0, Math.PI * 2);
+    ctx.fill();
+    const cols = boon ? [T.base, C.collLo, T.hi, C.collLo, T.base, C.indigoHi] : [C.blood, C.highLo, C.blood, C.ink, C.highLo, C.ink];
+    for (let i = 0; i < 6; i++) {
+      ctx.fillStyle = PALETTE[i === lit ? C.white : cols[i]];
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.arc(cx, cy, rad, a + i * th, a + (i + 1) * th);
+      ctx.closePath();
+      ctx.fill();
+      const m = a + (i + 0.5) * th;
+      ui.text(`${i + 1}`, Math.round(cx + Math.cos(m) * rad * 0.66), Math.round(cy + Math.sin(m) * rad * 0.66 - 3), i === lit ? C.ink : C.white, { align: 'center' });
+    }
+    ctx.fillStyle = PALETTE[C.ink];
+    ctx.beginPath();
+    ctx.arc(cx, cy, 9, 0, Math.PI * 2);
+    ctx.fill();
+    ui.fill(cx - 3, cy - rad - 9, 7, 2, C.white);
+    ui.fill(cx - 2, cy - rad - 7, 5, 2, C.white);
+    ui.fill(cx - 1, cy - rad - 5, 3, 3, C.white);
     slots.forEach((sl, i) => {
-      const x = 12 + (i % 3) * 100, y = 44 + Math.floor(i / 3) * 40;
-      const on = i === lit;
-      ui.fill(x, y, 96, 34, on ? (boon ? T.base : C.blood) : C.ink);
-      ui.fill(x + 1, y + 1, 94, 32, on ? (boon ? T.lo : C.highLo) : C.night);
-      ui.text(sl.label, x + 48, y + 13, on ? C.white : C.bone, { align: 'center' });
+      const y = 44 + i * 13;
+      ui.text(`${i + 1}`, 14, y, i === lit ? C.white : C.ash);
+      ui.text(sl.label, 26, y, i === lit ? (boon ? T.hi : C.blood) : C.bone);
     });
     if (w.slot === null) {
-      if (ui.button('fortune', 110, 140, 100, 22, 'SPIN', { edge: boon ? T.base : C.blood, disabled: !v.active, tip: 'Spin the wheel.' })) this.send({ t: 'fortune' });
-    } else if (v.tick >= w.until) ui.text(slots[w.slot].text, PANEL_W / 2, 146, C.white, { align: 'center' });
+      if (ui.button('fortune', 12, 128, 140, 22, 'SPIN', { edge: boon ? T.base : C.blood, disabled: !v.active, tip: 'Spin the wheel.' })) this.send({ t: 'fortune' });
+    } else if (v.tick >= w.until) ui.para(slots[w.slot].text, 12, 128, 150, C.white);
   }
 
   private summary(ui: UI, v: PanelView) {
@@ -227,6 +213,9 @@ export class CollectorPanel extends Panel {
     if (sm.how === 'short') {
       lines.push([`SHORT ${money(sm.short)} OF ${money(sm.quota)}.`, C.blood]);
       lines.push([`HE TOOK THE BANK AND ${sm.livesTaken} ${sm.livesTaken === 1 ? 'LIFE' : 'LIVES'}.`, C.blood]);
+    } else if (sm.how === 'kept') {
+      lines.push([`THE COLLECTOR IS DEAD. YOU KEPT ${money(sm.quota)} (THE BANK HOLDS ${money(s.bank)}).`, T.hi]);
+      if (sm.overshootMarkers) lines.push([`OVERSHOOT: +${sm.overshootMarkers} ${ICON.marker} MARKERS.`, C.marker]);
     } else {
       lines.push([`PAID ${money(sm.quota)} (THE BANK HELD ${money(sm.bankAtMidnight)}).`, C.gold]);
       if (sm.overshootMarkers) lines.push([`OVERSHOOT: +${sm.overshootMarkers} ${ICON.marker} MARKERS.`, C.marker]);
@@ -241,7 +230,7 @@ export class CollectorPanel extends Panel {
     if (!last) {
       const keep = Math.max(s.bank, ECONOMY.bankFloor.v) + (s.upgrades.includes('bank500') ? 500 : 0);
       lines.push([`NIGHT ${sm.night + 1}: QUOTA ${money(sm.nextQuota)}, THE BANK STARTS AT ${money(keep)}.`, C.white]);
-      lines.push(['SPEND YOUR MARKERS AT THE CAGE ON THE EAST WALL.', C.dust]);
+      lines.push([s.home ? 'SPEND YOUR MARKERS ON THE COMPUTER AT HOME.' : 'SPEND YOUR MARKERS AT THE CAGE ON THE EAST WALL.', C.dust]);
     } else lines.push([`THAT WAS THE LAST NIGHT OF THE SLICE.`, C.white]);
     let y = 32;
     for (const [l, c] of lines) y += ui.para(l, 12, y, PANEL_W - 24, c) + 5;
