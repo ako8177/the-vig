@@ -21,6 +21,14 @@ with floor 1 as three rooms by risk, a crowd of 52, and a bar with drinks that m
 (DECISIONS #65-#68). The milestone order and the not-list bent at the owner's word (written down in
 DECISIONS). Next in the owner's order: **the house** (ROADMAP, "The owner's plan").
 
+**2026-10-14, the owner's second look** (DECISIONS #69-#71): neon glow no longer draws over the
+panels, furniture and people (a baked black blocker per room in the glow pass); Twenty-One deals
+card by card with a sound each; the crowd is a jointed figure (elbows, knees, hands, faces, vests,
+chairs). Ask the owner whether the crowd reads better and whether the deal pace (`FEEL.deal.gap`)
+feels right. **Perf watch**: `npm run perf` reads ~10 fps on this PC today for both this commit and
+the one before (19-20 on #68's day), so the machine's speed moves a lot; compare A/B runs side by
+side, and close the Browser pane (or any tab running the game) first.
+
 ## Waiting on the owner (ask before touching; CLAUDE.md's "ask before" list)
 
 1. **Paying beats gambling** (DESIGN.md §7, §8 test 6): always-pay survives all three nights 38%,

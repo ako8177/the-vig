@@ -75,6 +75,10 @@ camera, voice chat, a server, in-app purchases of any kind, hiding odds for "mys
 - Draw only the rooms you can see: each room is its own merged group, shown (and its point lights
   on) when you're in it or within 9 m of its arch. Two point lights a room, eight at most in all.
 - Merged meshes are centered on their own middle so the renderer sorts them front to back.
-- The glow pass blocks neon with the rooms' shells only (`userData.occluder`), not the furniture.
+- The glow pass blocks neon with everything solid (DECISIONS #69): each room's static, opaque,
+  non-glowing meshes baked into one black blocker (`glowBlockers` in room.ts, shown only in that
+  pass), plus the crowd and turning things by a black material swap (`userData.occluder`).
+  Blocking with the shells alone let every sign shine through the table panels.
 - No canvas re-upload every frame: a panel or screen that only shows a clock redraws once a second.
-- The crowd (`src/render3d/npcs.ts`) is one instanced draw posed at 30 Hz.
+- The crowd (`src/render3d/npcs.ts`) is one instanced draw posed at 30 Hz, a jointed figure of 21
+  boxes each, and only the people in a drawn room and not behind you are written into it (#71).

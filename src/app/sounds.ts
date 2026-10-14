@@ -71,7 +71,18 @@ export function defineSounds(a: Audio) {
     out.push({ f: 2600, dur: 0.035, at: c.flip[0] * s + 0.05, vol: 0.09, type: 'noise', q: 2 }, { f: 1300, dur: 0.03, at: c.flip[0] * s + 0.05, vol: 0.04, type: 'triangle' });
     return out;
   });
-  a.define('card', [{ f: 2000, dur: 0.07, vol: 0.05, type: 'noise' }]);
+  // a card off the shoe: the snap of it leaving, the slap of it landing flat on the felt
+  a.define('card', () => [
+    { f: rnd(3600, 4400), dur: 0.035, vol: 0.12, type: 'noise', q: 1.6 },
+    { f: rnd(900, 1200), dur: 0.06, at: 0.03, vol: 0.16, type: 'noise', q: 0.9 },
+    { f: 180, to: 110, dur: 0.04, at: 0.03, vol: 0.05, type: 'sine' },
+  ]);
+  // the hole card turned over: a flick of the corner, then it lands face up
+  a.define('flip', () => [
+    { f: rnd(2600, 3000), dur: 0.025, vol: 0.12, type: 'noise', q: 2.2 },
+    { f: 1300, dur: 0.03, at: 0.01, vol: 0.04, type: 'triangle' },
+    { f: rnd(1000, 1300), dur: 0.05, at: 0.07, vol: 0.13, type: 'noise', q: 1 },
+  ]);
 
   // ---- the wheel: a hand spins it; each peg clacks past the pointer
   a.define('wheelspin', [{ f: 900, to: 300, dur: 0.5, vol: 0.05, type: 'noise' }]);

@@ -2,6 +2,22 @@
 
 What is built. Newest first.
 
+## 2026-10-14 — The owner's second look: glow through panels, card sounds, the crowd
+
+The owner's notes from playing the three-room floor, fixed (DECISIONS #69-#71):
+
+- **Neon no longer shows through things.** The bloom pass blocked glow with the walls only, so a
+  table's rim neon and the signs drew across the odds cards and bet buttons. Each room's solid
+  meshes now bake into one black blocker for that pass; the crowd blocks too.
+- **Twenty-One sounds like cards.** The deal goes card by card (you, dealer, you, hole), hits slide
+  in, the hole card flips at the stand and the dealer draws one card at a time, each with a snap.
+- **The crowd cleaned up.** Jointed figures with elbows, knees, hands, shoes, eyes and proper hair;
+  dealers in vests; chairs for card players; slot players on their stools. Off-screen people aren't drawn.
+- Checks: typecheck clean, 29 tests green, screens sweep 25 surfaces with 0 clashes, seated
+  screenshots of the Bandit, Twenty-One, Hi-Lo and the Wheel and crowd close-ups looked at. Perf
+  under SwiftShader is 9.8-11.1 fps against 10.6-11.6 for the previous commit on this PC today
+  (both under the 15 fps budget here; #68 measured 19-20 on a faster day). No PixelLab spend.
+
 ## 2026-10-14 — A beautiful first floor (the owner's direction)
 
 The owner set a bigger plan (PLAN.md, "The owner's direction"; ROADMAP): a house before the casino,

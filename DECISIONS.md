@@ -126,3 +126,23 @@ inspirations: the ideas are taken, never their names, numbers or art).
   poses at 30 Hz, the slot screens 5 times a second). Now 19-20 fps, 52 draw calls, 23k triangles.
   Lesson recorded: a light-count test is meaningless while shaders recompile (frames drawn then are
   half empty), and a browser pane running the game in parallel halves SwiftShader's numbers.
+- #69 2026-10-14: **The glow pass blocks with everything solid**, not the rooms' shells only (the
+  owner: "the lights are covering bets... all bright lights are visible through everything"). The
+  bloom of a sign or a table's rim neon drew over the panels, the furniture and the people. Each
+  room's static opaque meshes are baked into one black blocker drawn only in the glow pass (one or
+  two draw calls a room), and the crowd and the roulette disc are drawn black there. See-through
+  things (the cage's grille, smoke) still let the glow through. Replaces #68's "shells only".
+- #70 2026-10-14: **Twenty-One deals its cards one at a time, each with a sound** (the owner: "blackjack
+  still doesnt have card audio"). The deal made no sound at all (no sim event fires when cards are
+  dealt) and a hit was a 70 ms blip. Now the panel deals you, dealer, you, dealer (face down), a
+  card every 0.14 s (`FEEL.deal.gap`), slides each hit in, turns the hole card over at the stand and
+  then deals the dealer's draws, all inside the table's 0.6 s resolve; a snap-and-slap `card` sound
+  and a `flip`. The verdict waits for the last card. Presentation only: no sim or number changed.
+- #71 2026-10-14: **The crowd is a jointed figure** (the owner: "the npcs could get cleaned up
+  better"): hips, torso, a head with eyes and hair that wraps it, upper arms, forearms and hands,
+  thighs, shins and shoes (21 boxes, one instanced draw), posed by joint angles so table players
+  rest their forearms on the rail, smokers bring a hand to the mouth, walkers bend the back knee.
+  Dealers and the bartender wear a dark vest over white sleeves; card players bring a chair; slot
+  players sit on their stools. Only people in a drawn room and not behind you are drawn. Measured
+  A/B under SwiftShader, interleaved: about 5-10% of the frame (base 10.6-11.6 fps, new 9.8-11.1
+  on this PC today; the same base read 21-24 in a faster window, so compare runs side by side).

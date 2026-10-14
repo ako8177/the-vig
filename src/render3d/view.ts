@@ -3,7 +3,8 @@
 // src/render3d/; this reads sim state and events and never writes them.
 //
 // Bloom is selective: only meshes on the GLOW layer (neon, signs, the Collector's eyes) feed it,
-// the rest of the scene drawn black so it still hides glow behind it. A luminance threshold can't
+// everything solid drawn black so it still hides glow behind it (each room's static meshes as one
+// baked black blocker, room.ts; the crowd and anything that moves in black by material swap). A luminance threshold can't
 // do this job here: pure red and violet neon are darker by luminance than white panel text, so a
 // threshold either skips the red tables or haloes the odds card.
 import {
@@ -60,6 +61,8 @@ export class View3D {
   /** the meshes drawn black in the glow pass, found once (invalidateGlow after the scene changes) */
   private dark: Mesh[] | null = null;
   private skip: Mesh[] | null = null;
+  /** each room's baked black stand-in for its solid meshes, shown only in the glow pass */
+  private blocks: Mesh[] = [];
   private bg = new Color();
 
   constructor(readonly canvas: HTMLCanvasElement) {
@@ -133,6 +136,7 @@ export class View3D {
   invalidateGlow() {
     this.dark = null;
     this.skip = null;
+    this.blocks = [];
   }
 
   /** Mark an object (and its children) as glowing. */
@@ -168,17 +172,22 @@ export class View3D {
 
   /** Render the glow layer alone: everything else black (it still occludes), no background. */
   private renderGlow() {
-    // the glow pass draws the glowing meshes and, in black, only the rooms' shells to hide neon behind
-    // a wall: the furniture and the crowd sit it out (they were most of this pass's pixels)
+    // the glow pass draws the glowing meshes and, in black, whatever stands in front of them: each
+    // room's solid meshes baked into one blocker (cheap: DECISIONS #68 is why the furniture itself
+    // sits this pass out), plus the crowd and the turning things by material swap
     if (!this.dark) {
       this.dark = [];
       this.skip = [];
+      this.blocks = [];
       this.scene.traverse((o) => {
-        if (!(o instanceof Mesh) || o.layers.isEnabled(GLOW)) return;
-        if (o.userData.occluder) this.dark!.push(o);
+        if (!(o instanceof Mesh)) return;
+        if (o.userData.glowBlock) this.blocks.push(o);
+        else if (o.layers.isEnabled(GLOW)) return;
+        else if (o.userData.occluder) this.dark!.push(o);
         else this.skip!.push(o);
       });
     }
+    for (const o of this.blocks) o.visible = true;
     for (const o of this.dark) {
       this.stash.set(o, o.material);
       o.material = this.black;
@@ -195,6 +204,7 @@ export class View3D {
     for (const [m, mat] of this.stash) m.material = mat;
     this.stash.clear();
     for (const o of hidden) o.visible = true;
+    for (const o of this.blocks) o.visible = false;
     // UnrealBloomPass composites its result back into the composer's read buffer
     this.mix.uniforms.tGlow.value = this.glowComposer.readBuffer.texture;
   }

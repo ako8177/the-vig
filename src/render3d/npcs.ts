@@ -1,5 +1,6 @@
-// The crowd (DECISIONS #66): presentation only, never in the sim. Each person is nine boxes (two legs,
-// two shins, torso, head, hair, two arms) in one instanced draw, posed every frame by what they're
+// The crowd (DECISIONS #66): presentation only, never in the sim. Each person is a little jointed
+// figure of boxes (hips, torso, a head with eyes and hair, upper arms, forearms and hands, thighs,
+// shins and shoes; a chair for a card player), everyone in one instanced draw, posed by what they're
 // doing: pulling a slot's handle, pushing chips, dealing, polishing glasses behind the bar, lifting
 // a drink, smoking, playing piano, pacing the floor. The railbirds by each table turn to watch when
 // you sit down there, and cheer your wins (a big one brings the room in) and groan at your losses.
@@ -9,7 +10,11 @@ import { C, hexOf } from '../data/palette';
 import { GLOW } from './view';
 
 /** the parts, in instance order within a person */
-const PARTS = ['legL', 'legR', 'shinL', 'shinR', 'torso', 'head', 'hair', 'armL', 'armR'] as const;
+const PARTS = [
+  'pelvis', 'torso', 'head', 'hairTop', 'hairBack', 'eyeL', 'eyeR',
+  'uArmL', 'uArmR', 'fArmL', 'fArmR', 'handL', 'handR',
+  'thighL', 'thighR', 'shinL', 'shinR', 'shoeL', 'shoeR', 'seat', 'post',
+] as const;
 type Part = (typeof PARTS)[number];
 const NP = PARTS.length;
 
@@ -18,6 +23,15 @@ const HAIR = [C.ink, C.woodLo, C.ink, C.brassLo, C.bone, C.night];
 // dressed up for a night out: bright enough to read against the dark cabinets, a few dark suits
 const COAT = [C.pink, C.teal, C.indigoHi, C.marker, C.woodHi, C.cream, C.pinkHi, C.brassLo, C.night, C.soulLo, C.smoke, C.bone];
 const PANTS = [C.ink, C.night, C.smoke, C.woodLo, C.indigo, C.ash];
+const SHOES = [C.ink, C.ink, C.woodLo, C.night];
+
+/** the figure's measures (m): about 1.72 m standing */
+const LEG = { thigh: 0.44, shin: 0.4, foot: 0.07 };
+const STAND_HIP = LEG.thigh + LEG.shin + LEG.foot - 0.01;
+const ARM = { upper: 0.3, fore: 0.27 };
+const SHOULDER = { x: 0.24, y: 0.53 };
+/** where each seated role sits: the top of what's under them (room.ts's stools, booths, the piano bench) */
+const SEAT_TOP: Partial<Record<NpcSpot['role'], number>> = { slots: 0.69, drinker: 0.75, booth: 0.45, pianist: 0.54, table: 0.55 };
 
 interface Person {
   spot: NpcSpot;
@@ -56,6 +70,15 @@ export class Crowd {
   private e = new Euler(0, 0, 0, 'YXZ');
   private v = new Vector3();
   private s = new Vector3();
+  /** the joints of the person being posed, and where their parts start in the instance list */
+  private J = {
+    root: new Matrix4(), torso: new Matrix4(), head: new Matrix4(), shL: new Matrix4(), shR: new Matrix4(),
+    elL: new Matrix4(), elR: new Matrix4(), hipL: new Matrix4(), hipR: new Matrix4(), knL: new Matrix4(), knR: new Matrix4(),
+  };
+  private base = 0;
+  /** each person's part colors, and who is drawn in each slot of the instance list */
+  private colors: Color[][] = [];
+  private owner: number[] = [];
 
   constructor(private scene: Scene, floor: Floor) {
     this.people = floor.npcs.map((spot, i) => ({
@@ -66,19 +89,27 @@ export class Crowd {
     this.body = new InstancedMesh(unit, new MeshLambertMaterial({ color: 0xffffff }), this.people.length * NP);
     this.body.name = 'crowd';
     this.body.frustumCulled = false;
-    // each part's color is the person's: skin, hair, coat, trousers; dealers and bartenders in white shirts
+    // people stand in front of neon: the glow pass draws them black (view.ts)
+    this.body.userData.occluder = true;
+    // each part's color is the person's: skin, hair, coat, trousers, shoes; dealers and bartenders
+    // in a dark vest over white shirtsleeves, so the staff read as staff from across the room
     this.people.forEach((p, i) => {
-      const white = p.spot.role === 'dealer' || p.spot.role === 'bartender';
+      const staff = p.spot.role === 'dealer' || p.spot.role === 'bartender';
       const skin = SKIN[Math.floor(rand(i, 3) * SKIN.length)];
       const hair = HAIR[Math.floor(rand(i, 4) * HAIR.length)];
-      const coat = white ? C.bone : COAT[Math.floor(rand(i, 5) * COAT.length)];
-      const pants = PANTS[Math.floor(rand(i, 6) * PANTS.length)];
+      const coat = staff ? C.ink : COAT[Math.floor(rand(i, 5) * COAT.length)];
+      const sleeve = staff ? C.bone : coat;
+      const pants = staff ? C.ink : PANTS[Math.floor(rand(i, 6) * PANTS.length)];
+      const shoe = SHOES[Math.floor(rand(i, 7) * SHOES.length)];
       const col: Record<Part, number> = {
-        legL: pants, legR: pants, shinL: pants, shinR: pants, torso: coat, head: skin, hair,
-        armL: white ? C.bone : coat, armR: white ? C.bone : coat,
+        pelvis: pants, torso: coat, head: skin, hairTop: hair, hairBack: hair, eyeL: C.ink, eyeR: C.ink,
+        uArmL: sleeve, uArmR: sleeve, fArmL: sleeve, fArmR: sleeve, handL: skin, handR: skin,
+        thighL: pants, thighR: pants, shinL: pants, shinR: pants, shoeL: shoe, shoeR: shoe, seat: C.woodLo, post: C.brassLo,
       };
-      PARTS.forEach((part, k) => this.body.setColorAt(i * NP + k, new Color(hexOf(col[part]))));
+      this.colors.push(PARTS.map((part) => new Color(hexOf(col[part]))));
     });
+    this.colors.forEach((cs, i) => cs.forEach((c, k) => this.body.setColorAt(i * NP + k, c)));
+    this.owner = this.people.map((_, i) => i);
     scene.add(this.body);
     const drinkers = this.people.length;
     this.glass = new InstancedMesh(new BoxGeometry(0.07, 0.12, 0.07), new MeshLambertMaterial({ color: hexOf(C.cream) }), drinkers);
@@ -108,17 +139,20 @@ export class Crowd {
 
   /**
    * Pose everyone for this frame. `seat` is where you sit (the table and its stand point), or null;
-   * `you` is where you are, so people near you glance at you.
+   * `you` is where you are and which way you face, so people near you glance at you; `rooms` are the
+   * rooms drawn this frame. Only the people you could see are drawn: those in a drawn room and not
+   * behind you (a person is 21 boxes, twice a frame with the glow pass: DECISIONS #68's budget).
    */
-  update(dt: number, t: number, seat: { table: string; x: number; z: number } | null, you: { x: number; z: number }) {
+  update(dt: number, t: number, seat: { table: string; x: number; z: number } | null, you: { x: number; z: number; fx: number; fz: number }, rooms: ReadonlySet<string>) {
     // pose at 30 Hz: the matrices go up to the GPU each pose, and under software WebGL a per-frame
     // upload stalls the pipeline (DECISIONS #68); people don't need 60 poses a second
     this.acc += dt;
     if (this.acc < 1 / 30) return;
     dt = this.acc;
     this.acc = 0;
-    const bodyM = this.body, glassM = this.glass, emberM = this.ember;
-    let g = 0, em = 0;
+    const glassM = this.glass, emberM = this.ember;
+    let g = 0, em = 0, slot = 0;
+    let recolor = false;
     const smokeAt: { x: number; y: number; z: number }[] = [];
     this.people.forEach((p, i) => {
       const role = p.spot.role;
@@ -167,153 +201,194 @@ export class Crowd {
       }
       p.cheer = Math.max(0, p.cheer - dt);
       p.groan = Math.max(0, p.groan - dt);
+      // out of sight: they keep walking and cheering, but cost nothing to draw
+      const seen = rooms.has(p.spot.room) && (x - you.x) * you.fx + (z - you.z) * you.fz > -1.2;
+      if (!seen) return;
+      if (this.owner[slot] !== i) {
+        this.owner[slot] = i;
+        this.colors[i].forEach((c, k) => this.body.setColorAt(slot * NP + k, c));
+        recolor = true;
+      }
 
-      // ---- the pose: heights and swings for this role and moment
+      // ---- the pose: joint angles for this role and moment, in radians. A positive shoulder or hip
+      // swings the limb forward, a positive elbow bends the forearm forward, a positive knee folds the
+      // shin back; `ab` lifts an arm out to the side (negative tucks it across the body)
       const seated = p.spot.seated;
-      const hip = seated ? 0.62 : 0.88;
-      let armL = 0.05, armR = 0.05, armLz = 0, armRz = 0, lean = 0, hop = 0, legSwing = 0;
+      const seatTop = SEAT_TOP[role] ?? 0.55;
+      const hip = seated ? seatTop + 0.07 : STAND_HIP;
+      let shL = 0.05, shR = 0.05, elL = 0.15, elR = 0.15, abL = 0.06, abR = 0.06, lean = 0, hop = 0;
+      let thL = seated ? Math.PI / 2 : 0, thR = thL, knL = thL, knR = thL;
       let holding: 'glass' | 'cig' | null = null;
       const pulse = (period: number, len: number) => {
         const k = ((tt % period) + period) % period;
         return k < len ? Math.sin((k / len) * Math.PI) : 0;
       };
       switch (role) {
-        case 'slots':
-          armL = -0.7;
-          armR = -0.9 - 0.9 * pulse(3.2, 0.8);
+        case 'slots': {
+          // a hand on the buttons, the other on the handle: up, pull down, let go
+          const pl = pulse(3.2, 0.8);
+          shL = 0.75;
+          elL = 0.7;
+          shR = 1.25 - 0.8 * pl;
+          elR = 0.3 + 0.3 * pl;
+          abR = 0.25;
+          lean = 0.1;
+          break;
+        }
+        case 'table': {
+          // forearms on the rail; the right pushes chips out now and then
+          const push = pulse(4.5, 0.7);
+          shL = 0.35;
+          elL = 1.2;
+          shR = 0.35 + 0.4 * push;
+          elR = 1.2 - 0.25 * push;
+          abL = abR = 0.12;
+          lean = 0.16;
+          break;
+        }
+        case 'dealer': {
+          const deal = pulse(1.6, 0.6);
+          shL = 0.45;
+          elL = 0.75;
+          shR = 0.45 + 0.4 * deal;
+          elR = 0.75 - 0.3 * deal;
+          abR = 0.08 + 0.3 * deal;
           lean = 0.12;
           break;
-        case 'table':
-          armL = -1.25;
-          armR = -1.25 - 0.35 * pulse(4.5, 0.7);
-          lean = 0.18;
-          break;
-        case 'dealer':
-          armL = -1.1;
-          armR = -1.0 - 0.6 * pulse(1.6, 0.6);
-          armRz = 0.4 * pulse(1.6, 0.6);
-          break;
+        }
         case 'bartender':
           if (!walk) {
-            armL = -1.0;
-            armR = -1.3 + 0.25 * Math.sin(tt * 6);
+            // polishing a glass at the chest
+            shL = shR = 0.4;
+            elL = 1.25;
+            elR = 1.3 + 0.25 * Math.sin(tt * 6);
+            abL = abR = -0.12;
             holding = 'glass';
           }
           break;
         case 'drinker':
         case 'booth': {
           const sip = pulse(6, 1.6);
-          armR = -0.5 - 1.9 * sip;
-          armL = seated ? -0.9 : 0.05;
+          shR = 0.3 + 0.5 * sip;
+          elR = 0.95 + 1.4 * sip;
+          if (seated) {
+            shL = 0.4;
+            elL = 1.15;
+          }
           holding = 'glass';
           break;
         }
         case 'smoker': {
+          // one arm across the body, the cigarette hand up to the mouth for a drag
           const drag = pulse(5, 1.4);
-          armR = -0.6 - 1.7 * drag;
-          armL = -0.4;
-          armLz = 0.3;
+          shR = 0.25 + 0.45 * drag;
+          elR = 0.65 + 1.9 * drag;
+          shL = 0.25;
+          elL = 1.45;
+          abL = -0.25;
           holding = 'cig';
           if (drag > 0 && drag < 0.15 && ((tt % 5) + 5) % 5 > 0.7) smokeAt.push({ x, y: hip + 0.85, z });
           break;
         }
         case 'pianist':
-          armL = -1.3 + 0.15 * Math.sin(tt * 9);
-          armR = -1.3 + 0.15 * Math.sin(tt * 9 + 1.7);
+          shL = shR = 0.5;
+          elL = 0.9 + 0.12 * Math.sin(tt * 9);
+          elR = 0.9 + 0.12 * Math.sin(tt * 9 + 1.7);
           lean = 0.1;
           break;
         case 'watcher':
-          armL = 0.08 + 0.03 * Math.sin(tt);
-          armR = 0.08;
+          // half of them fold their arms, the rest let them hang
+          if (rand(i, 8) < 0.5) {
+            shL = shR = 0.3;
+            elL = elR = 1.65;
+            abL = abR = -0.35;
+          } else shL = 0.06 + 0.03 * Math.sin(tt);
           lean = seat && seat.table === p.spot.table ? 0.12 : 0;
           break;
-        case 'walker':
-          legSwing = Math.sin(tt * 7) * 0.45 * walk;
-          armL = -legSwing * 0.8;
-          armR = legSwing * 0.8;
-          break;
       }
-      if (role === 'bartender' && walk) {
-        legSwing = Math.sin(tt * 6) * 0.35;
-        armL = -legSwing;
-        armR = legSwing;
+      if (walk) {
+        // a stride: the legs swing, the back knee folds, the arms swing against the legs
+        const st = tt * (role === 'walker' ? 7 : 6);
+        const amp = role === 'walker' ? 0.45 : 0.35;
+        const sw = Math.sin(st);
+        thL = sw * amp;
+        thR = -sw * amp;
+        knL = Math.max(0, -Math.cos(st)) * 0.6;
+        knR = Math.max(0, Math.cos(st)) * 0.6;
+        shL = -sw * amp * 0.8;
+        shR = sw * amp * 0.8;
+        elL = elR = 0.25;
       }
       if (p.cheer > 0) {
         // arms up and a hop (a big win: higher, longer)
         const k = Math.abs(Math.sin(p.cheer * 9));
-        armL = armR = -2.9;
-        armLz = 0.35;
-        armRz = -0.35;
+        shL = shR = 2.9;
+        elL = elR = 0.2;
+        abL = abR = 0.35;
         hop = seated ? 0 : (p.big ? 0.14 : 0.07) * k;
         holding = holding === 'glass' ? 'glass' : null;
       } else if (p.groan > 0) {
-        armL = armR = -2.5;
-        armLz = 0.9;
-        armRz = -0.9;
+        // hands to the head
+        shL = shR = 2.7;
+        elL = elR = 2.0;
+        abL = abR = 0.5;
         lean = 0.25;
       }
 
-      // ---- the boxes
-      const base = i * NP;
-      const put = (k: number, lx: number, ly: number, lz: number, sx: number, sy: number, sz: number, rx = 0, rz = 0, py = 0) => {
-        // a part pivoting about (lx, ly + py, lz) in the person's frame, hanging `py` above its center
-        this.e.set(rx, 0, rz);
-        this.q.setFromEuler(this.e);
-        const off = new Vector3(0, -py, 0).applyQuaternion(this.q);
-        const local = new Vector3(lx, ly + py, lz).add(off);
-        local.applyAxisAngle(UP, yaw);
-        this.e.set(rx, yaw, rz, 'YXZ');
-        this.q.setFromEuler(this.e);
-        this.v.set(x + local.x, local.y + hop, z + local.z);
-        this.s.set(sx, sy, sz);
-        this.m4.compose(this.v, this.q, this.s);
-        bodyM.setMatrixAt(base + k, this.m4);
-      };
-      const torsoY = hip + 0.3;
-      if (seated) {
-        // thighs forward, shins down to the floor
-        put(0, -0.09, hip, -0.18, 0.13, 0.13, 0.42);
-        put(1, 0.09, hip, -0.18, 0.13, 0.13, 0.42);
-        put(2, -0.09, hip / 2, -0.38, 0.12, hip, 0.13);
-        put(3, 0.09, hip / 2, -0.38, 0.12, hip, 0.13);
-      } else {
-        put(0, -0.09, hip / 2, 0, 0.13, hip, 0.15, legSwing, 0, hip / 2);
-        put(1, 0.09, hip / 2, 0, 0.13, hip, 0.15, -legSwing, 0, hip / 2);
-        put(2, 0, 0, 0, 0, 0, 0);
-        put(3, 0, 0, 0, 0, 0, 0);
-      }
-      put(4, 0, torsoY, 0, 0.38, 0.6, 0.22, -lean);
-      const headY = torsoY + 0.44;
-      // the head turns toward you when you're close
-      put(5, 0, headY, -lean * 0.3, 0.22, 0.24, 0.22);
-      if (headYaw) {
-        // re-pose the head with its own turn
-        const local = new Vector3(0, headY, -lean * 0.3).applyAxisAngle(UP, yaw);
-        this.q.setFromEuler(new Euler(0, yaw + headYaw, 0, 'YXZ'));
-        this.m4.compose(new Vector3(x + local.x, local.y + hop, z + local.z), this.q, new Vector3(0.22, 0.24, 0.22));
-        bodyM.setMatrixAt(base + 5, this.m4);
-      }
-      put(6, 0, headY + 0.13, 0.02, 0.24, 0.07, 0.24);
-      const shoulderY = torsoY + 0.27;
-      // the swings above are written as "negative is forward": a box turns the other way about X
-      put(7, -0.24, shoulderY - 0.28, 0, 0.1, 0.56, 0.11, -armL, -armLz, 0.28);
-      put(8, 0.24, shoulderY - 0.28, 0, 0.1, 0.56, 0.11, -armR, -armRz, 0.28);
+      // ---- the boxes, hung off the joints
+      const J = this.J, joint = this.joint, box = this.box;
+      this.base = slot++ * NP;
+      joint(J.root, null, x, hop, z, 0, yaw, 0);
+      // a slot player's spot is at the machine; the stool is a hand's width behind it
+      if (role === 'slots') J.root.multiply(this.m4.makeTranslation(0, 0, 0.12));
+      joint(J.torso, J.root, 0, hip, 0, -lean, 0, 0);
+      box(0, J.torso, 0, 0.05, 0, 0.34, 0.17, 0.21);
+      box(1, J.torso, 0, 0.35, 0, 0.38, 0.44, 0.22);
+      // the head stays upright as the body leans, and turns toward you when you're close
+      joint(J.head, J.torso, 0, SHOULDER.y + 0.05, 0, lean * 0.7, headYaw, 0);
+      box(2, J.head, 0, 0.13, 0, 0.22, 0.24, 0.22);
+      box(3, J.head, 0, 0.265, 0.01, 0.24, 0.06, 0.245);
+      box(4, J.head, 0, 0.16, 0.1, 0.24, 0.2, 0.05);
+      box(5, J.head, -0.055, 0.15, -0.112, 0.045, 0.03, 0.012);
+      box(6, J.head, 0.055, 0.15, -0.112, 0.045, 0.03, 0.012);
+      joint(J.shL, J.torso, -SHOULDER.x, SHOULDER.y, 0, shL, 0, -abL);
+      joint(J.shR, J.torso, SHOULDER.x, SHOULDER.y, 0, shR, 0, abR);
+      box(7, J.shL, 0, -ARM.upper / 2, 0, 0.1, ARM.upper, 0.11);
+      box(8, J.shR, 0, -ARM.upper / 2, 0, 0.1, ARM.upper, 0.11);
+      joint(J.elL, J.shL, 0, -ARM.upper, 0, elL, 0, 0);
+      joint(J.elR, J.shR, 0, -ARM.upper, 0, elR, 0, 0);
+      box(9, J.elL, 0, -ARM.fore / 2 + 0.01, 0, 0.09, ARM.fore, 0.1);
+      box(10, J.elR, 0, -ARM.fore / 2 + 0.01, 0, 0.09, ARM.fore, 0.1);
+      box(11, J.elL, 0, -ARM.fore - 0.03, 0, 0.08, 0.08, 0.08);
+      box(12, J.elR, 0, -ARM.fore - 0.03, 0, 0.08, 0.08, 0.08);
+      joint(J.hipL, J.root, -0.09, hip, 0, thL, 0, 0);
+      joint(J.hipR, J.root, 0.09, hip, 0, thR, 0, 0);
+      box(13, J.hipL, 0, -LEG.thigh / 2, 0, 0.14, LEG.thigh, 0.16);
+      box(14, J.hipR, 0, -LEG.thigh / 2, 0, 0.14, LEG.thigh, 0.16);
+      joint(J.knL, J.hipL, 0, -LEG.thigh, 0, -knL, 0, 0);
+      joint(J.knR, J.hipR, 0, -LEG.thigh, 0, -knR, 0, 0);
+      box(15, J.knL, 0, -LEG.shin / 2, 0, 0.12, LEG.shin, 0.13);
+      box(16, J.knR, 0, -LEG.shin / 2, 0, 0.12, LEG.shin, 0.13);
+      box(17, J.knL, 0, -LEG.shin - LEG.foot / 2, -0.045, 0.12, LEG.foot, 0.23);
+      box(18, J.knR, 0, -LEG.shin - LEG.foot / 2, -0.045, 0.12, LEG.foot, 0.23);
+      // a card player brings a chair (room.ts's card tables have none of their own)
+      const chair = role === 'table' ? 1 : 0;
+      box(19, J.root, 0, seatTop - 0.03, -0.08, 0.44 * chair, 0.06 * chair, 0.42 * chair);
+      box(20, J.root, 0, (seatTop - 0.06) / 2, -0.08, 0.06 * chair, (seatTop - 0.06) * chair, 0.06 * chair);
 
-      // what's in the right hand: where the hand is, from the arm's swing
+      // what's in the right hand: a glass upright, a cigarette's ember
       if (holding) {
-        const hand = new Vector3(0, -0.56, 0).applyEuler(new Euler(-armR, 0, -armRz)).add(new Vector3(0.24, shoulderY, 0)).applyAxisAngle(UP, yaw);
-        if (holding === 'glass') {
-          this.m4.makeTranslation(x + hand.x, hand.y + hop, z + hand.z);
-          glassM.setMatrixAt(g++, this.m4);
-        } else {
-          this.m4.makeTranslation(x + hand.x, hand.y + hop, z + hand.z);
-          emberM.setMatrixAt(em++, this.m4);
-        }
+        this.v.set(0, -ARM.fore - 0.03, 0).applyMatrix4(J.elR);
+        this.m4.makeTranslation(this.v.x, this.v.y + (holding === 'glass' ? 0.05 : 0.04), this.v.z);
+        if (holding === 'glass') glassM.setMatrixAt(g++, this.m4);
+        else emberM.setMatrixAt(em++, this.m4);
       }
     });
     glassM.count = g;
     emberM.count = em;
-    bodyM.instanceMatrix.needsUpdate = true;
+    this.body.count = slot * NP;
+    this.body.instanceMatrix.needsUpdate = true;
+    if (recolor && this.body.instanceColor) this.body.instanceColor.needsUpdate = true;
     glassM.instanceMatrix.needsUpdate = true;
     emberM.instanceMatrix.needsUpdate = true;
 
@@ -325,7 +400,10 @@ export class Crowd {
     if (this.puffT > 0.25) {
       this.puffT = 0;
       // an idle smoker's cigarette smoulders too
-      for (const p of this.people) if (p.spot.role === 'smoker' && this.puffs.length < 110) this.puffs.push({ x: p.x + 0.2, y: (p.spot.seated ? 0.62 : 0.88) + 0.55, z: p.z, t: 0, vx: (Math.random() - 0.5) * 0.04, vz: (Math.random() - 0.5) * 0.04 });
+      for (const p of this.people) {
+        if (p.spot.role !== 'smoker' || this.puffs.length >= 110) continue;
+        this.puffs.push({ x: p.x + 0.2, y: STAND_HIP + 0.55, z: p.z, t: 0, vx: (Math.random() - 0.5) * 0.04, vz: (Math.random() - 0.5) * 0.04 });
+      }
     }
     let n = 0;
     for (const s of this.puffs) {
@@ -344,6 +422,19 @@ export class Crowd {
     this.smoke.instanceMatrix.needsUpdate = true;
   }
 
+  /** out = parent · translate(x, y, z) · rotate(rx, ry, rz) (Y, then X, then Z): one joint. */
+  private joint = (out: Matrix4, parent: Matrix4 | null, x: number, y: number, z: number, rx: number, ry: number, rz: number) => {
+    this.e.set(rx, ry, rz, 'YXZ');
+    out.makeRotationFromEuler(this.e).setPosition(x, y, z);
+    if (parent) out.premultiply(parent);
+  };
+
+  /** Part `k` of the person being posed: a box (sx, sy, sz) centered at (x, y, z) in a joint's frame. */
+  private box = (k: number, parent: Matrix4, x: number, y: number, z: number, sx: number, sy: number, sz: number) => {
+    this.m4.makeScale(sx, sy, sz).setPosition(x, y, z).premultiply(parent);
+    this.body.setMatrixAt(this.base + k, this.m4);
+  };
+
   dispose() {
     for (const m of [this.body, this.glass, this.ember, this.smoke]) {
       this.scene.remove(m);
@@ -354,8 +445,6 @@ export class Crowd {
   }
 }
 
-const UP = new Vector3(0, 1, 0);
-
 /** The shortest signed turn from angle a to angle b. */
 function angleTo(a: number, b: number) {
   let d = (b - a) % (Math.PI * 2);
@@ -363,4 +452,3 @@ function angleTo(a: number, b: number) {
   if (d < -Math.PI) d += Math.PI * 2;
   return d;
 }
-

@@ -303,13 +303,11 @@ export class App {
           this.standByEsc = false;
           break;
         case 'play':
-          if (!mine) break;
+          // Twenty-One's panel deals its own cards, a sound each (games.ts)
+          if (!mine || e.table === 'twentyone') break;
           // the show starts: each table's sound is timed to its animation (src/data/feel.ts)
           a.sfx('chips', 0.7);
-          a.sfx({ bandit: 'lever', hilo: 'dice', deadman: 'dice2', wheel: 'wheelspin', redline: 'riffle', twentyone: 'card' }[e.table] ?? 'card');
-          break;
-        case 'card':
-          a.sfx('card');
+          a.sfx({ bandit: 'lever', hilo: 'dice', deadman: 'dice2', wheel: 'wheelspin', redline: 'riffle' }[e.table] ?? 'click');
           break;
         case 'round': {
           if (!mine) break;
@@ -648,11 +646,10 @@ export class App {
       // through an arch you see the next room once you're within 9 m of it; farther, it's a dark doorway
       for (const dw of FLOOR_1.doorways) if (Math.hypot(cam.x - dw.x, cam.z - dw.z) < 9) lit.add(dw.to).add('floor');
       this.room.lightRooms(lit);
-    }
-    {
       const seatAt = inGame && p.seat ? FLOOR_1.tables.find((x) => x.table === p.seat) : undefined;
-      const camPos = this.view.camera.position;
-      this.crowd.update(dt, performance.now() / 1000, seatAt ? { table: seatAt.table, x: seatAt.stand.x, z: seatAt.stand.z } : null, { x: camPos.x, z: camPos.z });
+      const yaw = this.view.camera.rotation.y;
+      this.crowd.update(dt, performance.now() / 1000, seatAt ? { table: seatAt.table, x: seatAt.stand.x, z: seatAt.stand.z } : null,
+        { x: cam.x, z: cam.z, fx: -Math.sin(yaw), fz: -Math.cos(yaw) }, lit);
     }
     // the music dips at 0:00; somewhere across the floor, now and then, another machine pays
     this.audio.mood(this.screen === 'game' ? 1 - 0.65 * this.dark : 0.8);

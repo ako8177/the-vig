@@ -14,7 +14,7 @@ import { BLANK, BAR, STAR, SEVEN, STRIP, linePays } from '../sim/tables/bandit';
 import { MARK_SLOTS, WHEEL_SLOTS } from '../sim/tables/wheel';
 import { handValue } from '../sim/tables/twentyone';
 import { hiloMarkSOf, streakLimitOf, streakRisk } from './view';
-import type { Outcome } from '../sim/state';
+import type { Card, Outcome } from '../sim/state';
 import { HILO_MARK } from '../data/marks';
 import { ECONOMY } from '../data/economy';
 import { minBet } from '../data/tables';
@@ -109,38 +109,111 @@ export class BanditPanel extends TablePanel {
 // ---------------------------------------------------------------- Twenty-One
 
 export class TwentyOnePanel extends TablePanel {
+  /** cards on the cloth so far: the rest are still coming out of the shoe, one every FEEL.deal.gap */
+  private seenP = 0;
+  private seenD = 0;
+  /** the dealer's hole card turned over; when the last card came down (s); a hand in play last frame */
+  private holeUp = false;
+  private lastAt = -1e9;
+  private live = false;
+  private started = false;
+
   constructor() {
     super('twentyone');
   }
 
   protected animating(v: PanelView) {
-    return !!this.tableState(v).pending;
+    return super.animating(v) || this.dealing(v);
   }
 
-  private row(ui: UI, label: string, cards: { r: number; s: number }[], hideHole: boolean, x: number) {
+  /** The hands the cards are heading for: the one in play (hole down) or the last settled. */
+  private target(v: PanelView): { player: Card[]; dealer: Card[]; hole: boolean } | null {
+    const hand = this.tableState(v).hand;
+    if (hand && hand.stage === 'play') return { player: hand.player, dealer: hand.dealer, hole: true };
+    const { o } = this.shown(v);
+    if (o?.player21) return { player: o.player21, dealer: o.dealer21!, hole: false };
+    return null;
+  }
+
+  private dealing(v: PanelView) {
+    const t = this.target(v);
+    return !!t && (this.seenP < t.player.length || this.seenD < t.dealer.length || (!t.hole && !this.holeUp));
+  }
+
+  /**
+   * Bring the cloth up to the hand, one card at a time: the deal goes you, dealer, you, dealer (face
+   * down); a hit slides in; at the stand the hole card turns over, then the dealer draws. Each card
+   * snaps down with a sound, so a hand you can't see is one you can hear.
+   */
+  private step(v: PanelView) {
+    const ts = this.tableState(v);
+    const live = !!ts.pending || ts.hand?.stage === 'play';
+    const t = this.target(v);
+    const now = v.tick / TICKS_PER_S;
+    if (!this.started || !t) {
+      // a panel opening on a hand already dealt shows it as it is
+      this.started = true;
+      this.seenP = t?.player.length ?? 0;
+      this.seenD = t?.dealer.length ?? 0;
+      this.holeUp = !!t && !t.hole;
+    } else if (live && !this.live) {
+      // a new hand: the chips go down, the cloth is cleared
+      this.seenP = this.seenD = 0;
+      this.holeUp = false;
+      this.lastAt = now - FEEL.deal.gap * 0.6;
+      this.sound('chips', 0.6);
+    }
+    this.live = live;
+    if (!t || now - this.lastAt < FEEL.deal.gap) return;
+    const opening = this.seenP < 2 || this.seenD < 2;
+    if (opening && this.seenP <= this.seenD && this.seenP < t.player.length) this.seenP++;
+    else if (opening && this.seenD < t.dealer.length) this.seenD++;
+    else if (this.seenP < t.player.length) this.seenP++;
+    else if (!t.hole && !this.holeUp && this.seenD >= 2) {
+      this.holeUp = true;
+      this.lastAt = now;
+      this.sound('flip');
+      return;
+    } else if (this.seenD < t.dealer.length) this.seenD++;
+    else return;
+    this.lastAt = now;
+    this.sound('card', 1, 0.94 + Math.random() * 0.12);
+  }
+
+  private row(ui: UI, label: string, cards: Card[], shown: number, hideHole: boolean, x: number, now: number, dealer: boolean) {
     const y = PLAY_Y + 14;
-    const total = hideHole ? handValue(cards.slice(0, 1)).total : handValue(cards).total;
-    ui.text(`${label} ${cards.length ? (hideHole ? total + ' +?' : total) : ''}`, x, PLAY_Y + 2, C.dust);
-    cards.slice(0, 6).forEach((c, i) => drawCard(ui, x + i * 18, y, hideHole && i === 1 ? null : c));
+    const vis = cards.slice(0, shown);
+    const total = handValue(hideHole ? vis.slice(0, 1) : vis).total;
+    ui.text(`${label} ${vis.length ? (hideHole && vis.length > 1 ? total + ' +?' : total) : ''}`, x, PLAY_Y + 2, C.dust);
+    const since = now - this.lastAt;
+    vis.slice(0, 6).forEach((c, i) => {
+      // the newest card drops onto the cloth; the hole card turns over edge-on
+      const newest = i === vis.length - 1 && since < FEEL.deal.gap;
+      const drop = newest ? Math.round((1 - clamp01(since / (FEEL.deal.gap * 0.7))) * -8) : 0;
+      if (dealer && i === 1 && !hideHole && since < FEEL.deal.gap && this.holeUp && shown === 2) {
+        const k = clamp01(since / (FEEL.deal.gap * 0.8));
+        drawCard(ui, x + i * 18, y, k < 0.5 ? null : c, 24 * Math.abs(Math.cos(k * Math.PI)));
+        return;
+      }
+      drawCard(ui, x + i * 18, y + drop, hideHole && i === 1 ? null : c);
+    });
   }
 
   protected drawPlay(ui: UI, v: PanelView) {
-    const t = this.tableState(v);
-    const hand = t.hand;
-    const { o } = this.shown(v);
-    if (hand && hand.stage === 'play') {
-      this.row(ui, 'DEALER', hand.dealer, true, 12);
-      this.row(ui, 'YOU', hand.player, false, 168);
-      ui.text(`BET ${money(hand.bet)}`, PANEL_W - 12, PLAY_Y + 2, C.gold, { align: 'right' });
-    } else if (o?.player21) {
-      // the dealer's hand turns over while the result is in the air
-      this.row(ui, 'DEALER', o.dealer21!, false, 12);
-      this.row(ui, 'YOU', o.player21, false, 168);
+    this.step(v);
+    const hand = this.tableState(v).hand;
+    const t = this.target(v);
+    const now = v.tick / TICKS_PER_S;
+    if (t) {
+      this.row(ui, 'DEALER', t.dealer, this.seenD, !this.holeUp, 12, now, true);
+      this.row(ui, 'YOU', t.player, this.seenP, false, 168, now, false);
+      if (hand && hand.stage === 'play') ui.text(`BET ${money(hand.bet)}`, PANEL_W - 12, PLAY_Y + 2, C.gold, { align: 'right' });
     } else {
       ui.text('PLACE A BET TO DEAL.', PANEL_W / 2, PLAY_Y + 24, C.dust, { align: 'center' });
       if (!this.dark(v)) ui.text('NATURAL (A + 10) PAYS 3:2. A WIN PAYS 1:1.', PANEL_W / 2, PLAY_Y + 36, C.ash, { align: 'center' });
     }
-    this.result(ui, v);
+    // the verdict waits for the last card
+    if (!this.dealing(v)) this.result(ui, v);
   }
 
   protected drawControls(ui: UI, v: PanelView) {

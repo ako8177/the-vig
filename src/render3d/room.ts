@@ -8,7 +8,7 @@
 // material; things that move are kept apart and turned by `update`.
 import {
   BoxGeometry, BufferGeometry, CanvasTexture, Color, CylinderGeometry, DoubleSide, Group, HemisphereLight, InstancedMesh, Material, Matrix4,
-  Mesh, MeshBasicMaterial, MeshLambertMaterial, NearestFilter, Object3D, PlaneGeometry, PointLight, Scene, SphereGeometry, SRGBColorSpace,
+  Mesh, MeshBasicMaterial, MeshLambertMaterial, NearestFilter, Object3D, type Side, PlaneGeometry, PointLight, Scene, SphereGeometry, SRGBColorSpace,
   TorusGeometry, Box3, Vector3,
 } from 'three';
 import type { Floor, Placement, Prop, Room as RoomDef } from '../data/floors';
@@ -451,6 +451,7 @@ export function buildRoom(scene: Scene, floor: Floor, tx: Textures): Room {
         const disc = new Mesh(keep(new CylinderGeometry(0.34, 0.34, 0.03, 37)), keep(new MeshLambertMaterial({ map: rouletteTexture(keep) })));
         disc.position.set(wx, 1.045, p.z);
         disc.name = 'anim-roulette';
+        disc.userData.occluder = true;
         group.add(disc);
         moving.push({ mesh: disc, spin: 1.6 });
         add(new CylinderGeometry(0.03, 0.05, 0.12, 6), flat(C.brass), wx, 1.11, p.z, 'turret');
@@ -633,6 +634,7 @@ export function buildRoom(scene: Scene, floor: Floor, tx: Textures): Room {
   for (const g of roomGroups.values()) {
     group.add(g);
     mergeByMaterial(g, keep);
+    glowBlockers(g, glowing, keep);
   }
   group.traverse((o) => {
     if (o instanceof Mesh && glowing.has(o.material as Material)) o.layers.enable(GLOW);
@@ -772,6 +774,41 @@ function mergeByMaterial(group: Group, keep: <T extends { dispose(): void }>(x: 
     one.name = 'merged:' + meshes[0].name;
     one.userData.occluder = meshes.some((m) => m.userData.occluder);
     group.add(one);
+  }
+}
+
+/**
+ * The glow pass's blockers (view.ts): every static, opaque, unlit-by-neon mesh of a room baked into
+ * one black mesh per face side, drawn only in that pass. Neon behind a table, a panel, a cabinet or
+ * a pillar stays hidden in the bloom as it is in the frame: before this only the walls blocked it,
+ * so a sign across the room glowed straight through a table's odds card. One or two draws a room.
+ */
+function glowBlockers(group: Group, glowing: Set<Material>, keep: <T extends { dispose(): void }>(x: T) => T) {
+  group.updateMatrixWorld(true);
+  const bySide = new Map<Side, BufferGeometry[]>();
+  for (const o of group.children) {
+    if (!(o instanceof Mesh) || o instanceof InstancedMesh || o.name.startsWith('anim-') || Array.isArray(o.material)) continue;
+    const mat = o.material as Material;
+    // see-through things (the cage's grille, smoke) let the glow through, as they let the room through
+    if (glowing.has(mat) || mat.transparent || mat.alphaTest > 0 || !mat.depthWrite) continue;
+    const g = (o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone()).applyMatrix4(o.matrixWorld);
+    g.clearGroups();
+    for (const k of Object.keys(g.attributes)) if (k !== 'position') g.deleteAttribute(k);
+    const list = bySide.get(mat.side) ?? [];
+    list.push(g);
+    bySide.set(mat.side, list);
+    // the blocker stands in for it: the glow pass skips the mesh itself
+    o.userData.occluder = false;
+  }
+  for (const [side, geos] of bySide) {
+    const merged = mergeGeometries(geos, false);
+    for (const g of geos) g.dispose();
+    if (!merged) continue;
+    const m = new Mesh(keep(merged), keep(new MeshBasicMaterial({ color: 0x000000, side })));
+    m.name = 'glowblock';
+    m.visible = false;
+    m.userData.glowBlock = true;
+    group.add(m);
   }
 }
 
