@@ -35,7 +35,7 @@ export interface Placement {
   signY: number;
 }
 
-export type RoomId = 'floor' | 'lounge' | 'back';
+export type RoomId = 'floor' | 'lounge' | 'back' | 'home';
 
 /** A room: its extent, its ceiling, its look. */
 export interface Room {

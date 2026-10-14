@@ -9,6 +9,7 @@ import { BANES, BOONS } from '../src/data/wheels';
 import { CIRCUIT_RULES } from '../src/data/circuit';
 import { ECONOMY } from '../src/data/economy';
 import { BUZZ, DRINKS } from '../src/data/drinks';
+import { POST_S } from '../src/data/home';
 import { MODULES, MODULE_BY_ID } from '../src/sim/tables';
 import { Game } from '../src/sim/Game';
 import { FLOOR_1 } from '../src/data/floors';
@@ -20,7 +21,7 @@ const NAMES_DESIGN = /DESIGN\.md §\d/;
 describe('data validation', () => {
   it('every number names its DESIGN.md section', () => {
     const all: { derivation: string }[] = [
-      ...TABLES, ...CHARMS, ...UPGRADES, ...MARKS, ...BOONS, ...BANES, ...CIRCUIT_RULES, ...DRINKS, BUZZ,
+      ...TABLES, ...CHARMS, ...UPGRADES, ...MARKS, ...BOONS, ...BANES, ...CIRCUIT_RULES, ...DRINKS, BUZZ, POST_S,
       ...Object.values(ECONOMY).flatMap((v) => ('derivation' in v ? [v as { derivation: string }] : Object.values(v))),
     ];
     for (const d of all) expect(d.derivation, JSON.stringify(d)).toMatch(NAMES_DESIGN);

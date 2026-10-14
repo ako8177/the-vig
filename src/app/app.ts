@@ -23,6 +23,10 @@ import { activePalette, C, TIER_NAME, TIER_ROLE, type PaletteId } from '../data/
 import { View3D, type PassToggles } from '../render3d/view';
 import { Textures } from '../render3d/textures';
 import { buildRoom, recolorNeon, setMidnight, type Room } from '../render3d/room';
+import { buildHome, type Home } from '../render3d/home';
+import { CAR_STAND as CAR_STAND_AT, FAMILY, HOME_SPAWN } from '../data/home';
+import { atCar, atComputer, atMailbox } from '../sim/systems/home';
+import type { Floor } from '../data/floors';
 import { TablePlay } from '../render3d/tableplay';
 import { Chatter } from './chatter';
 import { Crowd } from '../render3d/npcs';
@@ -59,14 +63,20 @@ function save(key: string, v: unknown) {
   }
 }
 
+/** Phases you walk in: the casino floor during the night, and the house between nights. */
+const walks = (ph: string) => ph === 'floor' || ph === 'home';
+const HOME_ROOMS: ReadonlySet<string> = new Set(['home']);
+const NO_ROOMS: ReadonlySet<string> = new Set();
+
 /** The lesson cards: two lines, once per player (ROADMAP Milestone 1). */
 const LESSONS: Record<string, [string, string]> = {
+  home: ['HOME.', 'THE COMPUTER SELLS CHARMS FOR MARKERS AND THE POST BRINGS THEM TO THE MAILBOX. THE CAR TAKES YOU TO THE VIG.'],
   start: ['SIX MINUTES. MAKE THE QUOTA.', 'WALK UP TO A TABLE, READ ITS ODDS, PRESS E. GREEN BLEEDS, YELLOW MARKS, RED KILLS.'],
   mark: ['YOU ARE MARKED', '-5% ON YOUR HI-LO PAYOUTS A STACK. AT 4 STACKS HI-LO LOSES: GO SPIN THE WHEEL.'],
   teammark: ['A TEAM MARK', 'THE WHEEL PAYS, BUT ITS LOSSES HIT EVERYONE. IT LASTS 45 S.'],
   blood: ['A BLOOD TABLE', 'IT PAYS BEST, AND LOSING CAN COST A LIFE. READ THE SCREEN BEFORE YOU BET.'],
   midnight: ['0:00. THE COLLECTOR.', `SHORT: A LIFE PER ${money(ECONOMY.shortfallPerLife.v)} AND THE BANK. MADE IT: PAY, OR GAMBLE ON THE CIRCUIT.`],
-  markers: ['MARKERS', 'SPEND THEM AT THE CAGE ON THE EAST WALL: CHARMS THAT CROSS THE ROOM.'],
+  markers: ['MARKERS', 'SPEND THEM ON THE COMPUTER AT HOME: CHARMS THAT CROSS THE ROOM, BY POST.'],
   broke: ['BROKE', "NOTHING LEFT TO BET? WALK TO THE COLLECTOR'S TABLE IN THE MIDDLE AND PRESS E TO CALL IT."],
 };
 const URGENT = new Set(['blood', 'midnight', 'broke']);
@@ -82,6 +92,9 @@ export class App {
   /** the crowd's own games on the felt, and their talk (DECISIONS #78) */
   tablePlay: TablePlay;
   chatter: Chatter;
+  /** the house and the family in it (DECISIONS #79) */
+  home: Home;
+  family: Crowd;
   game: Game;
   readonly fp = new FirstPerson();
   readonly hud: Hud;
@@ -98,7 +111,7 @@ export class App {
   cageOpen = false;
   barOpen = false;
   /** a yes/no card on screen (calling the night) */
-  confirm: { title: string; lines: string[]; yes: string } | null = null;
+  confirm: { title: string; lines: string[]; yes: string; cmd?: Command } | null = null;
   /** the stand-up came from Esc: don't grab the mouse back (no user gesture) */
   private standByEsc = false;
   private toasts: Toast[] = [];
@@ -129,6 +142,8 @@ export class App {
     this.room = buildRoom(this.view.scene, FLOOR_1, this.tex);
     this.crowd = new Crowd(this.view.scene, FLOOR_1);
     this.tablePlay = new TablePlay(this.view.scene, FLOOR_1);
+    this.home = buildHome(this.view.scene, this.tex);
+    this.family = new Crowd(this.view.scene, { npcs: FAMILY } as unknown as Floor);
     this.hud = new Hud(hudCanvas);
     this.hud.ui.sfx = (id) => this.audio.sfx(id);
     this.game = new Game({ seed: 1, upgrades: this.meta.upgrades });
@@ -193,11 +208,11 @@ export class App {
 
   /** Walking the floor, mouse free: a click should take the mouse. */
   private wantsLock() {
-    return this.screen === 'game' && this.game.state.phase === 'floor' && !this.fp.seated && !this.cageOpen && !this.barOpen && !this.confirm && !this.input.locked;
+    return this.screen === 'game' && walks(this.game.state.phase) && !this.fp.seated && !this.cageOpen && !this.barOpen && !this.confirm && !this.input.locked;
   }
 
   private resetCamera() {
-    const sp = FLOOR_1.spawn;
+    const sp = this.game.state.phase === 'home' ? HOME_SPAWN : FLOOR_1.spawn;
     const p = this.me();
     this.fp.yaw = sp.yaw;
     this.fp.pitch = 0;
@@ -208,7 +223,7 @@ export class App {
   // ---------------------------------------------------------------- runs
 
   newRun(seed = (Date.now() ^ Math.floor(Math.random() * 0x7fffffff)) >>> 0) {
-    this.game = new Game({ seed, upgrades: this.meta.upgrades });
+    this.game = new Game({ seed, upgrades: this.meta.upgrades, home: true });
     this.screen = 'game';
     this.started = false;
     this.paused = false;
@@ -222,7 +237,7 @@ export class App {
     if (this.fp.seated) this.fp.stand(this.view.camera);
     this.resetCamera();
     this.sentMove = { mx: 0, mz: 0, yaw: 0, run: false };
-    this.teach('start');
+    this.teach('home');
   }
 
   private toTitle() {
@@ -261,9 +276,9 @@ export class App {
       return;
     }
     // walking the floor needs the floor entered and not paused; the Collector's table runs on its own
-    if (s.phase === 'floor' && (!this.started || this.paused)) return;
+    if (walks(s.phase) && (!this.started || this.paused)) return;
     const i = this.input;
-    const walking = s.phase === 'floor' && !this.fp.seated && !this.cageOpen;
+    const walking = walks(s.phase) && !this.fp.seated && !this.cageOpen;
     const fwd = walking ? (i.isDown('forward') ? 1 : 0) - (i.isDown('back') ? 1 : 0) : 0;
     const strafe = walking ? (i.isDown('right') ? 1 : 0) - (i.isDown('left') ? 1 : 0) : 0;
     let w = this.fp.walk(fwd, strafe);
@@ -277,7 +292,7 @@ export class App {
     const yaw = Math.round(this.fp.yaw * 1000);
     const run = walking && i.isDown('sprint');
     const sm = this.sentMove;
-    if (s.phase === 'floor' && (w.mx !== sm.mx || w.mz !== sm.mz || run !== sm.run || (Math.abs(yaw - sm.yaw) > 20 && (w.mx || w.mz)))) {
+    if (walks(s.phase) && (w.mx !== sm.mx || w.mz !== sm.mz || run !== sm.run || (Math.abs(yaw - sm.yaw) > 20 && (w.mx || w.mz)))) {
       this.sentMove = { ...w, yaw, run };
       this.send({ t: 'move', ...w, yaw, run });
     }
@@ -421,10 +436,36 @@ export class App {
           this.fp.stand(this.view.camera);
           this.resetCamera();
           this.started = false;
-          this.banner = { text: `NIGHT ${e.night}`, sub: `QUOTA ${money(e.quota)}. THE BANK STARTS AT ${money(e.bank)}.`, color: C.white, t: 3 };
+          const atHome = this.game.state.phase === 'home';
+          this.banner = atHome
+            ? { text: 'HOME', sub: `NIGHT ${e.night} NEXT. QUOTA ${money(e.quota)}. THE CAR IS OUT FRONT.`, color: C.cream, t: 3.5 }
+            : { text: `NIGHT ${e.night}`, sub: `QUOTA ${money(e.quota)}. THE BANK STARTS AT ${money(e.bank)}.`, color: C.white, t: 3 };
           a.sfx('night');
           break;
         }
+        case 'ordered':
+          if (e.player !== ME) break;
+          this.toast(`ORDERED: ${(e.kind === 'charm' ? CHARM_BY_ID.get(e.item as CharmId)!.name : UPGRADE_BY_ID.get(e.item as UpgradeId)!.name).toUpperCase()}`, C.collHi);
+          a.sfx('buy');
+          if (e.kind === 'upgrade') {
+            if (!this.meta.upgrades.includes(e.item as UpgradeId)) this.meta.upgrades.push(e.item as UpgradeId);
+            save('vig.meta', this.meta);
+          }
+          break;
+        case 'post':
+          this.toast(`THE POST HAS COME: ${e.count} IN THE MAILBOX`, C.gold);
+          a.sfx('clunk', 0.7);
+          break;
+        case 'collected':
+          this.toast(`CARRIED IN: ${e.items.map((it) => (CHARM_BY_ID.get(it as CharmId) ?? UPGRADE_BY_ID.get(it as UpgradeId))?.name.toUpperCase()).join(', ')}`, C.collHi);
+          a.sfx('chips', 0.6);
+          break;
+        case 'drive':
+          this.resetCamera();
+          this.banner = { text: `NIGHT ${e.night}`, sub: `QUOTA ${money(this.game.state.quota)}. THE BANK HOLDS ${money(this.game.state.bank)}. THE CLOCK IS RUNNING.`, color: C.white, t: 3 };
+          a.sfx('night');
+          this.teach('start');
+          break;
         case 'over':
           this.overAt = 2.5;
           break;
@@ -505,11 +546,13 @@ export class App {
         case 'closeCage': this.closeCage(); break;
         case 'closeBar': this.closeBar(); break;
         case 'order': this.send({ t: 'order', drink: a.drink }); break;
-        case 'confirm':
+        case 'confirm': {
+          const cmd = this.confirm?.cmd ?? { t: 'callit' };
           this.confirm = null;
-          if (a.yes) this.send({ t: 'callit' });
-          else this.input.lock();
+          if (a.yes) this.send(cmd);
+          if (!a.yes || cmd.t === 'drive') this.input.lock();
           break;
+        }
         case 'set':
           this.settings = { ...this.settings, ...a.settings };
           save('vig.settings', this.settings);
@@ -575,7 +618,7 @@ export class App {
     const s = this.game.state;
     const inGame = this.screen === 'game';
 
-    if (inGame && s.phase === 'floor') {
+    if (inGame && walks(s.phase)) {
       // Esc while walking: the browser drops pointer lock; we pause (THREEJS-NOTES rule 2)
       if (this.wasLocked && !i.locked && !this.fp.seated && !this.cageOpen && !this.barOpen && !this.confirm) this.paused = true;
       if (i.lockFailed && !i.locked && !this.fp.seated && !this.cageOpen && !this.barOpen) this.relock = true;
@@ -591,6 +634,17 @@ export class App {
         if (i.wasPressed('interact') || i.wasPressed('pause')) {
           this.standByEsc = i.wasPressed('pause');
           this.send({ t: 'stand' });
+        }
+      } else if (this.started && !this.paused && i.wasPressed('interact') && s.phase === 'home') {
+        // the house: the computer, the mailbox, the car
+        const me = this.me();
+        if (atComputer(me)) this.openCage();
+        else if (atMailbox(me)) this.send({ t: 'pickup' });
+        else if (atCar(me)) {
+          if (s.post.box.length) {
+            this.input.unlock();
+            this.confirm = { title: 'LEAVE THE POST?', lines: [`${s.post.box.length} IN THE MAILBOX, NOT CARRIED IN.`, 'IT WILL WAIT FOR YOU UNTIL THE NEXT TIME YOU ARE HOME.'], yes: 'DRIVE', cmd: { t: 'drive' } };
+          } else this.send({ t: 'drive' });
         }
       } else if (this.started && !this.paused && i.wasPressed('interact')) {
         const t = this.reachable();
@@ -641,7 +695,7 @@ export class App {
       }
     }
     // the 0:00 drop
-    const dark = inGame && s.phase !== 'floor' ? 1 : 0;
+    const dark = inGame && s.phase !== 'floor' && s.phase !== 'home' ? 1 : 0;
     this.dark += (dark - this.dark) * Math.min(1, dt * 1.5);
     setMidnight(this.room, this.dark);
     this.room.update(dt, performance.now() / 1000);
@@ -653,7 +707,17 @@ export class App {
       const lit = new Set<string>([here]);
       // through an arch you see the next room once you're within 9 m of it; farther, it's a dark doorway
       for (const dw of FLOOR_1.doorways) if (Math.hypot(cam.x - dw.x, cam.z - dw.z) < 9) lit.add(dw.to).add('floor');
+      // at home the casino isn't drawn at all, and the house is (DECISIONS #79)
+      const atHome = inGame && s.phase === 'home';
+      if (atHome) lit.clear();
       this.room.lightRooms(lit);
+      this.home.setVisible(atHome);
+      for (const l of this.home.lights) l.visible = atHome;
+      if (atHome) {
+        this.home.update(dt, performance.now() / 1000);
+        this.home.setFlag(s.post.box.length > 0);
+      }
+      this.family.update(dt, performance.now() / 1000, null, { x: cam.x, z: cam.z, fx: -Math.sin(this.fp.yaw), fz: -Math.cos(this.fp.yaw) }, atHome ? HOME_ROOMS : NO_ROOMS);
       const seatAt = inGame && p.seat ? FLOOR_1.tables.find((x) => x.table === p.seat) : undefined;
       const yaw = this.view.camera.rotation.y;
       this.crowd.update(dt, performance.now() / 1000, seatAt ? { table: seatAt.table, x: seatAt.stand.x, z: seatAt.stand.z } : null,
@@ -680,7 +744,7 @@ export class App {
     }
 
     // panels: the seated one takes the mouse, mapped onto its screen
-    const atColl = inGame && s.phase !== 'floor' && s.phase !== 'over';
+    const atColl = inGame && s.phase !== 'floor' && s.phase !== 'home' && s.phase !== 'over';
     for (const { panel, tex, mesh } of this.panels.values()) {
       const active = inGame && (panel.table === 'collector' ? atColl : p.seat === panel.table);
       let ptr: Pointer | null = null;
@@ -708,14 +772,20 @@ export class App {
     // the HUD
     const near = inGame && s.phase === 'floor' && !this.fp.seated && this.started && !this.cageOpen && !this.barOpen;
     const t = near ? this.reachable() : null;
-    const cagePrompt = near && !t && atCage(p) ? { title: 'E  THE CAGE', odds: `CHARMS AND UPGRADES FOR MARKERS  (${s.markers} ${'\u0013'})`, color: C.marker }
+    const homeNear = inGame && s.phase === 'home' && this.started && !this.cageOpen && !this.confirm;
+    const homePrompt = !homeNear ? null
+      : atComputer(p) ? { title: 'E  THE COMPUTER', odds: `ORDER CHARMS AND UPGRADES FOR MARKERS (${s.markers} ${'\u0013'}). THE POST BRINGS THEM.`, color: C.collHi }
+      : atMailbox(p) ? { title: 'E  THE MAILBOX', odds: s.post.box.length ? `${s.post.box.length} WAITING. CARRY IT IN.` : s.post.orders.length ? 'THE POST IS ON ITS WAY.' : 'EMPTY.', color: C.gold }
+      : atCar(p) ? { title: 'E  DRIVE TO THE VIG', odds: `NIGHT ${s.night}. QUOTA ${money(s.quota)}. THE CLOCK STARTS WHEN YOU GET THERE.`, color: C.white }
+      : null;
+    const cagePrompt = homePrompt ?? (near && !t && atCage(p) ? { title: 'E  THE CAGE', odds: `CHARMS AND UPGRADES FOR MARKERS  (${s.markers} ${'\u0013'})`, color: C.marker }
       : near && !t && this.atCollectorTable() ? { title: 'E  CALL IT', odds: 'END THE NIGHT NOW: THE COLLECTOR COMES AT ONCE', color: C.coll }
-      : near && !t && atBar(p) ? { title: 'E  THE BAR', odds: 'DRINKS FOR CASH. THEY HIT THE SCREEN.', color: C.pinkHi } : null;
+      : near && !t && atBar(p) ? { title: 'E  THE BAR', odds: 'DRINKS FOR CASH: AN EDGE WHILE THE BUZZ LASTS.', color: C.pinkHi } : null);
     // nothing left to bet: say where to go (critic F1)
     if (inGame && s.phase === 'floor' && this.started && s.bank < 100 && !Object.values(s.tables).some((x) => x.pending)) this.teach('broke');
     const b = this.view.box.css;
     const hp: Pointer = { x: ((i.mouse.x - b.x) / b.w) * HUD_W, y: ((i.mouse.y - b.y) / b.h) * HUD_H, down: i.mouse.down[0], pressed: i.mouse.pressed[0] };
-    const overlay = this.screen === 'game' && s.phase === 'floor' && !this.fp.seated && !this.cageOpen && !this.barOpen
+    const overlay = this.screen === 'game' && walks(s.phase) && !this.fp.seated && !this.cageOpen && !this.barOpen
       ? (!this.started ? 'enter' : this.relock ? 'relock' : this.paused ? 'paused' : null)
       : null;
     const acts = this.hud.draw(
@@ -723,7 +793,7 @@ export class App {
         screen: this.screen, state: this.screen === 'title' || this.screen === 'howto' ? null : s, player: ME,
         seated: this.fp.seated, atCollector: atColl,
         prompt: t ? this.promptFor(t) : cagePrompt,
-        overlay: this.confirm ? null : overlay, confirm: this.confirm, cage: inGame && s.phase === 'floor' ? this.cageView() : null,
+        overlay: this.confirm ? null : overlay, confirm: this.confirm, cage: inGame && walks(s.phase) ? this.cageView() : null,
         bar: inGame && s.phase === 'floor' ? { open: this.barOpen, why: new Map(DRINKS.map((d) => [d.id, cantOrder(this.game, p, d.id)])) } : null,
         toasts: this.toasts, lesson: this.lesson, banner: this.banner, settings: this.settings, meta: this.meta, dark: this.dark,
       },
@@ -738,11 +808,21 @@ export class App {
 
   // ---------------------------------------------------------------- debug and e2e hooks
 
-  /** Step onto the floor without pointer lock (headless browsers). */
-  enter() {
+  /** Step onto the floor without pointer lock (headless browsers): the run starts at home and the
+   *  car is taken through the real command path, unless `atHome` keeps you in the house. */
+  enter(atHome = false) {
     if (this.screen !== 'game') this.newRun(1);
     this.started = true;
     this.paused = false;
+    const s = this.game.state;
+    if (!atHome && s.phase === 'home') {
+      const p = this.me();
+      p.x = CAR_STAND_AT.x;
+      p.z = CAR_STAND_AT.z;
+      this.send({ t: 'drive' });
+      this.skipTo(this.game.tick + 1);
+      this.started = true;
+    }
   }
 
   /** Put the camera somewhere exact: a standing pose at (x, z) looking (yaw, pitch). */
@@ -795,6 +875,8 @@ export class App {
     this.room.dispose();
     this.crowd.dispose();
     this.tablePlay.dispose();
+    this.home.dispose();
+    this.family.dispose();
     this.view.invalidateGlow();
     for (const { tex, mesh } of this.panels.values()) {
       tex.dispose();

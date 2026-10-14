@@ -1,7 +1,7 @@
 // The economy between nights (DESIGN.md §2): paying the quota, overshoot markers, the next
 // quota, the bank floor, and starting the next night (the `ready` command).
 import type { Game, System } from '../Game';
-import { NIGHT_TICKS, NO_MODS, newTables, spawnOf, type NightSummary } from '../state';
+import { NIGHT_TICKS, NO_MODS, homeSpawnOf, newTables, spawnOf, type NightSummary } from '../state';
 import { ECONOMY } from '../../data/economy';
 import { WHEEL } from '../../data/wheels';
 import { addMarkers, endRun } from '../rules';
@@ -50,13 +50,14 @@ export function startNight(g: Game) {
   s.wheel = null;
   s.summary = null;
   s.players.forEach((p, i) => {
-    Object.assign(p, spawnOf(i, s.players.length));
+    // with the house, the night begins at home: the car takes you to the casino (DECISIONS #79)
+    Object.assign(p, s.home ? homeSpawnOf(i, s.players.length) : spawnOf(i, s.players.length));
     p.mx = p.mz = 0;
     p.seat = null;
     p.apronUsed = false;
     p.redStreak = 0;
   });
-  s.phase = 'floor';
+  s.phase = s.home ? 'home' : 'floor';
   s.phaseAt = g.tick;
   g.emit({ t: 'night', night: s.night, quota: s.quota, bank: s.bank });
 }

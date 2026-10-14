@@ -4,6 +4,7 @@
 import type { Game, System } from '../Game';
 import type { Collider } from '../../data/floors';
 import { FLOOR_1, PLAYER_R } from '../../data/floors';
+import { HOME_COLLIDERS } from '../../data/home';
 import { TICKS_PER_S } from '../state';
 import { STICKY } from '../../data/marks';
 import { hasTeamMark } from '../rules';
@@ -69,8 +70,11 @@ export const movement: System = {
     p.run = cmd.run === true;
   },
   tick(g: Game) {
-    // you walk the floor while the night runs; at 0:00 you're held at the Collector's table
-    if (g.state.phase !== 'floor') return;
+    // you walk the floor while the night runs, and the house between nights; at 0:00 you're held
+    // at the Collector's table
+    const ph = g.state.phase;
+    if (ph !== 'floor' && ph !== 'home') return;
+    const cols = ph === 'home' ? HOME_COLLIDERS : FLOOR_1.colliders;
     const step = STEP * (hasTeamMark(g, 'sticky') ? STICKY : 1);
     for (const p of g.state.players) {
       if (p.seat || (p.mx === 0 && p.mz === 0)) continue;
@@ -81,7 +85,7 @@ export const movement: System = {
         vx /= len;
         vz /= len;
       }
-      const to = collide(p.x + vx * step * k, p.z + vz * step * k, PLAYER_R, FLOOR_1.colliders);
+      const to = collide(p.x + vx * step * k, p.z + vz * step * k, PLAYER_R, cols);
       p.x = to.x;
       p.z = to.z;
     }

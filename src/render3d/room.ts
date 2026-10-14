@@ -736,7 +736,7 @@ function rouletteTexture(keep: <T extends { dispose(): void }>(x: T) => T) {
  * One draw per material: every static mesh sharing a material is baked into one geometry
  * (≤ 80 draw calls, THREEJS-NOTES rule 11). Screens and moving things stay separate.
  */
-function mergeByMaterial(group: Group, keep: <T extends { dispose(): void }>(x: T) => T) {
+export function mergeByMaterial(group: Group, keep: <T extends { dispose(): void }>(x: T) => T) {
   group.updateMatrixWorld(true);
   // (meshes here sit straight in the room group at the origin: their matrixWorld is their own)
   const byMat = new Map<Material, Mesh[]>();
@@ -776,7 +776,7 @@ function mergeByMaterial(group: Group, keep: <T extends { dispose(): void }>(x: 
  * a pillar stays hidden in the bloom as it is in the frame: before this only the walls blocked it,
  * so a sign across the room glowed straight through a table's odds card. One or two draws a room.
  */
-function glowBlockers(group: Group, glowing: Set<Material>, keep: <T extends { dispose(): void }>(x: T) => T) {
+export function glowBlockers(group: Group, glowing: Set<Material>, keep: <T extends { dispose(): void }>(x: T) => T) {
   group.updateMatrixWorld(true);
   const bySide = new Map<Side, BufferGeometry[]>();
   for (const o of group.children) {

@@ -21,6 +21,13 @@ with floor 1 as three rooms by risk, a crowd of 52, and a bar with drinks that m
 (DECISIONS #65-#68). The milestone order and the not-list bent at the owner's word (written down in
 DECISIONS). Next in the owner's order: **the house** (ROADMAP, "The owner's plan").
 
+**2026-10-14, the owner's big batch** (DECISIONS #72-#79): raw mouse look; Shift sprint; the
+Wheel pays by color; the Bandit is a 3x3 grid; Twenty-One is a real 6-deck shoe with double and
+split; drinks give an edge; the crowd plays and talks; and **the house** is built (the run starts
+there and returns between nights; the computer's shop by post; the car). Ask the owner: how the
+new Wheel and Bandit feel (numbers in DESIGN.md §3), whether the drink edges are worth the walk,
+and what the house needs next (a second car, other items, the family speaking).
+
 **2026-10-14, the owner's second look** (DECISIONS #69-#71): neon glow no longer draws over the
 panels, furniture and people (a baked black blocker per room in the glow pass); Twenty-One deals
 card by card with a sound each; the crowd is a jointed figure (elbows, knees, hands, faces, vests,
@@ -44,8 +51,9 @@ side, and close the Browser pane (or any tab running the game) first.
 
 ## Next (in order)
 
-1. The house (ROADMAP, "The owner's plan"): specify it in DESIGN.md first (what the computer
-   sells, with what money, when the post arrives), then build. Also settle the owner's calls above; re-run `npx vitest run tests/pace.test.ts` after any number moves
+1. Floors by money (ROADMAP, "The owner's plan", step 2): specify floor 2 in DESIGN.md first (the
+   unlock price, its games: roulette, craps, case opening, a peg-drop board, crash; a 5x5 Bandit
+   with its own derivation), then build. Also settle the owner's calls above; re-run `npx vitest run tests/pace.test.ts` after any number moves
    and write the derivation in DESIGN.md first.
 2. The design review's open items that are ours to decide (none started): team marks that push you
    to another tier (Cold Deck → mid payouts −15%; replace Blackout, a near no-op); upgrades bought

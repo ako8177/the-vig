@@ -1,6 +1,7 @@
 // The sim's whole state: plain data, JSON-serializable, hashed for the replay test.
 import type { PlayerId } from './commands';
 import { FLOOR_1 } from '../data/floors';
+import { HOME_SPAWN } from '../data/home';
 import { ECONOMY } from '../data/economy';
 import type { MarkId } from '../data/marks';
 import type { CharmId, UpgradeId } from '../data/charms';
@@ -196,9 +197,20 @@ export interface RunStats {
   markersEarned: number;
 }
 
-export type Phase = 'floor' | 'midnight' | 'choice' | 'circuit' | 'wheel' | 'summary' | 'over';
+export type Phase = 'home' | 'floor' | 'midnight' | 'choice' | 'circuit' | 'wheel' | 'summary' | 'over';
+
+/** An order from the computer at home: what, and whose. */
+export interface PostItem {
+  item: string;
+  player: PlayerId;
+}
 
 export interface State {
+  /** the run starts at the house and goes back to it between nights (DECISIONS #79); off for the
+   *  pace bots, which play nights back to back */
+  home: boolean;
+  /** orders in the post, the tick they reach the mailbox, and what's waiting in it */
+  post: { orders: PostItem[]; at: number; box: PostItem[] };
   floor: number;
   night: number;
   phase: Phase;
@@ -245,24 +257,32 @@ export function newTables(): Record<string, TableState> {
   return t;
 }
 
+/** Where player `id` stands in the house (the start of a run, and after the drive home). */
+export function homeSpawnOf(id: number, players: number) {
+  const sp = HOME_SPAWN;
+  return { x: sp.x, z: sp.z + (id - (players - 1) / 2) * 0.8, yaw: Math.round(sp.yaw * 1000) };
+}
+
 /** Where player `id` stands at the start of a night. */
 export function spawnOf(id: number, players: number) {
   const sp = FLOOR_1.spawn;
   return { x: sp.x + (id - (players - 1) / 2) * 0.8, z: sp.z, yaw: Math.round(sp.yaw * 1000) };
 }
 
-export function newState(players: number, upgrades: UpgradeId[] = []): State {
+export function newState(players: number, upgrades: UpgradeId[] = [], home = false): State {
   return {
+    home,
+    post: { orders: [], at: 0, box: [] },
     floor: 1,
     night: 1,
-    phase: 'floor',
+    phase: home ? 'home' : 'floor',
     phaseAt: 0,
     clock: NIGHT_TICKS,
     bank: START_BANK + (upgrades.includes('bank500') ? 500 : 0),
     quota: QUOTA_1,
     markers: 0,
     players: Array.from({ length: players }, (_, id) => ({
-      id, ...spawnOf(id, players), mx: 0, mz: 0, seat: null, lives: START_LIVES, ghost: false,
+      id, ...(home ? homeSpawnOf(id, players) : spawnOf(id, players)), mx: 0, mz: 0, seat: null, lives: START_LIVES, ghost: false,
       charms: [], redStreak: 0, overclock: 0, apronUsed: false, drunk: 0, run: false, buffs: [],
     })),
     marks: [],

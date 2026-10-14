@@ -193,3 +193,13 @@ inspirations: the ideas are taken, never their names, numbers or art).
   The talk (app/chatter.ts) is synthesized, no recordings: each cluster of people gets two or
   three voices (a buzz through two vowel formants, syllables and phrases, the odd laugh), muffled,
   heard within 9 m, panned to where they stand, hushed at 0:00. On the SFX volume.
+- #79 2026-10-14: **The house** (the owner's plan; the owner picked "the run starts there and you
+  come home between nights"). A new sim phase `home` before each night: walk the house and yard
+  (its own colliders, far from the casino's coordinates; only one of the two is drawn), order at
+  the computer (the `buy` command, now into the post), `pickup` at the mailbox, `drive` at the
+  car. The cage stops selling when the run has the house (buybacks stay). A new system `home`
+  sits after `cage` in the fixed order (CLAUDE.md updated). The pace bots run without the house
+  (`Game({ home: false })`, the default): it takes no clock time, so their arithmetic holds;
+  tests/home.test.ts plays the flow. e2e's `enter()` drives through the real command path;
+  `enter(true)` stays home. Lesson cards are now capped at 420 px and wrap, so they never cover
+  the status column.

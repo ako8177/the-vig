@@ -31,7 +31,7 @@ audit, the e2e harness, the deploy workflow, the `.bat` files, Electron.
   the host broadcasts the command log.
 - One system per file in `src/sim/systems/`, fixed order in `Game.ts`: clock → movement →
   tables (each table a module with `odds`, `resolve`, `lossCost`) → marks → lives and souls →
-  cage → collector (phase, Circuit, wheels) → economy → stats.
+  cage → home (the house: post, pickup, the drive) → collector (phase, Circuit, wheels) → economy → stats.
 - Content is typed data in `src/data/` (tables, charms, upgrades, marks, wheels, floors, the
   Circuit rules per floor). A validation test checks cross-references, that **every number has
   a `derivation` string** naming a `DESIGN.md` section, that every table's RTP matches its

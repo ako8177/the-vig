@@ -2,6 +2,26 @@
 
 What is built. Newest first.
 
+## 2026-10-14 — The owner's big batch: tables, sprint, drinks, a playing crowd, the house
+
+From the owner's third round of notes (DECISIONS #72-#79), each its own commit:
+
+- **Mouse look** takes raw input and drops the browser's bogus jumps (#72).
+- **Shift sprints** at x1.7 (#73).
+- **The Wheel of Marks pays by color**: red 1.5x, purple 2.5x, gold 6x, black half back, marks;
+  RTP 1.16, ahead 48% (was a flat 1.6x on 72%) (#74).
+- **The Bandit is a 3x3 grid**: 8 lines, corners, the whole grid; RTP 0.9504 enumerated (#75;
+  flagged as CloverPit-derived at the owner's request).
+- **Twenty-One deals from a real 6-deck shoe** with double and split; basic strategy 0.9921 (#76).
+- **Drinks give an edge**: a few percent at one tier while the buzz lasts (#77).
+- **The crowd plays its games** on the felt (cards, chips, dice, the roulette ball) **and talks**
+  (synthesized murmur, louder as you walk up) (#78).
+- **The house**: the run starts at home and comes back after every Collector; the family, the
+  computer's shop by post to the mailbox, the car to the casino (#79).
+- Checks: typecheck clean; 31 tests green (a new house sim test; pace test 3 re-derived, #73);
+  screens sweep 25 surfaces, 0 issues; e2e smoke green; screenshots looked at for every table
+  panel, the bar, the crowd's games, and the house inside and out. No PixelLab spend.
+
 ## 2026-10-14 — The owner's second look: glow through panels, card sounds, the crowd
 
 The owner's notes from playing the three-room floor, fixed (DECISIONS #69-#71):

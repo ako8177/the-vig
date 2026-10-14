@@ -99,6 +99,9 @@ interface Coin { x: number; y: number; vx: number; vy: number; spin: number; age
 /** A win the HUD is celebrating. */
 type Celebration = { kind: 'win' | 'big' | 'jackpot'; amount: number; t: number };
 
+/** the widest a lesson card gets (HUD px): clear of the clock on the left and the status column on the right */
+const LESSON_W = 420;
+
 export class Hud {
   readonly ui = new UI();
   private ctx: CanvasRenderingContext2D;
@@ -207,7 +210,7 @@ export class Hud {
     const flash = urgent && Math.floor(ui.time * 2) % 2 === 0;
     ui.panel(6, 6, 84, 26, 'dark', { blocking: false, edge: urgent ? C.blood : C.smoke });
     ui.text(ICON.clock, 12, 15, C.dust);
-    ui.text(s.phase === 'floor' ? clockText(s.clock) : '0:00', 24, 11, flash ? C.blood : C.white, { scale: 2 });
+    ui.text(s.phase === 'floor' || s.phase === 'home' ? clockText(s.clock) : '0:00', 24, 11, flash ? C.blood : C.white, { scale: 2 });
     ui.text(`N${s.night}`, 84, 10, C.ash, { align: 'right' });
 
     // top center: the bank against the quota
@@ -254,7 +257,7 @@ export class Hud {
     }
 
     // walking: a crosshair dot and, at a table, its prompt low on the screen (clear of the panel)
-    if (!v.seated && !v.overlay && s.phase === 'floor') {
+    if (!v.seated && !v.overlay && (s.phase === 'floor' || s.phase === 'home')) {
       ui.fill(HUD_W / 2, HUD_H / 2, 1, 1, C.white);
       if (v.prompt) {
         const { title, odds, color } = v.prompt;
@@ -289,10 +292,17 @@ export class Hud {
     // a lesson card: two lines, the first time each thing happens (held back while the cage is open)
     if (v.lesson && v.lesson.t > 0 && !v.cage?.open && !v.bar?.open && !v.confirm && v.screen === 'game' && !this.party) {
       const l = v.lesson;
-      const w = Math.max(textWidth(l.title), textWidth(l.body)) + 20;
-      ui.panel((HUD_W - w) / 2, 40, w, 30, 'dark', { blocking: false, edge: C.coll });
+      // at most LESSON_W wide, the body wrapped, so the card never covers the status column on the right
+      const lines: string[] = [];
+      for (const word of l.body.split(' ')) {
+        const last = lines[lines.length - 1];
+        if (last !== undefined && textWidth(last + ' ' + word) <= LESSON_W - 20) lines[lines.length - 1] = last + ' ' + word;
+        else lines.push(word);
+      }
+      const w = Math.min(LESSON_W, Math.max(textWidth(l.title), ...lines.map((x) => textWidth(x))) + 20);
+      ui.panel((HUD_W - w) / 2, 40, w, 18 + lines.length * 12, 'dark', { blocking: false, edge: C.coll });
       ui.text(l.title, HUD_W / 2, 45, C.collHi, { align: 'center' });
-      ui.text(l.body, HUD_W / 2, 57, C.bone, { align: 'center' });
+      lines.forEach((x, k) => ui.text(x, HUD_W / 2, 57 + k * 12, C.bone, { align: 'center' }));
     }
   }
 
@@ -305,7 +315,8 @@ export class Hud {
     const w = 420, h = 292, x = (HUD_W - w) / 2, y = 38;
     ui.fill(0, 0, HUD_W, HUD_H, C.ink, 0.5);
     ui.panel(x, y, w, h, 'dark', { edge: C.marker });
-    ui.text('THE CAGE', x + 10, y + 7, C.marker, { scale: 2 });
+    const home = s.phase === 'home';
+    ui.text(home ? 'THE COMPUTER: LUCKSHOP' : 'THE CAGE', x + 10, y + 7, C.marker, { scale: 2 });
     ui.text(`${ICON.marker} ${s.markers} MARKERS TO SPEND`, x + w - 10, y + 10, C.white, { align: 'right' });
     ui.text(`CHARMS: WORN BY YOU, ${me.charms.length} OF ${cg.slots} SLOTS. EACH TOUCHES TWO THINGS.`, x + 10, y + 28, C.dust);
     let ry = y + 40;
@@ -318,7 +329,7 @@ export class Hud {
       ui.text(c.text[0], x + 150, ry + 4, C.bone);
       ui.text(c.text[1], x + 150, ry + 16, C.bone);
       ui.text(c.systems.join(' + ').toUpperCase(), x + 14, ry + 16, C.ash);
-      if (ui.button(`buy-${c.id}`, x + w - 74, ry + 5, 60, 20, worn ? 'WORN' : 'BUY', { edge: C.marker, disabled: !!why, tip: worn ? 'You wear it.' : why ? cap(why) : `Costs ${c.price} markers.` })) out.push({ t: 'buy', item: c.id });
+      if (ui.button(`buy-${c.id}`, x + w - 74, ry + 5, 60, 20, worn ? 'WORN' : home ? 'ORDER' : 'BUY', { edge: C.marker, disabled: !!why, tip: worn ? 'You wear it.' : why ? cap(why) : home ? `Costs ${c.price} markers. The post brings it to the mailbox.` : `Costs ${c.price} markers.` })) out.push({ t: 'buy', item: c.id });
       ry += 33;
     }
     ui.text('UPGRADES: PERMANENT, FOR EVERY RUN FROM NOW ON.', x + 10, ry + 2, C.dust);
@@ -330,11 +341,11 @@ export class Hud {
       ui.text(u.name.toUpperCase(), x + 14, ry + 5, owned ? C.collHi : C.white);
       ui.text(`${u.price} ${ICON.marker}`, x + 120, ry + 5, C.marker);
       ui.text(u.text, x + 150, ry + 5, C.bone);
-      if (ui.button(`buy-${u.id}`, x + w - 74, ry + 1, 60, 16, owned ? 'OWNED' : 'BUY', { edge: C.marker, disabled: !!why, tip: owned ? 'Yours for good.' : why ? cap(why) : `Costs ${u.price} markers.` })) out.push({ t: 'buy', item: u.id });
+      if (ui.button(`buy-${u.id}`, x + w - 74, ry + 1, 60, 16, owned ? 'OWNED' : home ? 'ORDER' : 'BUY', { edge: C.marker, disabled: !!why, tip: owned ? 'Yours for good.' : why ? cap(why) : `Costs ${u.price} markers.` })) out.push({ t: 'buy', item: u.id });
       ry += 20;
     }
     const solo = s.players.length === 1;
-    ui.text(solo ? `${ICON.soul} SOULS: BOUGHT BACK HERE FOR 50% OF THE QUOTA (CO-OP).` : `${ICON.soul} SOUL BUYBACK: 50% OF THE QUOTA`, x + 10, ry + 4, C.soulLo);
+    if (!home) ui.text(solo ? `${ICON.soul} SOULS: BOUGHT BACK HERE FOR 50% OF THE QUOTA (CO-OP).` : `${ICON.soul} SOUL BUYBACK: 50% OF THE QUOTA`, x + 10, ry + 4, C.soulLo);
     if (ui.button('closecage', x + w / 2 - 50, y + h - 26, 100, 20, 'CLOSE (E)', { tip: 'Back to the floor.' })) out.push({ t: 'closeCage' });
   }
 
@@ -398,7 +409,7 @@ export class Hud {
     const record = m.runs ? `RUNS ${m.runs}   WALKED OUT ${m.wins}   BEST NIGHT ${m.bestNight}` : 'NO RUNS YET';
     ui.text(record, HUD_W / 2, 220, C.dust, { align: 'center' });
     if (m.upgrades.length) ui.text(`UPGRADES: ${m.upgrades.map((u) => UPGRADES.find((x) => x.id === u)!.name.toUpperCase()).join(', ')}`, HUD_W / 2, 232, C.collHi, { align: 'center' });
-    ui.text('WASD WALK   MOUSE LOOK   E SIT / STAND / CAGE   ESC PAUSE', HUD_W / 2, 330, C.ash, { align: 'center' });
+    ui.text('WASD WALK   SHIFT SPRINT   MOUSE LOOK   E USE   ESC PAUSE', HUD_W / 2, 330, C.ash, { align: 'center' });
     ui.text('NO REAL MONEY. EVER. EVERY ODD IS PRINTED.', HUD_W / 2, 342, C.smoke, { align: 'center' });
   }
 
@@ -461,10 +472,13 @@ export class Hud {
   private pause(ui: UI, v: HudView, out: HudAction[]) {
     ui.fill(0, 0, HUD_W, HUD_H, C.ink, 0.6);
     const enter = v.overlay === 'enter';
-    const title = enter ? (v.state && v.state.night > 1 ? `NIGHT ${v.state.night}` : 'THE FLOOR') : 'PAUSED';
-    const lines = enter
-      ? [`QUOTA ${money(v.state!.quota)} BY 0:00.  BANK ${money(v.state!.bank)}.`, 'CLICK TO STEP ONTO THE FLOOR', 'WASD WALK  MOUSE LOOK  E SIT / STAND  ESC PAUSE']
-      : v.overlay === 'relock' ? ['THE BROWSER HELD THE MOUSE BACK.', 'CLICK AGAIN TO RETURN TO THE FLOOR'] : ['THE CLOCK IS STOPPED.', 'CLICK TO RETURN TO THE FLOOR'];
+    const home = v.state?.phase === 'home';
+    const title = enter ? (home ? 'HOME' : v.state && v.state.night > 1 ? `NIGHT ${v.state.night}` : 'THE FLOOR') : 'PAUSED';
+    const lines = enter && home
+      ? [`NIGHT ${v.state!.night} NEXT: QUOTA ${money(v.state!.quota)}.  BANK ${money(v.state!.bank)}.`, 'CLICK TO WALK IN', 'WASD WALK  SHIFT SPRINT  E COMPUTER / MAILBOX / CAR']
+      : enter
+      ? [`QUOTA ${money(v.state!.quota)} BY 0:00.  BANK ${money(v.state!.bank)}.`, 'CLICK TO STEP ONTO THE FLOOR', 'WASD WALK  SHIFT SPRINT  E SIT / STAND  ESC PAUSE']
+      : v.overlay === 'relock' ? ['THE BROWSER HELD THE MOUSE BACK.', `CLICK AGAIN TO RETURN TO THE ${home ? 'HOUSE' : 'FLOOR'}`] : [home ? 'NOTHING RUNS WHILE YOU ARE HOME.' : 'THE CLOCK IS STOPPED.', `CLICK TO RETURN TO THE ${home ? 'HOUSE' : 'FLOOR'}`];
     const w = 320, h = 70 + lines.length * 12;
     const px = (HUD_W - w) / 2, py = (HUD_H - h) / 2;
     ui.panel(px, py, w, h, 'dark', { edge: C.coll, blocking: false });

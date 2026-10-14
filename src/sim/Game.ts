@@ -12,6 +12,7 @@ import { tables } from './systems/tables';
 import { marks } from './systems/marks';
 import { lives } from './systems/lives';
 import { cage } from './systems/cage';
+import { home } from './systems/home';
 import { collector } from './systems/collector';
 import { economy } from './systems/economy';
 import { stats } from './systems/stats';
@@ -24,14 +25,16 @@ export interface System {
   tick?(g: Game): void;
 }
 
-/** The fixed system order (CLAUDE.md): clock → movement → tables → marks → lives and souls → cage → collector → economy → stats. */
-export const SYSTEMS: readonly System[] = [clock, movement, tables, marks, lives, cage, collector, economy, stats];
+/** The fixed system order (CLAUDE.md): clock → movement → tables → marks → lives and souls → cage → home → collector → economy → stats. */
+export const SYSTEMS: readonly System[] = [clock, movement, tables, marks, lives, cage, home, collector, economy, stats];
 
 export interface GameOpts {
   seed: number;
   players?: number;
   /** permanent upgrades the run starts with (meta; DESIGN.md §5) */
   upgrades?: import('../data/charms').UpgradeId[];
+  /** start at the house and go home between nights (the game); off for the pace bots */
+  home?: boolean;
 }
 
 export class Game {
@@ -51,7 +54,7 @@ export class Game {
   constructor(opts: GameOpts) {
     this.seed = opts.seed >>> 0;
     this.rng = new Rng(this.seed);
-    this.state = newState(opts.players ?? 1, opts.upgrades ?? []);
+    this.state = newState(opts.players ?? 1, opts.upgrades ?? [], opts.home ?? false);
     for (const s of SYSTEMS) for (const t of s.handles) {
       if (this.owner.has(t)) throw new Error(`command ${t} owned by both ${this.owner.get(t)!.id} and ${s.id}`);
       this.owner.set(t, s);

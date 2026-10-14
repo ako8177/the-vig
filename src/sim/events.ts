@@ -11,7 +11,7 @@ export type SimEvent =
   | { t: 'play'; player: PlayerId; table: string; ticks: number }
   /** a round's result landed */
   | { t: 'round'; player: PlayerId; outcome: Outcome }
-  /** Twenty-One: a card was dealt */
+  /** Twenty-One: a fresh shoe */
   | { t: 'shuffle'; table: string }
   | { t: 'mark'; player: PlayerId; id: MarkId; stacks: number }
   | { t: 'tax'; amount: number }
@@ -32,6 +32,12 @@ export type SimEvent =
   | { t: 'night'; night: number; quota: number; bank: number }
   | { t: 'over'; won: boolean; why: string }
   | { t: 'bought'; player: PlayerId; item: string; kind: 'charm' | 'upgrade' }
+  /** the house (DESIGN.md §5): an order is in the post, it has reached the mailbox, it's been carried
+   *  in, the car has left for the casino */
+  | { t: 'ordered'; player: PlayerId; item: string; kind: 'charm' | 'upgrade' }
+  | { t: 'post'; count: number }
+  | { t: 'collected'; player: PlayerId; items: string[] }
+  | { t: 'drive'; night: number }
   | { t: 'overclock'; player: PlayerId }
   | { t: 'drank'; player: PlayerId; drink: string }
   /** a command the sim refused, and why (out of range, seat taken, ...) */

@@ -17,7 +17,7 @@ function randomLog(g: Game, seed: number, ticks: number) {
 
 describe('sim scaffold', () => {
   it('runs the systems in the order CLAUDE.md fixes', () => {
-    expect(SYSTEMS.map((s) => s.id)).toEqual(['clock', 'movement', 'tables', 'marks', 'lives', 'cage', 'collector', 'economy', 'stats']);
+    expect(SYSTEMS.map((s) => s.id)).toEqual(['clock', 'movement', 'tables', 'marks', 'lives', 'cage', 'home', 'collector', 'economy', 'stats']);
   });
 
   it('starts night 1 from DESIGN.md §2', () => {

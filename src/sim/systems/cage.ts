@@ -8,6 +8,7 @@ import { BUZZ, DRINK_BY_ID, type DrinkId } from '../../data/drinks';
 import { ticks } from '../rules';
 import { CHARM_BY_ID, UPGRADE_BY_ID, type CharmId, type UpgradeId } from '../../data/charms';
 import { ECONOMY } from '../../data/economy';
+import { atComputer, pendingCharms, pendingItems, post } from './home';
 
 /** A player's charm slots (3, 4 with the upgrade). */
 export const slotsOf = (g: Game) => ECONOMY.charmSlots.v + (g.state.upgrades.includes('slot4') ? 1 : 0);
@@ -40,19 +41,28 @@ export function cantOrder(g: Game, p: PlayerState, drink: string): string | null
 /** Why a player can't buy this now, or null if they can. */
 export function cantBuy(g: Game, p: PlayerState, item: string): string | null {
   const s = g.state;
-  if (s.phase !== 'floor') return 'the cage is shut';
+  // with the house, charms and upgrades come from the computer at home, by post (DECISIONS #79)
+  if (s.home) {
+    if (s.phase !== 'home') return 'order it from the computer at home';
+    if (!atComputer(p)) return 'walk to the computer';
+  } else {
+    if (s.phase !== 'floor') return 'the cage is shut';
+    if (!atCage(p)) return 'walk to the cage';
+  }
   if (p.ghost) return 'ghosts cannot buy';
-  if (!atCage(p)) return 'walk to the cage';
   const charm = CHARM_BY_ID.get(item as CharmId);
   const up = UPGRADE_BY_ID.get(item as UpgradeId);
   if (charm) {
+    const coming = pendingCharms(g, p.id);
     if (p.charms.includes(charm.id)) return 'already worn';
-    if (p.charms.length >= slotsOf(g)) return 'no free slot';
+    if (coming.includes(charm.id)) return 'already in the post';
+    if (p.charms.length + coming.length >= slotsOf(g)) return 'no free slot';
     if (s.markers < charm.price) return 'not enough markers';
     return null;
   }
   if (up) {
     if (s.upgrades.includes(up.id)) return 'already owned';
+    if (pendingItems(g).includes(up.id)) return 'already in the post';
     if (s.markers < up.price) return 'not enough markers';
     return null;
   }
@@ -81,6 +91,14 @@ export const cage: System = {
     if (why) return g.emit({ t: 'refused', player: p.id, cmd: 'buy', why });
     const s = g.state;
     const charm = CHARM_BY_ID.get(cmd.item as CharmId);
+    if (s.home) {
+      // paid now, carried in from the mailbox later
+      const price = charm ? charm.price : UPGRADE_BY_ID.get(cmd.item as UpgradeId)!.price;
+      s.markers -= price;
+      post(g, p, cmd.item);
+      g.emit({ t: 'ordered', player: p.id, item: cmd.item, kind: charm ? 'charm' : 'upgrade' });
+      return;
+    }
     if (charm) {
       s.markers -= charm.price;
       p.charms.push(charm.id);

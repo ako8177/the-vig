@@ -147,6 +147,18 @@ from the bank, by any living player at the cage. A ghost at the end of a night s
 
 ## 5. The cage: markers and charms
 
+**The house (DECISIONS #79).** A run starts at home and comes home after every Collector. Charms
+and upgrades are **ordered from the computer at home**, paid in markers at once, and arrive in the
+mailbox out front **6 s after the last order** (long enough to walk from the desk to the curb,
+short enough never to wait on); you carry them in with E at the mailbox (a charm to whoever
+ordered it, an upgrade to the run), then take the car (E) to the casino's door, where the 6:00
+clock starts. **Nothing runs at home**: no clock, no marks, no buzz. A charm in the post holds
+its slot; what's left in the mailbox waits for the next time you're home (the car asks first).
+So the shopping beat moves from the middle of a night to between nights: markers earned tonight
+(overshoot, high-table wins) are spent on tomorrow's loadout, and a mid-night charm buy is gone.
+The cage keeps soul buybacks. The pace bots play nights back to back without the house (it costs
+no clock time, so the night arithmetic is unchanged); a sim test plays the house flow.
+
 **Markers** come from: a Red Line win (+1), a Dead Man's Hand win (+2), each safe circuit you
 activate (+1), each $500 over quota (+1). Markers are the team's, like the bank. Slice charms
 (each player has **3 charm slots**; a charm is bought once and worn by the buyer):

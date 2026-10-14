@@ -13,8 +13,11 @@ export type Command =
   | { t: 'call'; table: string; call: string }
   /** the one-button tables: the Bandit, the Wheel of Marks, Dead Man's Hand */
   | { t: 'spin'; table: string }
-  /** a charm or an upgrade, at the cage */
+  /** a charm or an upgrade: from the computer at home (into the post), or at the cage in a run without the house */
   | { t: 'buy'; item: string }
+  /** the house: take what's in the mailbox; get in the car and drive to the casino */
+  | { t: 'pickup' }
+  | { t: 'drive' }
   /** a drink, at the bar (DESIGN.md §10; DECISIONS #67) */
   | { t: 'order'; drink: string }
   | { t: 'inspect'; circuit: number }
