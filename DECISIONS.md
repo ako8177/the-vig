@@ -163,3 +163,10 @@ inspirations: the ideas are taken, never their names, numbers or art).
   8 red 1.5x, 3 purple 2.5x, 1 gold 6x, 7 black 0.5x, 6 marks: RTP 1.16 (was 1.152), ahead 48% (was
   72%), about 1.8x the swing. The mid tier keeps its rule (RTP > 1, losing costs a mark); the owner
   chose to keep the mark slots. The hub reads what the pointer is on.
+- #75 2026-10-14: **The Bandit is a 3x3 grid** (the owner: "a 3x3 and in better casinos will go to
+  5x5 or 6x6 allowing more combos like cloverpit"). **Derivative flag** (CLAUDE.md): a slot grid
+  whose patterns all pay is CloverPit's core; the owner asked for it by name. What we kept is the
+  idea; the grid, the patterns (8 lines, corners, the whole grid), the strip and every number are
+  derived here from the low-tier rule (RTP 0.9504 enumerated over 4^9 grids; no line over 10x), not
+  from CloverPit, and the symbols are the Bandit's own. Grid size is data for later floors (owner
+  picked 3x3 here, bigger grids later). The panel drops its rule line to fit the grid.

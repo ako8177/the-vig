@@ -117,7 +117,7 @@ export abstract class TablePanel extends Panel {
       const f = payoutFactorOf(v.state, me, d.id);
       if (me.overclock > 0) ui.text(`OVERCLOCK: STAKES AND WINS x2, ${Math.ceil(me.overclock / TICKS_PER_S)} S`, PANEL_W - 12, 51, C.gold, { align: 'right' });
       else if (Math.abs(f - 1) > 1e-9) ui.text(`YOUR PAYOUTS NOW x${f.toFixed(2)}`, PANEL_W - 12, 51, f < 1 ? C.midHi : C.gold, { align: 'right' });
-      ui.text(d.howText, 12, 60, C.ash);
+      if (this.showHow) ui.text(d.howText, 12, 60, C.ash);
     }
   }
 
@@ -149,7 +149,7 @@ export abstract class TablePanel extends Panel {
     const cx = this.popX, cy = this.popY;
     drawSparkles(ui, cx, cy, t, big ? 28 : 14, big ? 90 : 60);
     if (t < 1.5) {
-      const word = net >= FEEL.jackpot || o.reels?.every((r) => r === 0) ? 'JACKPOT' : big ? 'BIG WIN' : 'WIN';
+      const word = net >= FEEL.jackpot || o.jackpot ? 'JACKPOT' : big ? 'BIG WIN' : 'WIN';
       const amount = `+${money(net)}`;
       const sc = t < 0.15 ? 3 : 2;
       const w = Math.max(textWidth(amount) * sc, textWidth(word) * 2) + 16;
@@ -161,6 +161,8 @@ export abstract class TablePanel extends Panel {
   }
 
   /** Where a win's amount pops (the middle of the play area by default). */
+  /** print the table's one-line rule under the odds (the Bandit prints its strip instead) */
+  protected showHow = true;
   protected popX = PANEL_W / 2;
   protected popY = PLAY_Y + 30;
 

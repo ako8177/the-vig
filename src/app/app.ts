@@ -321,7 +321,7 @@ export class App {
           }
           if (net > 0) {
             // a win should feel like one: the bigger it is, the more the room shows it (DECISIONS #63)
-            const jackpot = net >= FEEL.jackpot || (o.table === 'bandit' && o.reels?.every((r) => r === 0));
+            const jackpot = net >= FEEL.jackpot || !!o.jackpot;
             const big = net >= FEEL.bigWin;
             this.toast(`+${money(net)}`, C.gold);
             if (jackpot) {

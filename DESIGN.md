@@ -52,7 +52,7 @@ Rates assume one player at the table continuously.
 
 | Table | Tier | Bet | Round | Win p | Pays | RTP | EV/round | EV/min | Losing costs |
 |---|---|---|---|---|---|---|---|---|---|
-| The Bandit | low | $100 | 2.5 s | 0.216 (0.396 incl. money back) | reel table below | 0.95 | −$5 | −$120 | the bet |
+| The Bandit | low | $100 | 2.5 s | 0.259 (0.294 incl. money back) | 3×3 pattern table below | 0.9504 | −$5 | −$120 | the bet |
 | Twenty-One | low | $100–300 | 8 s | ≈0.43 | 2× (1:1), 2.5× natural (3:2) | 0.974 | −$5 at $200 | −$39 | the bet |
 | Hi-Lo Dice | mid | $200 | 3 s | 0.50 | 2.4× | 1.20 | +$40 | +$800 (unmarked) | the bet + 1 **mark** |
 | Wheel of Marks | mid | $300 | 5 s | 0.48 | 0.5× / 1.5× / 2.5× / 6× by color | 1.16 | +$48 | +$580 | the bet + 1 **team mark** (6 of 25); black returns half |
@@ -64,13 +64,16 @@ likely outcomes from the seeded RNG, so its RTP is exact by enumeration (the dat
 it), and a 100k-round seeded run must land within 4 standard errors of it.
 
 **The mechanics** (one honest random draw each; the odds printed are the odds):
-- **The Bandit**: three reels of 10 stops each: one 7, two ★, three BAR, four blanks
-  (1,000 equally likely lines). Pays, first match wins: 7 7 7 **12×** (1 line), ★ ★ ★ **7×**
-  (8), BAR BAR BAR **6×** (27), any three non-blank symbols **3×** (180), a 7 with a blank
-  **1×**, your money back (180). Σ = 12 + 56 + 162 + 540 + 180 = 950 → **RTP 0.950 exactly**.
-  Something comes back on 39.6% of pulls; you are ahead on 21.6%. No line pays more than
-  $1,200 (σ ≈ $155 a pull): a low table must bleed, not hand out a night's quota on one line
-  (DECISIONS #38: at 75×/25× the safe-only bot made night 1 on 9% of nights).
+- **The Bandit** (DECISIONS #75, the owner's 3×3): nine cells, each an independent stop of a
+  10-stop strip (one 7, two ★, three BAR, four blanks). Every pattern that hits pays, summed. On
+  each of the **8 lines** (3 rows, 3 columns, 2 diagonals): 7 7 7 **10×** (p 0.001 a line), ★ ★ ★
+  **3×** (0.008), BAR BAR BAR **1×** (0.027), any three symbols **0.3×** (0.18); the **four corners**
+  alike **3×** (Σp⁴ = 0.0098); **the whole grid** alike **50×** (the jackpot, ≈ 1 in 50,000 pulls,
+  all BARs being most of it). Lines: 8 × (0.010 + 0.024 + 0.027 + 0.054) = 0.920; corners 0.029;
+  the grid 0.001 → enumerated over the 4⁹ weighted grids, **RTP 0.9504**; ahead on 25.9% of pulls,
+  something back on 29.4%. No line pays more than 10× ($1,000): the low-tier ceiling of
+  DECISIONS #38 holds for everything but the 1-in-50,000 grid. The grid size is data (`GRID`): a
+  better casino's machine can be 5×5 or 6×6 with its own derivation here.
 - **Twenty-One**: an endless shoe (every card an independent draw of 13 ranks), hit or stand
   only (no doubles, no splits), the dealer hits soft 17, a natural pays 3:2, ties push, a dealer
   natural beats everything but a player natural. With the best hit/stand play the return is

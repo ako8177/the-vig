@@ -10,7 +10,7 @@ import { FEEL } from '../data/feel';
 import { clamp01, drawDieAt, drawThrownDie, drawTray, out3 } from './fx';
 import { blackoutLeft, lossTextOf } from './view';
 import { ICON } from '../ui/font';
-import { BLANK, BAR, STAR, SEVEN, STRIP, linePays } from '../sim/tables/bandit';
+import { BAR, CELLS, GRID, PAYS, STAR, SEVEN, STRIP, gridPays } from '../sim/tables/bandit';
 import { WHEEL_COUNT, WHEEL_LAYOUT, WHEEL_PAYS, WHEEL_SLOTS, type WheelColor } from '../sim/tables/wheel';
 import { handValue } from '../sim/tables/twentyone';
 import { hiloMarkSOf, streakLimitOf, streakRisk } from './view';
@@ -26,75 +26,92 @@ const saltOf = (rounds: number, k = 0) => (rounds * 7 + k * 3) % 6;
 // ---------------------------------------------------------------- The Bandit
 
 export class BanditPanel extends TablePanel {
-  /** reels already stopped this round (each one clunks once) */
+  /** columns already stopped this round (each one clunks once) */
   private stopped = [true, true, true];
 
   constructor() {
     super('bandit');
     this.popY = PLAY_Y + 24;
+    // the grid needs the room: its strip and pay table say what the rule line would
+    this.showHow = false;
   }
 
+  /** One cell's symbol, centered in a CW x CH cell at (x, y). */
   private symbol(ui: UI, s: number, x: number, y: number) {
-    if (s === SEVEN) ui.text('7', x + 20, y + 11, C.gold, { scale: 3, align: 'center' });
-    else if (s === STAR) ui.text(ICON.star, x + 20, y + 14, C.white, { scale: 2, align: 'center' });
+    const cx = x + CW / 2;
+    if (s === SEVEN) ui.text('7', cx, y + 5, C.gold, { scale: 2, align: 'center' });
+    else if (s === STAR) ui.text(ICON.star, cx, y + 8, C.white, { align: 'center' });
     else if (s === BAR) {
-      ui.fill(x + 6, y + 15, 28, 13, C.smoke);
-      ui.text('BAR', x + 20, y + 18, C.white, { align: 'center' });
-    } else ui.text('-', x + 21, y + 18, C.dust, { align: 'center' });
+      ui.fill(x + 4, y + 7, CW - 8, 10, C.smoke);
+      ui.text('BAR', cx, y + 9, C.white, { align: 'center' });
+    } else ui.text('-', cx + 1, y + 8, C.dust, { align: 'center' });
   }
 
   protected drawPlay(ui: UI, v: PanelView) {
     const { o, rolling } = this.shown(v);
     const t = this.progress(v);
-    const x0 = 92, H = 42;
-    if (rolling && t < 0.05) this.stopped = [false, false, false];
-    for (let i = 0; i < 3; i++) {
-      const x = x0 + i * 46, y = PLAY_Y + 2;
-      ui.fill(x, y, 42, 44, C.ink);
-      ui.fill(x + 1, y + 1, 40, 42, C.bone);
-      const stopAt = FEEL.bandit.stops[i];
-      const stop = o?.reels ? o.reels[i] : i * 3;
+    const { rows: R, cols: K } = GRID;
+    const x0 = 112, y0 = PLAY_Y - 10;
+    if (rolling && t < 0.05) this.stopped = Array(K).fill(false);
+    const grid = o?.reels?.length === CELLS ? o.reels : [SEVEN, STAR, BAR, STAR, SEVEN, BAR, BAR, BAR, SEVEN];
+    ui.fill(x0 - 2, y0 - 2, K * (CW + 2) + 2, R * (CH + 2) + 2, C.ink);
+    for (let c = 0; c < K; c++) {
+      // a column is a reel: it runs past, slows and locks, the columns stopping left to right
+      const stopAt = FEEL.bandit.stops[c] ?? 0.9;
       const done = !rolling || t >= stopAt;
-      if (rolling && done && !this.stopped[i]) {
-        this.stopped[i] = true;
-        this.sound('clunk', 0.9, 1 + i * 0.06);
+      if (rolling && done && !this.stopped[c]) {
+        this.stopped[c] = true;
+        this.sound('clunk', 0.9, 1 + c * 0.06);
       }
-      ui.clip(x + 1, y + 1, 40, 42);
+      const x = x0 + c * (CW + 2);
+      ui.clip(x, y0, CW, R * (CH + 2) - 2);
+      for (let r = 0; r < R; r++) ui.fill(x, y0 + r * (CH + 2), CW, CH, C.bone);
       if (!done) {
-        // the strip runs past, fast, then slows into its stop
-        const pos = stop - (1 - out3(t / stopAt)) * 30;
+        const pos = (1 - out3(t / stopAt)) * 30;
         const base = Math.floor(pos), frac = pos - base;
-        for (let k = -1; k <= 1; k++) {
-          const sym = STRIP[(((base + k) % STRIP.length) + STRIP.length) % STRIP.length];
-          this.symbol(ui, sym, x + 1, y + 1 + Math.round((k - frac) * H));
+        for (let k = -1; k <= R; k++) {
+          const sym = STRIP[(((base + k + c * 3) % STRIP.length) + STRIP.length) % STRIP.length];
+          this.symbol(ui, sym, x, y0 + Math.round((k + frac) * (CH + 2)));
         }
       } else {
-        // a little bounce as it locks
         const since = rolling ? (t - stopAt) * FEEL.bandit.s : 1;
-        const bob = since < 0.12 ? Math.round(Math.sin((since / 0.12) * Math.PI) * 4) : 0;
-        this.symbol(ui, STRIP[stop], x + 1, y + 1 + bob);
+        const bob = since < 0.12 ? Math.round(Math.sin((since / 0.12) * Math.PI) * 3) : 0;
+        for (let r = 0; r < R; r++) this.symbol(ui, grid[r * K + c], x, y0 + r * (CH + 2) + bob);
       }
       ui.unclip();
     }
-    // the reel strip and the pay table, both printed: you can see how rare the 7 is
+    // the patterns that paid, outlined once the grid has landed
+    if (o?.reels && !rolling) {
+      const { hits } = gridPays(o.reels);
+      const blink = Math.floor(this.since(v) * 4) % 2 === 0 || this.since(v) > FEEL.celebrateS;
+      if (blink) for (const h of hits) for (const i of h.cells) {
+        const cx = x0 + (i % K) * (CW + 2), cy = y0 + Math.floor(i / K) * (CH + 2);
+        ui.frame(cx, cy, CW, CH, h.x >= PAYS.lineStar ? C.gold : C.low);
+      }
+    }
+    // the strip and the pay table, both printed: you can see how rare the 7 is
     const px = 12;
-    ui.text('EACH REEL:', px, PLAY_Y + 4, C.dust);
-    ui.text('7 x1', px, PLAY_Y + 14, C.gold);
-    ui.text(`${ICON.star} x2`, px, PLAY_Y + 23, C.white);
-    ui.text('BAR x3', px, PLAY_Y + 32, C.white);
-    ui.text('BLANK x4', px, PLAY_Y + 41, C.ash);
+    ui.text('EACH CELL:', px, y0 + 2, C.dust);
+    ui.text('7 x1', px, y0 + 12, C.gold);
+    ui.text(`${ICON.star} x2`, px, y0 + 21, C.white);
+    ui.text('BAR x3', px, y0 + 30, C.white);
+    ui.text('BLANK x4', px, y0 + 39, C.ash);
+    ui.text('OF 10 STOPS', px, y0 + 48, C.dust);
     if (!this.dark(v)) {
-      // the pay table, from the same function that pays it
-      const rows: [string, string][] = [
-        ['7 7 7', `${linePays(SEVEN, SEVEN, SEVEN).x}x`],
-        [`${ICON.star}${ICON.star}${ICON.star}`, `${linePays(STAR, STAR, STAR).x}x`],
-        ['BAR x3', `${linePays(BAR, BAR, BAR).x}x`],
-        ['ANY 3', `${linePays(SEVEN, STAR, BAR).x}x`],
-        ['A 7', `${linePays(SEVEN, BLANK, BLANK).x}x`],
+      // the pay table, from the same numbers that pay it
+      ui.text('8 LINES, EACH:', 222, y0 + 2, C.dust);
+      const rows: [string, number][] = [
+        ['7 7 7', PAYS.line7],
+        [`${ICON.star}${ICON.star}${ICON.star}`, PAYS.lineStar],
+        ['BAR x3', PAYS.lineBar],
+        ['ANY 3', PAYS.lineAny],
+        ['CORNERS', PAYS.corners],
+        ['ALL 9', PAYS.full],
       ];
-      rows.forEach(([a, b], i) => {
-        ui.text(a, 238, PLAY_Y + 4 + i * 9, C.bone);
-        ui.text(b, PANEL_W - 12, PLAY_Y + 4 + i * 9, C.gold, { align: 'right' });
+      rows.forEach(([a, x], i) => {
+        const y = y0 + 12 + i * 9 + (i >= 4 ? 3 : 0);
+        ui.text(a, 222, y, i >= 4 ? C.white : C.bone);
+        ui.text(`${x}x`, PANEL_W - 12, y, C.gold, { align: 'right' });
       });
     }
     this.result(ui, v);
@@ -105,6 +122,9 @@ export class BanditPanel extends TablePanel {
     if (this.betButton(ui, v, 'pull', 110, 100, `PULL  ${money(bet)}`, bet)) this.send({ t: 'spin', table: 'bandit' });
   }
 }
+
+/** A Bandit cell, in panel pixels. */
+const CW = 30, CH = 20;
 
 // ---------------------------------------------------------------- Twenty-One
 

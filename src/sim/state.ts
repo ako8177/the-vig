@@ -66,7 +66,10 @@ export interface Outcome {
   mark?: MarkId;
   markers?: number;
   /** table-specific faces: reels, dice, the card, the wheel slot, the hands */
+  /** the Bandit's grid, cell symbols row by row */
   reels?: number[];
+  /** the Bandit's whole grid alike */
+  jackpot?: boolean;
   dice?: number[];
   card?: Card;
   call?: string;

@@ -41,9 +41,9 @@ export interface TableDef {
 export const TABLES: TableDef[] = [
   {
     id: 'bandit', name: 'The Bandit', sign: 'BANDIT', tier: 'low', loss: 'coin', bet: 100, roundS: 2.5, resolveS: FEEL.bandit.s,
-    winP: 0.216, pays: null, rtp: 0.95, paysText: 'BY LINE, UP TO 12x', lossText: 'THE BET',
-    howText: 'PULL. 3 REELS OF 10: ONE 7, TWO STARS, THREE BARS.',
-    derivation: 'DESIGN.md §3: low tier; reel table 12/7/6/3/1 over 1,000 lines = 950 → RTP 0.95; -$5 a round',
+    winP: 0.2586, pays: null, rtp: 0.9504, paysText: '8 LINES, CORNERS, THE GRID', lossText: 'THE BET',
+    howText: 'PULL. 9 CELLS, EACH ONE STOP OF 10.',
+    derivation: 'DESIGN.md §3: low tier; 3x3, 8 lines 10/3/1/0.3x, corners 3x, whole grid 50x over 4^9 weighted grids → RTP 0.9504; -$5 a round',
   },
   {
     id: 'twentyone', name: 'Twenty-One', sign: '21', tier: 'low', loss: 'coin', bet: [100, 300], roundS: 8, resolveS: 0.6,
