@@ -9,6 +9,12 @@ the list). It was playtested twice by the `indie-dev-critic` agent and reviewed 
 project's `indie-critic`; their findings are fixed except the owner's calls below. The repo moved
 to `ako8177` this session; the owner is new to the project.
 
+**2026-10-13, the feel pass**: after the owner's first playtest every table animates (dice on a
+green baize tray, a shuffle and flip, a real wheel, scrolling reels), wins scale up to a JACKPOT
+with coins and a flash, and the static room bed became lounge music (DECISIONS #60-#64). The wheel
+takes Gamble With Your Friends' spectacle, not its art (#62, the owner's request, flagged). Ask the
+owner how it feels next: the timings live in `src/data/feel.ts`.
+
 ## Waiting on the owner (ask before touching; CLAUDE.md's "ask before" list)
 
 1. **Paying beats gambling** (DESIGN.md §7, §8 test 6): always-pay survives all three nights 38%,
@@ -41,12 +47,13 @@ to `ako8177` this session; the owner is new to the project.
 - Node 22+ installed normally, on PATH.
 - Live build: https://ako8177.github.io/the-vig/ (repo `ako8177/the-vig`). Every push to `main` runs
   the tests, builds and deploys (`.github/workflows/deploy.yml`), about a minute.
-- `npm run typecheck`, `npm test` (28 tests, ~10 s: sim, data validation, the pace tests on 200
-  seeds), `npm run build`.
+- `npm run typecheck`, `npm test` (29 tests, ~10 s: sim, data validation, the pace tests on 200
+  seeds, the songs compile), `npm run build`.
 - With a dev server up: `npm run e2e` (smoke: a whole night into night 2), `npm run screens`
   (23 surfaces, overlap audit), `npm run shots` (door, Hi-Lo, the Collector, 0:00), `npm run perf`,
   `node e2e/palette.mjs`, `node e2e/coverage.mjs`. They drive Chrome if installed, else **Edge**
-  (this PC), headless with SwiftShader. Output in `e2e/out/` (ignored by git). For long sweeps or a
+  (this PC), headless with SwiftShader (Playwright 1.63; 1.48 can't start Edge 155). From Claude's
+  tool sandbox they need the sandbox off. Output in `e2e/out/` (ignored by git). For long sweeps or a
   playtest while you edit, `npm run serve:e2e` serves on 5181 with no hot reload; point the scripts
   at it with `BASE=http://127.0.0.1:5181/`.
 - Art: `python pixel-art/vig-room/build.py` re-renders every texture and sign (Pillow; the
@@ -67,8 +74,11 @@ to `ako8177` this session; the owner is new to the project.
   Every number names its DESIGN.md section; `tests/data.test.ts` enforces it.
 - `src/render3d/`: view (renderer, selective bloom at half size, letterbox scaling), pixelpass,
   room (incl. the Collector's screen and `setMidnight`), textures, fpcam.
-- `src/panels/`: `panel.ts` (redraw policy), `table.ts` (the shared odds block), `games.ts` (the six
-  tables), `collector.ts` (choice, Circuit, wheels, summary), `view.ts` (read-only state helpers).
+- `src/panels/`: `panel.ts` (redraw policy, sound hook), `table.ts` (the shared odds block, the
+  win/loss celebration), `games.ts` (the six tables and their animations), `fx.ts` (dice, trays,
+  sparkles), `collector.ts` (choice, Circuit, wheels, summary), `view.ts` (read-only state helpers).
+- `src/data/feel.ts`: each table's animation beats; `src/app/sounds.ts`: every synthesized sound;
+  `src/engine/audio/songs.ts`: the lounge tracks.
 - `src/hud/hud.ts`: in-play HUD, toasts, banners, lessons, title, how to play, settings, cage,
   confirm, pause, results. `src/app/app.ts`: screens, input → commands, events → camera, sound,
   lessons; settings and meta in localStorage (`vig.settings`, `vig.meta`).

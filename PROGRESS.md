@@ -2,6 +2,23 @@
 
 What is built. Newest first.
 
+## 2026-10-13 — The feel pass (after the owner's playtest)
+
+The owner: "gambling games need to be engaging and grabbing", the room had "a constant static
+noise", and a win should feel and look big. Now (DECISIONS #60-#64):
+
+- **Every table is a small show** timed to its sound (`src/data/feel.ts`, `src/panels/fx.ts`,
+  `src/app/sounds.ts`): Hi-Lo's die rattles, is thrown onto a green baize tray, bounces five times
+  (a felt thud each) and settles; Dead Man's two dice land a beat apart; Red Line riffle-shuffles,
+  deals and flips the card; the Wheel of Marks is a real big-six wheel with a chasing lamp rim and
+  a peg clacking past the pointer as it slows; the Bandit's reels scroll and clunk to a stop.
+- **Wins scale**: a gold flash, the amount popping and sparkles on any win; BIG WIN (≥ $700 net: a
+  banner, a coin shower, a fanfare); JACKPOT (≥ $4,000 or 7-7-7: a white flash, a long coin shower,
+  the room shakes). Losses thud and flash the rim; a lost life flashes blood with a heartbeat.
+- **The static is gone**: two original lounge tracks on the song player (ducking at 0:00), a
+  distant machine paying out across the floor now and then, a MUSIC volume in settings.
+- Playwright 1.63.0 (Edge 155 broke 1.48). 29 tests; e2e 13/13; screens 23 surfaces, 0 issues.
+
 ## 2026-10-12 — Milestone 1: the playable slice (single player, floor 1, three nights)
 
 **A run, end to end**: title (new run, how to play, settings, the record) → click onto the floor →

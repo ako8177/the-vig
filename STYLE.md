@@ -25,6 +25,7 @@ A new color is a proposal in DECISIONS.md, never a quiet addition.
 | wall / wallHi | 303232 645c5a | the walls' flock paper |
 | carpet / carpetLo | 410966 1f1d1e | the floor |
 | felt / feltLo | 303232 1f1d1e | table felt: charcoal, never green (lit TanoPal felt-green snaps to the low tier's neon) |
+| baize / baizeHi / baizeLo | 005a20 287d08 024637 | the dice trays on the Hi-Lo and Dead Man's panels only: a dark green the owner asked for, unlit in 2D (DECISIONS #60) |
 | wood / woodHi / woodLo | 642808 c86900 511806 | rails, wainscot, cabinets |
 | brass / brassLo / gold | f8d280 c86900 f8d280 | fittings, money in the HUD |
 | soul / soulLo | 32fad2 0dc8d9 | ghosts and souls |
@@ -105,6 +106,7 @@ the signs. Each must not read as a letter or digit at 7 px (the first mark and m
 ## Don't
 
 - Don't use a tier's hue for anything but that tier: not felt, not "good news" text, not HUD bars.
+  (The dice trays' dark baize is the one green that isn't the low tier: far darker, panels only.)
   Marks may wear the mid tier's yellow: they are the mid tables' price.
 - Don't overdrive neon past 1.0 or add a luminance-threshold bloom.
 - Don't put panel text, the HUD or lit surfaces on the GLOW layer.

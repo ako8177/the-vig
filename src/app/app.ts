@@ -15,6 +15,8 @@ import { FLOOR_1, USE_RADIUS } from '../data/floors';
 import { TABLE_BY_ID, minBet } from '../data/tables';
 import { CHARMS, UPGRADES, CHARM_BY_ID, UPGRADE_BY_ID, type CharmId, type UpgradeId } from '../data/charms';
 import { MARK_BY_ID } from '../data/marks';
+import { FEEL } from '../data/feel';
+import { defineSounds } from './sounds';
 import { ECONOMY } from '../data/economy';
 import { activePalette, C, TIER_NAME, TIER_ROLE, type PaletteId } from '../data/palette';
 import { View3D, type PassToggles } from '../render3d/view';
@@ -100,6 +102,10 @@ export class App {
   private prev = { x: 0, z: 0 };
   private wasLocked = false;
   private titleT = 0;
+  /** seconds to the next distant win across the floor */
+  private ambientIn = 6;
+  /** the camera's shake (a jackpot), decaying */
+  private shake = 0;
 
   constructor(readonly canvas: HTMLCanvasElement, readonly hudCanvas: HTMLCanvasElement) {
     this.settings = load('vig.settings', DEFAULT_SETTINGS);
@@ -112,6 +118,7 @@ export class App {
     this.hud = new Hud(hudCanvas);
     this.hud.ui.sfx = (id) => this.audio.sfx(id);
     this.game = new Game({ seed: 1, upgrades: this.meta.upgrades });
+    defineSounds(this.audio);
     for (const p of [new BanditPanel(), new TwentyOnePanel(), new HiLoPanel(), new WheelPanel(), new RedLinePanel(), new DeadManPanel(), new CollectorPanel()]) this.mountPanel(p);
     this.applySettings();
     this.resetCamera();
@@ -139,6 +146,7 @@ export class App {
     tex.generateMipmaps = false;
     tex.colorSpace = SRGBColorSpace;
     panel.ui.sfx = (id) => this.audio.sfx(id);
+    panel.sound = (id, v, p) => this.audio.sfx(id, v, p);
     // a hair under 1.0 so the panel stays crisp under the bloom threshold
     mesh.material = new MeshBasicMaterial({ map: tex, color: 0xeaeaea });
     this.panels.set(panel.table, { panel, tex, mesh });
@@ -281,7 +289,9 @@ export class App {
           break;
         case 'play':
           if (!mine) break;
-          a.sfx({ bandit: 'reel', hilo: 'dice', deadman: 'dice', wheel: 'spin', redline: 'card', twentyone: 'chip' }[e.table] ?? 'chip');
+          // the show starts: each table's sound is timed to its animation (src/data/feel.ts)
+          a.sfx('chips', 0.7);
+          a.sfx({ bandit: 'lever', hilo: 'dice', deadman: 'dice2', wheel: 'wheelspin', redline: 'riffle', twentyone: 'card' }[e.table] ?? 'card');
           break;
         case 'card':
           a.sfx('card');
@@ -291,8 +301,21 @@ export class App {
           const o = e.outcome;
           const net = o.ret - o.bet;
           if (net > 0) {
+            // a win should feel like one: the bigger it is, the more the room shows it (DECISIONS #63)
+            const jackpot = net >= FEEL.jackpot || (o.table === 'bandit' && o.reels?.every((r) => r === 0));
+            const big = net >= FEEL.bigWin;
             this.toast(`+${money(net)}`, C.gold);
-            a.sfx(net >= 1000 ? 'bigwin' : 'win');
+            if (jackpot) {
+              a.sfx('jackpot');
+              this.hud.celebrate('jackpot', net);
+              this.shake = 1;
+            } else if (big) {
+              a.sfx('bigwin');
+              this.hud.celebrate('big', net);
+            } else {
+              a.sfx('win');
+              this.hud.celebrate('win', net);
+            }
           } else if (net === 0) {
             this.toast('PUSH', C.bone);
             a.sfx('push');
@@ -555,7 +578,22 @@ export class App {
     const dark = inGame && s.phase !== 'floor' ? 1 : 0;
     this.dark += (dark - this.dark) * Math.min(1, dt * 1.5);
     setMidnight(this.room, this.dark);
-    this.audio.roomBed(this.screen === 'game' ? 1 - 0.75 * this.dark : 0.4);
+    // the music dips at 0:00; somewhere across the floor, now and then, another machine pays
+    this.audio.mood(this.screen === 'game' ? 1 - 0.65 * this.dark : 0.8);
+    if (inGame && s.phase === 'floor' && this.started && !this.paused) {
+      this.ambientIn -= dt;
+      if (this.ambientIn <= 0) {
+        this.audio.sfx('distant', 0.6 + Math.random() * 0.6, 0.9 + Math.random() * 0.25);
+        this.ambientIn = 8 + Math.random() * 14;
+      }
+    }
+    // a jackpot shakes the room a little
+    if (this.shake > 0) {
+      const k = this.shake * 0.02;
+      this.view.camera.position.x += (Math.random() - 0.5) * k;
+      this.view.camera.position.y += (Math.random() - 0.5) * k;
+      this.shake = Math.max(0, this.shake - dt * 2);
+    }
 
     // panels: the seated one takes the mouse, mapped onto its screen
     const atColl = inGame && s.phase !== 'floor' && s.phase !== 'over';

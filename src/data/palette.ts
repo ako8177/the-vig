@@ -22,7 +22,7 @@ const TANO48 = [
 const ROLES = [
   'ink', 'night', 'smoke', 'ash', 'dust', 'bone', 'white',
   'low', 'lowHi', 'lowLo', 'mid', 'midHi', 'midLo', 'high', 'highHi', 'highLo', 'coll', 'collHi', 'collLo',
-  'felt', 'feltLo', 'wood', 'woodHi', 'woodLo', 'brass', 'brassLo', 'gold', 'blood',
+  'felt', 'feltLo', 'baize', 'baizeHi', 'baizeLo', 'wood', 'woodHi', 'woodLo', 'brass', 'brassLo', 'gold', 'blood',
   'soul', 'soulLo', 'marker', 'markerLo', 'carpet', 'carpetLo', 'wall', 'wallHi',
 ] as const;
 export type Role = (typeof ROLES)[number];
@@ -38,6 +38,9 @@ const CAST: Record<PaletteId, Record<Role, string>> = {
     high: 'f5320a', highHi: 'f5916e', highLo: 'af000a',
     coll: 'be5aff', collHi: 'e1b6ff', collLo: '801cc0',
     // charcoal felt: TanoPal's felt green lit by a lamp snaps to the low tier's neon green (STYLE.md)
+    // the dice tables' tray: a dark baize the owner asked for (DECISIONS #60), far darker than the
+    // low tier's neon 00e60f, drawn unlit in the 2D panels so no lamp can push it toward the neon
+    baize: '005a20', baizeHi: '287d08', baizeLo: '024637',
     felt: '303232', feltLo: '1f1d1e', wood: '642808', woodHi: 'c86900', woodLo: '511806',
     brass: 'f8d280', brassLo: 'c86900', gold: 'f8d280', blood: 'ac0a48',
     soul: '32fad2', soulLo: '0dc8d9', marker: '6e8ef0', markerLo: '5555e6',

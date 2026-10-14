@@ -29,6 +29,8 @@ export abstract class Panel {
   readonly ui = new UI();
   /** commands this panel wants sent (the app drains them into the sim) */
   out: Command[] = [];
+  /** play a sound (the app hooks this to the audio engine) */
+  sound: (id: string, vol?: number, pitch?: number) => void = () => {};
   private ctx: CanvasRenderingContext2D;
   private lastRev = -1;
   /** timers on a panel (a mark clearing) tick once a second even with no events */

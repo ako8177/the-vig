@@ -87,9 +87,80 @@ const clockText = (ticks: number) => {
   return `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`;
 };
 
+/** A coin in a win's shower (HUD pixels). */
+interface Coin { x: number; y: number; vx: number; vy: number; spin: number; age: number }
+
+/** A win the HUD is celebrating. */
+type Celebration = { kind: 'win' | 'big' | 'jackpot'; amount: number; t: number };
+
 export class Hud {
   readonly ui = new UI();
   private ctx: CanvasRenderingContext2D;
+  private coins: Coin[] = [];
+  private flash = 0;
+  private party: Celebration | null = null;
+
+  /**
+   * A win, celebrated on the whole screen: a burst of coins for any win; a shower and a banner for
+   * a big one; a white flash, a long shower and JACKPOT for the biggest (DECISIONS #63).
+   */
+  celebrate(kind: Celebration['kind'], amount: number) {
+    const n = kind === 'jackpot' ? 140 : kind === 'big' ? 60 : 12;
+    for (let i = 0; i < n; i++) {
+      const fromTop = kind !== 'win';
+      this.coins.push({
+        x: fromTop ? Math.random() * HUD_W : HUD_W / 2 + (Math.random() - 0.5) * 40,
+        y: fromTop ? -10 - Math.random() * (kind === 'jackpot' ? 260 : 120) : HUD_H - 40,
+        vx: fromTop ? (Math.random() - 0.5) * 30 : (Math.random() - 0.5) * 160,
+        vy: fromTop ? 40 + Math.random() * 60 : -140 - Math.random() * 90,
+        spin: Math.random() * 6,
+        age: 0,
+      });
+    }
+    if (kind === 'jackpot') this.flash = 1;
+    else if (kind === 'big') this.flash = Math.max(this.flash, 0.35);
+    if (kind !== 'win') this.party = { kind, amount, t: 0 };
+  }
+
+  /** Is a big celebration on (the lesson card waits for it). */
+  get partying() {
+    return !!this.party;
+  }
+
+  private drawParty(ui: UI, dt: number) {
+    // coins: gravity, a spin that shows the edge, gone off the bottom
+    for (const c of this.coins) {
+      c.age += dt;
+      c.vy += 260 * dt;
+      c.x += c.vx * dt;
+      c.y += c.vy * dt;
+      c.spin += dt * 10;
+      const w = Math.max(1, Math.round(Math.abs(Math.cos(c.spin)) * 5));
+      const x = Math.round(c.x - w / 2), y = Math.round(c.y);
+      ui.fill(x, y, w, 5, C.brassLo);
+      if (w > 2) ui.fill(x + 1, y + 1, w - 2, 3, C.gold);
+      if (w > 3) ui.fill(x + 1, y + 1, 1, 1, C.white);
+    }
+    this.coins = this.coins.filter((c) => c.y < HUD_H + 10 && c.age < 6);
+    if (this.flash > 0) {
+      ui.fill(0, 0, HUD_W, HUD_H, C.white, Math.min(0.8, this.flash));
+      this.flash = Math.max(0, this.flash - dt * 2.2);
+    }
+    const p = this.party;
+    if (p) {
+      p.t += dt;
+      const life = p.kind === 'jackpot' ? 3.2 : 2.2;
+      if (p.t > life) this.party = null;
+      else {
+        const word = p.kind === 'jackpot' ? 'JACKPOT' : 'BIG WIN';
+        const sc = p.t < 0.12 ? 5 : p.kind === 'jackpot' ? 4 : 3;
+        const col = Math.floor(p.t * 8) % 2 === 0 ? C.gold : C.white;
+        // above the table's screen (it starts about 85 px down when you're seated)
+        ui.text(word, HUD_W / 2, 30, col, { scale: sc, align: 'center', shadow: C.ink });
+        ui.text(`+${money(p.amount)}`, HUD_W / 2, 30 + sc * 7 + 3, C.gold, { scale: 2, align: 'center', shadow: C.ink });
+      }
+    }
+  }
 
   constructor(readonly canvas: HTMLCanvasElement) {
     canvas.width = HUD_W;
@@ -108,6 +179,7 @@ export class Hud {
     else if (v.screen === 'settings') this.settings(ui, v, out);
     else if (v.state) {
       this.play(ui, v);
+      this.drawParty(ui, dt);
       if (v.cage?.open) this.cage(ui, v, out);
       if (v.confirm) this.confirm(ui, v, out);
       if (v.screen === 'results') this.results(ui, v, out);
@@ -204,7 +276,7 @@ export class Hud {
     }
 
     // a lesson card: two lines, the first time each thing happens (held back while the cage is open)
-    if (v.lesson && v.lesson.t > 0 && !v.cage?.open && !v.confirm && v.screen === 'game') {
+    if (v.lesson && v.lesson.t > 0 && !v.cage?.open && !v.confirm && v.screen === 'game' && !this.party) {
       const l = v.lesson;
       const w = Math.max(textWidth(l.title), textWidth(l.body)) + 20;
       ui.panel((HUD_W - w) / 2, 40, w, 30, 'dark', { blocking: false, edge: C.coll });
@@ -319,7 +391,7 @@ export class Hud {
 
   private settings(ui: UI, v: HudView, out: HudAction[]) {
     ui.fill(0, 0, HUD_W, HUD_H, C.ink, 0.7);
-    const { x, y } = this.card(ui, 360, 240);
+    const { x, y } = this.card(ui, 360, 264);
     ui.text('SETTINGS', HUD_W / 2, y + 8, C.collHi, { scale: 2, align: 'center' });
     const st = v.settings;
     let ry = y + 40;
@@ -335,6 +407,7 @@ export class Hud {
     stepper('sens', 'MOUSE SENSITIVITY', `${st.sens.toFixed(1)}x`, () => out.push({ t: 'set', settings: { sens: clamp(r1(st.sens - 0.1), 0.2, 3) } }), () => out.push({ t: 'set', settings: { sens: clamp(r1(st.sens + 0.1), 0.2, 3) } }));
     stepper('inv', 'INVERT MOUSE Y', st.invert ? 'ON' : 'OFF', () => out.push({ t: 'set', settings: { invert: !st.invert } }), () => out.push({ t: 'set', settings: { invert: !st.invert } }));
     stepper('master', 'VOLUME', `${Math.round(st.master * 100)}%`, () => out.push({ t: 'set', settings: { master: clamp(r1(st.master - 0.1), 0, 1) } }), () => out.push({ t: 'set', settings: { master: clamp(r1(st.master + 0.1), 0, 1) } }));
+    stepper('music', 'MUSIC', `${Math.round(st.music * 100)}%`, () => out.push({ t: 'set', settings: { music: clamp(r1(st.music - 0.1), 0, 1) } }), () => out.push({ t: 'set', settings: { music: clamp(r1(st.music + 0.1), 0, 1) } }));
     stepper('sfx', 'SOUND EFFECTS', `${Math.round(st.sfx * 100)}%`, () => out.push({ t: 'set', settings: { sfx: clamp(r1(st.sfx - 0.1), 0, 1) } }), () => out.push({ t: 'set', settings: { sfx: clamp(r1(st.sfx + 0.1), 0, 1) } }));
     const modes = ['auto', 'pixel', 'fill'] as const;
     const mi = modes.indexOf(st.scaling);
@@ -342,7 +415,7 @@ export class Hud {
     stepper('scale', 'SCREEN SCALING', names[st.scaling], () => out.push({ t: 'set', settings: { scaling: modes[(mi + 2) % 3] } }), () => out.push({ t: 'set', settings: { scaling: modes[(mi + 1) % 3] } }));
     stepper('bloom', 'NEON GLOW', st.bloom ? 'ON' : 'OFF', () => out.push({ t: 'set', settings: { bloom: !st.bloom } }), () => out.push({ t: 'set', settings: { bloom: !st.bloom } }));
     ui.text('GLOW OFF RUNS FASTER ON A WEAK MACHINE.', HUD_W / 2, ry + 4, C.ash, { align: 'center' });
-    if (ui.button('back', HUD_W / 2 - 50, y + 210, 100, 20, 'BACK')) out.push({ t: 'screen', to: v.state ? 'game' : 'title' });
+    if (ui.button('back', HUD_W / 2 - 50, y + 234, 100, 20, 'BACK')) out.push({ t: 'screen', to: v.state ? 'game' : 'title' });
   }
 
   private pause(ui: UI, v: HudView, out: HudAction[]) {

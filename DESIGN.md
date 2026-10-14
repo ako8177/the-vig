@@ -229,7 +229,8 @@ lever is the surcharge, which is part of the quota curve: the owner's call (§2)
 
 ## 8. Derived checks (pace tests, 200 seeds)
 
-The bots (tests/bots.ts) play through commands and pay walking time at 3 m/s. 200 seeds since the
+The bots (tests/bots.ts) play through commands and pay walking time at 3 m/s, and wait out each
+table's animation (src/data/feel.ts, inside its round time). 200 seeds since the
 Milestone 1 review: 20 gave a lucky sample (80% where 200 say 64%). Thresholds are rates
 (DECISIONS #42, #57); the last run's numbers are in brackets.
 
@@ -237,21 +238,21 @@ Milestone 1 review: 20 gave a lucky sample (80% where 200 say 64%). Thresholds a
    and ends the night poorer than it started on average [5%; mean bank $1,236 from $1,500].
    Luck can carry a low table for a night now and then; expectation never does.
 2. **Mid-rotation** bot (Hi-Lo bursts of ≤ 5 rounds, out at 3 stacks, the Wheel while marked)
-   makes night 1 at least 50% of the time with ≥ 3 team marks suffered on average [64%; 5.3].
+   makes night 1 at least 50% of the time with ≥ 3 team marks suffered on average [63%; 5.3].
 3. **Red Line burst** bot (two six-round bursts once the bank holds $2,000, mid rotation around
    them) makes night 1 at least 60% of the time and more often than the mid rotation alone, and
-   loses a life on Red Line at least 20% of the time [72% vs 64%; 29%].
+   loses a life on Red Line at least 20% of the time [70% vs 63%; 31%].
 4. **Dead Man's** bot from a $1,000 bank goes broke at least 30% of the time [78%].
 5. **Circuit** (400 games): the sensible line (§6) wins 40–65%; activating blind costs more lives;
    Lead Apron takes any line's life cost to ≈ 0 [48% at 0.16 lives; blind 37% at 0.34; with the
    apron 0.00 and 0.00].
 6. **Collector's choice**: the decision bot gambles when holding Lucky Fuse or Lead Apron with
    more than one life, else pays; it must score at least as well as always-gamble and within
-   0.15 of always-pay (score = nights survived + lives/10) [1.98 vs 1.35 and 2.09]. The intended
+   0.15 of always-pay (score = nights survived + lives/10) [1.85 vs 1.23 and 1.91]. The intended
    lesson, that gambling with a fuse charm is *better*, does not hold yet (§7).
 7. **Ghost**: a two-player run where one becomes a ghost in the first minute still makes night 1
    at least 30% of the time when the survivor buys the soul back once the bank holds
-   quota × 0.5 + $1,000. A lower bound: the bot doesn't play the bought-back player [47%].
+   quota × 0.5 + $1,000. A lower bound: the bot doesn't play the bought-back player [52%].
 
 ## 9. What the slice must answer
 

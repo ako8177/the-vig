@@ -40,7 +40,7 @@ check(await ev(() => window.__game.state.players[0].seat === 'hilo'), 'E at Hi-L
 check(await ev(() => window.__app.fp.seated), 'the camera is seated');
 const bank0 = await ev(() => window.__game.state.bank);
 await ev(() => window.__game.submit(0, { t: 'call', table: 'hilo', call: 'hi' }));
-await wait(1500);
+await wait(2200); // the die is thrown, bounces and settles (src/data/feel.ts)
 check(await ev(() => window.__game.state.tables.hilo.rounds === 1), 'a Hi-Lo call lands a result');
 check(await ev((b) => window.__game.state.bank !== b, bank0), 'the bank moved');
 await page.keyboard.press('KeyE');

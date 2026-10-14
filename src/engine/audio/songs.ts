@@ -76,8 +76,82 @@ interface SongDef {
 
 // ---------------- the songs ----------------
 
-/** The Vig's playlist (Milestone 7). Empty: the player stays silent until a song is written. */
-const DEFS: SongDef[] = [];
+/**
+ * The Vig's playlist: smoky lounge for an underground casino (DECISIONS #61; Milestone 7 adds more).
+ * Written for this game: swung eighths, brushes, a walking bass, Rhodes comping, a vibes line.
+ */
+const DEFS: SongDef[] = [
+  {
+    id: 'low-lights',
+    title: 'Low Lights',
+    bpm: 92,
+    stepsPerBar: 8,
+    stepBeats: 0.5,
+    swing: 0.32,
+    sections: {
+      intro: {
+        chords: 'Cm7 | Abmaj7 | Fm7 | G7',
+        parts: [
+          { inst: 'epiano', comp: 'r:2 x:1 r:3 x:1 r:1', center: 62, vel: 0.8 },
+          { inst: 'bass', bass: 'R:2 5:2 R:2 5:2', low: 31 },
+          { inst: 'brush', hits: 'x.g.x.g.' },
+          { inst: 'pad', hold: true, center: 60, vel: 0.5 },
+        ],
+      },
+      head: {
+        chords: 'Cm7 | Fm7 | Dm7b5 G7 | Cm7 | Abmaj7 | Fm7 | Dm7b5 | G7',
+        parts: [
+          { inst: 'bell', notes: 'G4:3 Eb4:1 C4:2 r:2 | Ab4:3 F4:1 C5:2 r:2 | F4:2 Ab4:2 G4:2 B3:2 | C4:6 r:2 | Eb5:3 C5:1 G4:2 Ab4:2 | F4:3 Ab4:1 C5:2 Eb5:2 | D5:2 C5:2 Ab4:2 F4:2 | G4:4 B4:2 D5:2', vel: 0.9 },
+          { inst: 'epiano', comp: 'r:2 x:1 r:3 x:1 r:1 | x:2 r:4 x:1 r:1', center: 60, vel: 0.75 },
+          { inst: 'bass', bass: 'R:2 3:2 5:2 7:2 | R:2 5:2 8:2 5:2', low: 31 },
+          { inst: 'brush', hits: 'x.g.x.g. | x.g.x.gg' },
+          { inst: 'hat', hits: '..x...x.', vel: 0.5 },
+        ],
+      },
+      vamp: {
+        chords: 'Cm7 | Cm7 | Abmaj7 | G7',
+        parts: [
+          { inst: 'marimba', arp: '0:1 2:1 1:1 3:1 2:1 4:1 3:1 1:1', center: 67, vel: 0.6 },
+          { inst: 'bass', bass: 'R:2 5:2 7:2 5:2', low: 31 },
+          { inst: 'brush', hits: 'x.g.x.g.' },
+          { inst: 'pad', hold: true, center: 58, vel: 0.6 },
+        ],
+      },
+    },
+    order: ['intro', 'head', 'vamp', 'head'],
+  },
+  {
+    id: 'house-edge',
+    title: 'House Edge',
+    bpm: 118,
+    stepsPerBar: 8,
+    stepBeats: 0.5,
+    swing: 0.28,
+    sections: {
+      a: {
+        chords: 'Dm7 | G7 | Cmaj7 | A7 | Dm7 | G7 | Em7 A7 | Dm7 G7',
+        parts: [
+          { inst: 'flute', notes: 'A4:2 C5:2 D5:3 r:1 | F5:2 E5:1 D5:1 B4:4 | E5:3 D5:1 C5:2 G4:2 | C#5:2 E5:2 G5:3 r:1 | F5:2 D5:2 A4:2 C5:2 | B4:2 D5:2 F5:2 G5:2 | E5:2 D5:2 C#5:2 A4:2 | D5:4 B4:2 r:2', vel: 0.85 },
+          { inst: 'epiano', comp: 'x:1 r:2 x:1 r:2 x:1 r:1', center: 62, vel: 0.7 },
+          { inst: 'bass', bass: 'R:2 3:2 5:2 3:2', low: 33 },
+          { inst: 'brush', hits: 'x.x.x.x.' },
+          { inst: 'hat', hits: '..x...x. | ..x..xx.', vel: 0.55 },
+        ],
+      },
+      b: {
+        chords: 'Fmaj7 | Em7 | Dm7 | Cmaj7 | Bm7b5 | E7 | Am7 | G7',
+        parts: [
+          { inst: 'bell', arp: '0:2 1:2 2:2 3:2', center: 72, vel: 0.55 },
+          { inst: 'epiano', comp: 'x:2 r:2 x:1 r:3', center: 60, vel: 0.7 },
+          { inst: 'bass', bass: 'R:2 5:2 R:2 5:2', low: 33 },
+          { inst: 'brush', hits: 'x.g.x.g.' },
+          { inst: 'pad', hold: true, center: 60, vel: 0.5 },
+        ],
+      },
+    },
+    order: ['a', 'b', 'a'],
+  },
+];
 
 // ---------------- reading the notation ----------------
 

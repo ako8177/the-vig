@@ -7,11 +7,11 @@ import { Music } from './music';
 
 export interface Vol { master: number; music: number; sfx: number }
 
-/** A fallback sound's note: a tone (optionally sliding to `to`) or a band of noise. */
-interface Note { f: number; dur: number; at?: number; to?: number; vol?: number; type?: OscillatorType | 'noise' }
+/** A synthesized sound's note: a tone (optionally sliding to `to`) or a band of noise. */
+export interface Note { f: number; dur: number; at?: number; to?: number; vol?: number; type?: OscillatorType | 'noise'; q?: number }
 
 /** The fallback sounds, until Milestone 7's jsfxr bank (sfxr.ts) replaces them one by one. */
-const SYNTH: Record<string, Note[]> = {
+const SYNTH: Record<string, Note[] | (() => Note[])> = {
   click: [{ f: 880, dur: 0.06, vol: 0.04 }],
   deny: [{ f: 180, dur: 0.12, vol: 0.05 }, { f: 140, dur: 0.12, at: 0.08, vol: 0.05 }],
   chip: [{ f: 2400, dur: 0.04, vol: 0.03, type: 'triangle' }, { f: 3100, dur: 0.05, at: 0.03, vol: 0.025, type: 'triangle' }],
@@ -89,7 +89,7 @@ export class Audio {
     if (!this.ctx) return;
     const t = this.ctx.currentTime;
     this.master.gain.setTargetAtTime(this.muted ? 0 : this.vol.master, t, 0.05);
-    this.musicBus.gain.setTargetAtTime(this.vol.music * 0.24, t, 0.05);
+    this.musicBus.gain.setTargetAtTime(this.vol.music * 0.24 * this.moodLevel, t, 0.4);
     this.sfxBus.gain.setTargetAtTime(this.vol.sfx, t, 0.05);
   }
 
@@ -102,8 +102,8 @@ export class Audio {
     if (now - (this.lastSfx.get(id) ?? -1) < 0.03) return;
     this.lastSfx.set(id, now);
     if (playSfxr(ctx, this.sfxBus, id, v, pitch)) return;
-    const recipe = SYNTH[id] ?? SYNTH.click;
-    for (const n of recipe) this.note(n, now, v, pitch);
+    const r = SYNTH[id] ?? SYNTH.click;
+    for (const n of typeof r === 'function' ? r() : r) this.note(n, now, v, pitch);
   }
 
   /** One synthesized note or noise burst of a fallback sound. */
@@ -125,7 +125,7 @@ export class Audio {
       const f = ctx.createBiquadFilter();
       f.type = 'bandpass';
       f.frequency.value = n.f * pitch;
-      f.Q.value = 1.2;
+      f.Q.value = n.q ?? 1.2;
       src.connect(f);
       f.connect(g);
       src.start(t0);
@@ -140,40 +140,21 @@ export class Audio {
     o.stop(t0 + n.dur + 0.02);
   }
 
-  /** The room's bed: a low hum and murmur, `level` 0..1 (it drops at 0:00). */
-  roomBed(level: number) {
-    const ctx = this.ctx;
-    if (!ctx) return;
-    if (!this.bed) {
-      const len = ctx.sampleRate * 2;
-      const buf = ctx.createBuffer(1, len, ctx.sampleRate);
-      const d = buf.getChannelData(0);
-      let last = 0;
-      for (let i = 0; i < len; i++) {
-        last = last * 0.985 + (Math.random() * 2 - 1) * 0.015;
-        d[i] = last * 6;
-      }
-      const src = ctx.createBufferSource();
-      src.buffer = buf;
-      src.loop = true;
-      const hum = ctx.createOscillator();
-      hum.type = 'sine';
-      hum.frequency.value = 55;
-      const hg = ctx.createGain();
-      hg.gain.value = 0.25;
-      const gain = ctx.createGain();
-      gain.gain.value = 0;
-      src.connect(gain);
-      hum.connect(hg);
-      hg.connect(gain);
-      gain.connect(this.roomBus);
-      src.start();
-      hum.start();
-      this.bed = gain;
-    }
-    this.bed.gain.setTargetAtTime(0.05 * level, ctx.currentTime, 0.6);
+  /**
+   * The music's mood, 0..1: 1 on the floor, low at the Collector's table (it ducks at 0:00). The
+   * old room bed (looped brown noise) read as static and is gone (DECISIONS #61).
+   */
+  mood(level: number) {
+    if (Math.abs(level - this.moodLevel) < 0.01) return;
+    this.moodLevel = level;
+    this.applyVol();
   }
-  private bed: GainNode | null = null;
+  private moodLevel = 1;
+
+  /** Register (or replace) a synthesized sound; a function makes a fresh variation each play. */
+  define(id: string, recipe: Note[] | (() => Note[])) {
+    SYNTH[id] = recipe;
+  }
 
   update() {
     if (this.ctx && this.music) this.music.update(this.ctx.currentTime);

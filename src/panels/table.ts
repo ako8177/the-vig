@@ -6,7 +6,9 @@ import { Panel, PANEL_W, PANEL_H, type PanelView } from './panel';
 import type { UI } from '../ui/ui';
 import { C, TIER_NAME, TIER_ROLE } from '../data/palette';
 import { TABLE_BY_ID, minBet, type TableDef } from '../data/tables';
-import { ICON } from '../ui/font';
+import { ICON, textWidth } from '../ui/font';
+import { FEEL } from '../data/feel';
+import { drawSparkles } from './fx';
 import { TICKS_PER_S, type Card, type Outcome, type TableState } from '../sim/state';
 import { payoutFactorOf, blackoutLeft, lossTextOf } from './view';
 import { stakeFor } from '../sim/rules';
@@ -41,8 +43,30 @@ export abstract class TablePanel extends Panel {
   }
 
   protected animating(v: PanelView) {
-    return !!this.tableState(v).pending;
+    return !!this.tableState(v).pending || this.since(v) < FEEL.celebrateS;
   }
+
+  /** the tick the last result landed on, and how many rounds we'd seen (to notice a landing) */
+  private landTick = -1e9;
+  private seenRounds = -1;
+
+  /** Seconds since the last result landed (large when it's been a while). */
+  protected since(v: PanelView): number {
+    return (v.tick - this.landTick) / TICKS_PER_S;
+  }
+
+  /** Notice a result landing (the table's round count moved up) and play its sound. */
+  protected watch(v: PanelView) {
+    const r = this.tableState(v).rounds;
+    if (this.seenRounds >= 0 && r > this.seenRounds) {
+      this.landTick = v.tick;
+      this.landed(v);
+    }
+    this.seenRounds = r;
+  }
+
+  /** A result just landed (the app plays the win and loss sounds; tables add their own). */
+  protected landed(_v: PanelView) {}
 
   /** The outcome to show: the one in the air (its faces animate) or the last that landed. */
   protected shown(v: PanelView): { o: Outcome | null; rolling: boolean } {
@@ -52,17 +76,30 @@ export abstract class TablePanel extends Panel {
   }
 
   protected draw(ui: UI, v: PanelView) {
+    this.watch(v);
+    this.drawHeader(ui);
+    this.drawOdds(ui, v);
+    this.drawPlay(ui, v);
+    this.drawControls(ui, v);
+    this.drawCelebration(ui, v);
+  }
+
+  /** The felt, the tier badge, the name, the loss glyph. */
+  protected drawHeader(ui: UI) {
     const d = this.def;
     const tier = TIER_ROLE[d.tier];
     ui.panel(0, 0, PANEL_W, PANEL_H, 'felt', { edge: tier.base });
-    // header: the tier badge, the name, the loss glyph
     ui.fill(8, 7, 40, 14, tier.base);
     ui.text(TIER_NAME[d.tier], 28, 10, C.ink, { align: 'center' });
     ui.text(d.name.toUpperCase(), 54, 10, C.white);
     ui.text(LOSS_ICON[d.loss], PANEL_W - 16, 10, tier.hi);
     ui.fill(8, 24, PANEL_W - 16, 1, tier.lo);
+  }
 
-    // the odds, in the order a gambler reads them
+  /** The odds, in the order a gambler reads them (or the Blackout notice). */
+  protected drawOdds(ui: UI, v: PanelView) {
+    const d = this.def;
+    const tier = TIER_ROLE[d.tier];
     const me = v.state.players[v.player];
     const bo = blackoutLeft(v.state);
     if (bo > 0) {
@@ -82,9 +119,50 @@ export abstract class TablePanel extends Panel {
       else if (Math.abs(f - 1) > 1e-9) ui.text(`YOUR PAYOUTS NOW x${f.toFixed(2)}`, PANEL_W - 12, 51, f < 1 ? C.midHi : C.gold, { align: 'right' });
       ui.text(d.howText, 12, 60, C.ash);
     }
-    this.drawPlay(ui, v);
-    this.drawControls(ui, v);
   }
+
+  /**
+   * The moment a result lands: a win flashes the rim gold, pops the amount and throws sparkles (a
+   * big one says so); a loss flashes the rim; a life lost flashes blood. The result line stays.
+   */
+  protected drawCelebration(ui: UI, v: PanelView) {
+    const t = this.since(v);
+    if (t >= FEEL.celebrateS) return;
+    const o = this.tableState(v).last;
+    if (!o) return;
+    const net = o.ret - o.bet;
+    const blink = Math.floor(t * 8) % 2 === 0;
+    const rim = (c: number, n: number) => {
+      for (let i = 0; i < n; i++) ui.frame(i, i, PANEL_W - 2 * i, PANEL_H - 2 * i, c);
+    };
+    if (o.lifeLost) {
+      if (t < 0.9 && blink) rim(C.blood, 4);
+      if (t < 0.25) ui.fill(0, 0, PANEL_W, PANEL_H, C.blood, 0.25 * (1 - t / 0.25));
+      return;
+    }
+    if (net <= 0) {
+      if (t < 0.5 && blink) rim(net < 0 ? C.highLo : C.smoke, 2);
+      return;
+    }
+    const big = net >= FEEL.bigWin;
+    if (t < 1.4 && blink) rim(C.gold, big ? 4 : 3);
+    const cx = this.popX, cy = this.popY;
+    drawSparkles(ui, cx, cy, t, big ? 28 : 14, big ? 90 : 60);
+    if (t < 1.5) {
+      const word = net >= FEEL.jackpot || o.reels?.every((r) => r === 0) ? 'JACKPOT' : big ? 'BIG WIN' : 'WIN';
+      const amount = `+${money(net)}`;
+      const sc = t < 0.15 ? 3 : 2;
+      const w = Math.max(textWidth(amount) * sc, textWidth(word) * 2) + 16;
+      ui.fill(Math.round(cx - w / 2), cy - 22, w, 38, C.ink, 0.85);
+      ui.frame(Math.round(cx - w / 2), cy - 22, w, 38, C.gold);
+      ui.text(word, cx, cy - 18, big ? C.white : C.gold, { align: 'center', scale: big ? 2 : 1 });
+      ui.text(amount, cx, cy - (big ? 2 : 6), C.gold, { align: 'center', scale: sc });
+    }
+  }
+
+  /** Where a win's amount pops (the middle of the play area by default). */
+  protected popX = PANEL_W / 2;
+  protected popY = PLAY_Y + 30;
 
   /** The table's own game: reels, dice, cards, the wheel. */
   protected abstract drawPlay(ui: UI, v: PanelView): void;
@@ -146,16 +224,23 @@ export function drawDie(ui: UI, x: number, y: number, s: number, face: number, p
   for (const [cx, cy] of PIPS[face] ?? []) ui.fill(Math.round(x + p + 2 + cx * step), Math.round(y + p + 2 + cy * step), p, p, pip);
 }
 
-/** A playing card (24×34), face up or down. Red suits are drawn in blood (STYLE.md: DECISIONS #37). */
-export function drawCard(ui: UI, x: number, y: number, c: Card | null) {
-  ui.fill(x, y, 24, 34, C.ink);
+/**
+ * A playing card (24×34), face up or down. Red suits are drawn in blood (STYLE.md: DECISIONS #37).
+ * `w` narrows it about its center (a card turning over).
+ */
+export function drawCard(ui: UI, x: number, y: number, c: Card | null, w = 24) {
+  w = Math.max(2, Math.round(w));
+  const cx = x + 12, x0 = Math.round(cx - w / 2);
+  ui.fill(x0, y, w, 34, C.ink);
+  if (w < 6) return;
   if (!c) {
-    ui.fill(x + 1, y + 1, 22, 32, C.collLo);
-    ui.frame(x + 3, y + 3, 18, 28, C.coll);
+    ui.fill(x0 + 1, y + 1, w - 2, 32, C.collLo);
+    if (w > 8) ui.frame(x0 + 3, y + 3, w - 6, 28, C.coll);
     return;
   }
-  ui.fill(x + 1, y + 1, 22, 32, C.bone);
+  ui.fill(x0 + 1, y + 1, w - 2, 32, C.bone);
+  if (w < 20) return;
   const col = isRed(c) ? C.blood : C.ink;
-  ui.text(RANK[c.r], x + 3, y + 3, col);
-  ui.text(SUIT[c.s], x + 12, y + 16, col, { align: 'center' });
+  ui.text(RANK[c.r], x0 + 3, y + 3, col);
+  ui.text(SUIT[c.s], cx, y + 16, col, { align: 'center' });
 }
