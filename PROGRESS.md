@@ -13,6 +13,7 @@ The owner's notes from playing the three-room floor, fixed (DECISIONS #69-#71):
   in, the hole card flips at the stand and the dealer draws one card at a time, each with a snap.
 - **The crowd cleaned up.** Jointed figures with elbows, knees, hands, shoes, eyes and proper hair;
   dealers in vests; chairs for card players; slot players on their stools. Off-screen people aren't drawn.
+- **Mouse look no longer skips** (#72): raw pointer-lock input, and the browser's bogus jumps dropped.
 - Checks: typecheck clean, 29 tests green, screens sweep 25 surfaces with 0 clashes, seated
   screenshots of the Bandit, Twenty-One, Hi-Lo and the Wheel and crowd close-ups looked at. Perf
   under SwiftShader is 9.8-11.1 fps against 10.6-11.6 for the previous commit on this PC today

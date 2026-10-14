@@ -50,6 +50,9 @@ export class Input {
   /** Set by UI to capture the next key for rebinding. */
   captureKey: ((code: string) => void) | null = null;
   private el: HTMLElement | null = null;
+  /** the size of the last mouse step under lock, and whether the next is the first since locking */
+  private lastStep = 0;
+  private fresh = false;
 
   attach(el: HTMLElement) {
     this.el = el;
@@ -77,6 +80,7 @@ export class Input {
     });
     document.addEventListener('pointerlockchange', () => {
       this.locked = document.pointerLockElement === this.el;
+      this.fresh = this.locked;
       // leaving pointer lock with Esc: the browser eats the keydown, so latch it here
       if (!this.locked) this.pressed.add('PointerUnlock');
     });
@@ -85,6 +89,14 @@ export class Input {
     });
     el.addEventListener('mousemove', (e) => {
       if (this.locked) {
+        // Chromium on Windows sends a bogus jump under pointer lock now and then (the first event
+        // after locking, and lone spikes of hundreds of pixels): the view skipped across the room.
+        // Drop the first event, and any step far bigger than both a sane flick and the one before.
+        const step = Math.hypot(e.movementX, e.movementY);
+        const spike = this.fresh || (step > 300 && step > 6 * Math.max(this.lastStep, 20));
+        this.fresh = false;
+        this.lastStep = step;
+        if (spike) return;
         this.look.dx += e.movementX;
         this.look.dy += e.movementY;
         return;
@@ -115,11 +127,27 @@ export class Input {
   lock() {
     if (!this.el || this.locked) return;
     this.lockFailed = false;
+    const el = this.el;
+    const plain = () => {
+      try {
+        const p = el.requestPointerLock() as unknown;
+        if (p && typeof (p as Promise<void>).catch === 'function') (p as Promise<void>).catch(() => (this.lockFailed = true));
+      } catch {
+        /* headless browsers without pointer lock */
+      }
+    };
     try {
-      const p = this.el.requestPointerLock() as unknown;
-      if (p && typeof (p as Promise<void>).catch === 'function') (p as Promise<void>).catch(() => (this.lockFailed = true));
+      // raw mouse counts, no OS acceleration: steadier, and it skips the path Windows' jumps come
+      // through. Where it isn't supported, the promise rejects and we ask again without it.
+      const p = (el as unknown as { requestPointerLock(o?: { unadjustedMovement?: boolean }): unknown }).requestPointerLock({ unadjustedMovement: true });
+      if (p && typeof (p as Promise<void>).catch === 'function') {
+        (p as Promise<void>).catch((err: unknown) => {
+          if ((err as { name?: string })?.name === 'NotSupportedError') plain();
+          else this.lockFailed = true;
+        });
+      }
     } catch {
-      /* headless browsers without pointer lock */
+      plain();
     }
   }
 

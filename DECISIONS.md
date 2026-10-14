@@ -146,3 +146,10 @@ inspirations: the ideas are taken, never their names, numbers or art).
   players sit on their stools. Only people in a drawn room and not behind you are drawn. Measured
   A/B under SwiftShader, interleaved: about 5-10% of the frame (base 10.6-11.6 fps, new 9.8-11.1
   on this PC today; the same base read 21-24 in a faster window, so compare runs side by side).
+- #72 2026-10-14: **Mouse look takes raw input and drops spikes** (the owner: "when i look around my
+  mouse skips across the screen"). Chromium on Windows sends bogus jumps under pointer lock (the
+  first move after locking, and lone steps of hundreds of pixels). The lock now asks for
+  `unadjustedMovement` (raw counts, no OS acceleration; falls back where unsupported), and the input
+  drops the first move after a lock and any step over 300 px that is also 6x the step before it, so
+  a real flick, which ramps up, still turns you. Sensitivity may feel a touch different without
+  Windows' acceleration: the settings slider covers it.
