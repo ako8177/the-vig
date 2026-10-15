@@ -30,6 +30,8 @@ export interface TableModule {
   start(g: Game, p: PlayerState, cmd: Command): Outcome | null | string;
   /** The held-back result lands: pay it, and charge its price (marks, lives, markers). */
   resolve(g: Game, p: PlayerState, o: Outcome): void;
+  /** how long this outcome is held before it lands (s), when it isn't the table's `resolveS` */
+  holdS?(o: Outcome): number;
 }
 
 export const defOf = (id: string) => TABLE_BY_ID.get(id)!;

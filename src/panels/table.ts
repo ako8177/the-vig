@@ -22,6 +22,9 @@ export const money = (n: number) => '$' + Math.round(n).toLocaleString('en-US');
 export const PLAY_Y = 70;
 export const CTRL_Y = 146;
 
+/** How a win's amount reads (the settings: DECISIONS #83): all that came back, or only the gain. */
+export const WIN_DISPLAY = { total: true };
+
 export abstract class TablePanel extends Panel {
   readonly def: TableDef;
 
@@ -150,7 +153,7 @@ export abstract class TablePanel extends Panel {
     drawSparkles(ui, cx, cy, t, big ? 28 : 14, big ? 90 : 60);
     if (t < 1.5) {
       const word = net >= FEEL.jackpot || o.jackpot ? 'JACKPOT' : big ? 'BIG WIN' : 'WIN';
-      const amount = `+${money(net)}`;
+      const amount = `+${money(WIN_DISPLAY.total ? o.ret : net)}`;
       const sc = t < 0.15 ? 3 : 2;
       const w = Math.max(textWidth(amount) * sc, textWidth(word) * 2) + 16;
       ui.fill(Math.round(cx - w / 2), cy - 22, w, 38, C.ink, 0.85);

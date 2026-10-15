@@ -26,16 +26,16 @@ export interface DrinkDef {
 
 export const DRINKS: DrinkDef[] = [
   {
-    id: 'beer', name: 'Draft Beer', price: 40, buzzS: 25, text: 'A LITTLE LOOSE', bonus: 0.06, tiers: ['low'], edgeText: 'LOW TABLES PAY +6%',
-    derivation: 'DESIGN.md §10: the cheapest drink, a short buzz; +6% low for 25 s ≈ $57 back at the Bandit for $40',
+    id: 'beer', name: 'Draft Beer', price: 40, buzzS: 60, text: 'A LITTLE LOOSE', bonus: 0.06, tiers: ['low'], edgeText: 'LOW TABLES PAY +6%',
+    derivation: 'DESIGN.md §10 (DECISIONS #83): a minute of buzz; +6% low for 60 s ≈ $137 back at the Bandit for $40',
   },
   {
-    id: 'martini', name: 'Dry Martini', price: 120, buzzS: 50, text: 'THE ROOM GETS WARM', bonus: 0.04, tiers: ['mid'], edgeText: 'MID TABLES PAY +4%',
-    derivation: 'DESIGN.md §10: about two beers of buzz; +4% mid for 50 s ≈ $150 back at Hi-Lo for $120',
+    id: 'martini', name: 'Dry Martini', price: 120, buzzS: 60, text: 'THE ROOM GETS WARM', bonus: 0.04, tiers: ['mid'], edgeText: 'MID TABLES PAY +4%',
+    derivation: 'DESIGN.md §10 (DECISIONS #83): a minute of buzz; +4% mid for 60 s ≈ $190 back at Hi-Lo for $120',
   },
   {
-    id: 'whiskey', name: 'Double Whiskey', price: 200, buzzS: 80, text: 'THE FLOOR TILTS', bonus: 0.03, tiers: ['high'], edgeText: 'HIGH TABLES PAY +3%',
-    derivation: "DESIGN.md §10: nearly the ceiling on its own; +3% high for 80 s ≈ $250 back at Red Line for $200",
+    id: 'whiskey', name: 'Double Whiskey', price: 200, buzzS: 60, text: 'THE FLOOR TILTS', bonus: 0.03, tiers: ['high'], edgeText: 'HIGH TABLES PAY +3%',
+    derivation: "DESIGN.md §10 (DECISIONS #83): a minute of buzz; +3% high for 60 s ≈ $190 back at Red Line for $200",
   },
   {
     id: 'collector', name: "The Collector's Own", price: 500, buzzS: 150, text: 'NOBODY REMEMBERS THE REST', bonus: 0.05, tiers: ['low', 'mid', 'high'], edgeText: 'EVERY TABLE PAYS +5%',

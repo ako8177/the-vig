@@ -11,8 +11,8 @@ export const FEEL = {
   /** Red Line: a riffle shuffle, the deal, the flip */
   card: { s: 2.1, shuffle: [0.02, 0.42], deal: [0.47, 0.62], flip: [0.7, 0.8] },
   /** Twenty-One: a card off the shoe every `gap` s (the deal, a hit, the hole card turning, the
-   *  dealer's draws), so the dealer's run of draws fits inside the table's 0.6 s resolve */
-  deal: { gap: 0.14 },
+   *  dealer's draws); the sim holds the result until the last of them is down (DECISIONS #83) */
+  deal: { gap: 0.42 },
   /** the Wheel of Marks: whole turns before it slows onto the slot */
   wheel: { s: 4.2, turns: 3 },
   /** the Bandit: the lever, then each reel stops in turn */

@@ -2,6 +2,16 @@
 
 What is built. Newest first.
 
+## 2026-10-15 — Rolling reels, a dealt shoe, the pit boss, the wake-up
+
+The owner's fourth notes (DECISIONS #83, #84): reels that land on what they show; the Wheel's
+multiples on its wedges; Twenty-One slower, dealt from a visible shoe by the table's dealer; a
+"wins show all of it" setting; smoother crowd talk and spoken Collector lines; reworded choice
+cards and no grid flash; a slow death, the pit boss dragging him out the staff door; fade to black
+and wake up at home; hover descriptions for statuses; booth and card-table NPCs fixed; drinks a
+minute each; markers for charms only (skill tree and charm ideas in IDEAS.md). Checks: typecheck,
+34 tests, screens sweep 0 issues, smoke green, the death and pit boss played and looked at.
+
 ## 2026-10-14 — The Collector's table: the lever duel, his death, the cinematic
 
 The owner's design (DECISIONS #80-#82): at 0:00 you sit across from the Collector; he speaks; pay,

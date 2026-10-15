@@ -144,6 +144,10 @@ export function defineSounds(a: Audio) {
     { f: 180, dur: 0.15, at: 0.05, vol: 0.08, type: 'noise', q: 1 },
     ...Array.from({ length: 6 }, (_, i) => ({ f: rnd(1500, 3000), dur: 0.03, at: 0.3 + i * 0.09, vol: 0.04, type: 'noise' as const, q: 3 })),
   ]);
+  a.define('creak', () => [
+    { f: 180, to: 320, dur: 0.7, vol: 0.05, type: 'sawtooth' },
+    ...Array.from({ length: 10 }, (_, i) => ({ f: rnd(300, 600), dur: 0.05, at: i * 0.07, vol: 0.03, type: 'noise' as const, q: 6 })),
+  ]);
   a.define('thunk', [
     { f: 140, dur: 0.18, vol: 0.22, type: 'noise', q: 0.8 },
     { f: 75, to: 40, dur: 0.25, vol: 0.14, type: 'sine' },

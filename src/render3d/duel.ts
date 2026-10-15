@@ -10,7 +10,7 @@
 // - The battery sparks now and then; a live lever throws an arc from it to the lever.
 // Everything here is on the back room's side of the floor and costs ~40 draws only there.
 import {
-  BoxGeometry, BufferGeometry, CanvasTexture, CatmullRomCurve3, Color, CylinderGeometry, Float32BufferAttribute, Group, InstancedMesh, Line,
+  BoxGeometry, BufferGeometry, CanvasTexture, CatmullRomCurve3, Color, CylinderGeometry, Float32BufferAttribute, Group, InstancedMesh, Line, PointLight,
   LineBasicMaterial, Matrix4, Mesh, MeshBasicMaterial, MeshLambertMaterial, NearestFilter, Object3D, PlaneGeometry, SphereGeometry,
   SRGBColorSpace, TubeGeometry, Vector3, type Material, type Scene,
 } from 'three';
@@ -30,6 +30,8 @@ const WIRE_COLS = [C.blood, C.marker, C.gold, C.teal, C.pinkHi, C.white, C.brass
 export interface Duel {
   /** every lever mesh carries userData.lever (its index), for picking */
   pickables: Object3D[];
+  /** put the top's cover on (its blank screen) before it turns over */
+  cover(): void;
   /** turn the table over (true) or back (false); `onLand` fires when it comes down */
   flip(over: boolean, onLand?: () => void): void;
   /** is it over and still? */
@@ -47,6 +49,11 @@ export interface Duel {
   talk(on: boolean): void;
   shock(): void;
   die(): void;
+  /** after a death: the pit boss comes through the staff door, says his piece (`speak`), drags
+   *  the body out the way he came, and the door shuts (`done`) */
+  funeral(on: { speak: () => void; done: () => void }): void;
+  /** where the camera should look while the pit boss works, or null */
+  focus(): Vector3 | null;
   reset(eyes: number): void;
   update(dt: number, time: number): { spark: boolean };
   dispose(): void;
@@ -243,6 +250,132 @@ export function buildDuel(scene: Scene, floor: Floor): Duel {
   top.userData.occluder = true;
   plate.userData.occluder = true;
 
+  // ---------------------------------------------------------------- the staff door and the pit boss
+  // the door in the back room's far right corner (seen from your seat), and the man who comes
+  // through it when a Collector dies (DECISIONS #83)
+  const DOOR = new Vector3(12, 0, -15.78);
+  const doorFrame = new Group();
+  doorFrame.position.copy(DOOR);
+  root.add(doorFrame);
+  box(0.12, 2.3, 0.14, flat(C.woodLo), doorFrame, -0.62, 1.15, 0);
+  box(0.12, 2.3, 0.14, flat(C.woodLo), doorFrame, 0.62, 1.15, 0);
+  box(1.36, 0.14, 0.14, flat(C.woodLo), doorFrame, 0, 2.3, 0);
+  box(1.12, 2.2, 0.02, flat(C.ink), doorFrame, 0, 1.1, -0.06);
+  const doorPivot = new Group();
+  doorPivot.position.set(-0.55, 0, 0.02);
+  doorFrame.add(doorPivot);
+  box(1.1, 2.18, 0.06, flat(C.wood), doorPivot, 0.55, 1.09, 0);
+  box(0.06, 0.06, 0.06, flat(C.brass), doorPivot, 1.0, 1.05, 0.05);
+  const staff = box(0.5, 0.14, 0.03, glowMat(C.blood, 1.2), doorFrame, 0, 2.52, 0.03);
+  glow(staff);
+  // the corridor's light, spilling in while the door stands open (off the rest of the time)
+  const spill = new PointLight(0xffd8a0, 0, 9, 2);
+  spill.position.set(DOOR.x, 2, DOOR.z + 0.8);
+  spill.visible = false;
+  root.add(spill);
+  const boss = new Group();
+  boss.visible = false;
+  root.add(boss);
+  const bHips = new Group();
+  bHips.position.y = 0.95;
+  boss.add(bHips);
+  const suit = flat(C.ink);
+  box(0.5, 0.66, 0.26, suit, bHips, 0, 0.33, 0);
+  box(0.14, 0.5, 0.02, flat(C.bone), bHips, 0, 0.38, -0.135);
+  box(0.05, 0.3, 0.025, flat(C.gold), bHips, 0, 0.4, -0.14);
+  const bHead = new Group();
+  bHead.position.y = 0.72;
+  bHips.add(bHead);
+  box(0.24, 0.27, 0.24, flat(C.cream), bHead, 0, 0.13, 0);
+  box(0.26, 0.08, 0.26, flat(C.ink), bHead, 0, 0.29, 0.01);
+  const bLeg = (side: number) => {
+    const hp = new Group();
+    hp.position.set(side * 0.12, 0.95, 0);
+    boss.add(hp);
+    box(0.16, 0.93, 0.18, suit, hp, 0, -0.47, 0);
+    box(0.16, 0.06, 0.26, flat(C.ink), hp, 0, -0.93, -0.04);
+    return hp;
+  };
+  const legs = [bLeg(-1), bLeg(1)];
+  const bArm = (side: number) => {
+    const sh = new Group();
+    sh.position.set(side * 0.31, 0.62, 0);
+    bHips.add(sh);
+    box(0.12, 0.66, 0.13, suit, sh, 0, -0.33, 0);
+    box(0.1, 0.1, 0.1, flat(C.cream), sh, 0, -0.7, 0);
+    return sh;
+  };
+  const bArms = [bArm(-1), bArm(1)];
+  let funeralT = -1;
+  let funeralOn: { speak: () => void; done: () => void } | null = null;
+  let spoke = false;
+  const outside = DOOR.clone().add(new Vector3(0, 0, -1.2));
+  const inDoor = DOOR.clone().add(new Vector3(0, 0, 0.6));
+  const side = new Vector3(co.x + 0.85, 0, chairFront + 0.35);
+  const at = new Vector3();
+  /** walk the boss from a to b over [t0, t1] of the errand; facing where he goes (or `back`ward) */
+  const walk = (a: Vector3, b: Vector3, u: number, back = false) => {
+    at.lerpVectors(a, b, u);
+    boss.position.copy(at);
+    const d = b.clone().sub(a);
+    boss.rotation.y = Math.atan2(-d.x, -d.z) + (back ? Math.PI : 0);
+    const sw = Math.sin(u * 14) * 0.45;
+    legs[0].rotation.x = sw;
+    legs[1].rotation.x = -sw;
+    bArms[0].rotation.x = -sw * 0.6;
+    bArms[1].rotation.x = sw * 0.6;
+  };
+  const still = () => {
+    legs[0].rotation.x = legs[1].rotation.x = 0;
+  };
+  const runFuneral = (dt: number) => {
+    funeralT += dt;
+    const t = funeralT;
+    const u = (a: number, b: number) => Math.max(0, Math.min(1, (t - a) / (b - a)));
+    // the door: open by 0.9 s, shut again after they're through
+    doorPivot.rotation.y = t < 12.3 ? -1.35 * u(0, 0.9) : -1.35 * (1 - u(12.3, 13.2));
+    spill.visible = t < 13.2;
+    spill.intensity = 30 * (t < 12.3 ? u(0, 0.9) : 1 - u(12.3, 13.2));
+    boss.visible = t > 0.6 && t < 12.2;
+    if (t < 1) walk(outside, inDoor, u(0.4, 1));
+    else if (t < 4) walk(inDoor, side, u(1, 4));
+    else if (t < 6) {
+      // he stops by the chair and turns to you
+      still();
+      boss.rotation.y = Math.PI;
+      bHead.rotation.y = 0;
+      if (!spoke && t > 4.3) {
+        spoke = true;
+        funeralOn?.speak();
+      }
+    } else if (t < 6.8) {
+      // he takes the body under the arms
+      boss.rotation.y = Math.PI / 2;
+      bArms[0].rotation.x = bArms[1].rotation.x = -1.2 * u(6, 6.8);
+    } else if (t < 11.5) {
+      // and drags it out, backing toward the door, heels scraping
+      const k = u(6.8, 11.5);
+      const pts = [side, inDoor, outside];
+      const seg = k < 0.82 ? 0 : 1;
+      const kk = seg === 0 ? k / 0.82 : (k - 0.82) / 0.18;
+      walk(pts[seg], pts[seg + 1], kk, true);
+      bArms[0].rotation.x = bArms[1].rotation.x = -1.2;
+      const back = new Vector3(Math.sin(boss.rotation.y), 0, Math.cos(boss.rotation.y));
+      him.position.copy(boss.position).addScaledVector(back, -0.75);
+      him.position.y = -0.35;
+      him.rotation.set(-1.05, boss.rotation.y + Math.PI, 0);
+      hips.rotation.x = 0.2;
+      him.visible = t < 11.3;
+    } else if (t > 13.2) {
+      funeralT = -1;
+      boss.visible = false;
+      him.visible = false;
+      const on = funeralOn;
+      funeralOn = null;
+      on?.done();
+    }
+  };
+
   // ---------------------------------------------------------------- state and motion
   let flipT = 0, flipTo = 0, onLand: (() => void) | undefined;
   const pullAnim: { i: number; t: number }[] = [];
@@ -262,6 +395,9 @@ export function buildDuel(scene: Scene, floor: Floor): Duel {
     },
     get flipping() {
       return flipT !== flipTo;
+    },
+    cover() {
+      lid.visible = true;
     },
     flip(over, land) {
       flipTo = over ? 1 : 0;
@@ -291,6 +427,16 @@ export function buildDuel(scene: Scene, floor: Floor): Duel {
     leverAt(i) {
       return knobs[i].getWorldPosition(new Vector3());
     },
+    funeral(on) {
+      funeralOn = on;
+      funeralT = 0;
+      spoke = false;
+    },
+    focus() {
+      if (funeralT < 0 || funeralT > 12.6) return null;
+      // follow him from the door, and the body out of it
+      return funeralT < 6.8 ? bHead.getWorldPosition(new Vector3()) : boss.position.clone().add(new Vector3(0, 1.1, 0));
+    },
     reach(i) {
       reachI = i;
       reachT = 0.9;
@@ -304,14 +450,20 @@ export function buildDuel(scene: Scene, floor: Floor): Duel {
       for (let k = 0; k < 3; k++) arc(() => head.getWorldPosition(new Vector3()), at, 1.2);
     },
     die() {
-      shockT = 2;
+      shockT = 2.6;
       dead = 0.001;
       const at = () => head.getWorldPosition(new Vector3()).add(new Vector3((Math.random() - 0.5) * 1, -Math.random(), 0.1));
-      for (let k = 0; k < 4; k++) arc(() => head.getWorldPosition(new Vector3()), at, 1.8);
+      for (let k = 0; k < 4; k++) arc(() => head.getWorldPosition(new Vector3()), at, 2.4);
     },
     reset(color) {
       dead = 0;
       shockT = 0;
+      funeralT = -1;
+      him.visible = true;
+      him.position.set(co.x, 0, chairFront + 0.13);
+      him.rotation.set(0, 0, 0);
+      boss.visible = false;
+      doorPivot.rotation.y = 0;
       eyeColor = color;
       eyeMat.color.copy(new Color(hexOf(color)).multiplyScalar(1.6));
       band.material = flat(color === C.coll ? C.collLo : color);
@@ -352,7 +504,7 @@ export function buildDuel(scene: Scene, floor: Floor): Duel {
       }
       if (dead > 0 && shockT <= 0) {
         // slumped over the table, eyes going out
-        dead = Math.min(1, dead + dt / 1.2);
+        dead = Math.min(1, dead + dt / 2.5);
         lean = 0.05 + 0.85 * dead;
         headX = 0.5 * dead;
         hl = restL.clone().add(new Vector3(-0.1, -0.02, 0.2 * dead));
@@ -389,6 +541,9 @@ export function buildDuel(scene: Scene, floor: Floor): Duel {
         }
         if (Math.random() < dt * 8) burst(torso.getWorldPosition(tmp), 4);
       } else him.position.x = co.x;
+
+      // the pit boss's errand: the door, the walk, the word, the drag, the door again
+      if (funeralT >= 0) runFuneral(dt);
 
       // the battery sparks now and then while the board is up
       let spark = false;

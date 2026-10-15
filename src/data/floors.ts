@@ -269,9 +269,10 @@ const npcs: NpcSpot[] = [
   { role: 'table', x: -8.4, z: -11.75, yaw: N, seated: false, room: 'lounge' },
   { role: 'table', x: -6, z: -11.75, yaw: N, seated: false, room: 'lounge' },
   { role: 'dealer', x: -7.2, z: -14.2, yaw: S, seated: false, room: 'lounge' },
-  { role: 'booth', x: -12.9, z: -4.4, yaw: Wd, seated: true, room: 'lounge' },
-  { role: 'booth', x: -12.9, z: -5.8, yaw: Wd, seated: true, room: 'lounge' },
-  { role: 'booth', x: -12.9, z: -11, yaw: Wd, seated: true, room: 'lounge' },
+  // on the booth's bench, facing its little table (they sat in the table itself before)
+  { role: 'booth', x: -13.45, z: -4.4, yaw: E, seated: true, room: 'lounge' },
+  { role: 'booth', x: -13.45, z: -5.8, yaw: E, seated: true, room: 'lounge' },
+  { role: 'booth', x: -13.45, z: -11, yaw: E, seated: true, room: 'lounge' },
   { role: 'pianist', x: -2.2, z: -13, yaw: N, seated: true, room: 'lounge' },
   { role: 'watcher', x: -12, z: -6.4, yaw: N + 0.4, seated: false, room: 'lounge', table: 'hilo' },
   { role: 'watcher', x: -9, z: -6.1, yaw: N - 0.5, seated: false, room: 'lounge', table: 'hilo' },

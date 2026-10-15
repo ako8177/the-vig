@@ -21,6 +21,10 @@ with floor 1 as three rooms by risk, a crowd of 52, and a bar with drinks that m
 (DECISIONS #65-#68). The milestone order and the not-list bent at the owner's word (written down in
 DECISIONS). Next in the owner's order: **the house** (ROADMAP, "The owner's plan").
 
+**2026-10-15, the owner's fourth notes** (DECISIONS #83, #84): see PROGRESS. **Waiting on the
+owner**: the skill tree (its currency and nodes) and which charms to build (IDEAS.md, "Charms
+and the skill tree"); still, whether challenging should beat paying (DESIGN.md §7).
+
 **2026-10-14, the Collector's table** (DECISIONS #80-#82): the owner's lever duel, Collectors who
 die and are replaced, charm unlocks, endings, and the cinematic scene. **Ask the owner**: always
 challenging now beats paying by a lot (DESIGN.md §7: 37% vs 12% survive all three nights); if

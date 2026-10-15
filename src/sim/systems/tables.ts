@@ -43,7 +43,7 @@ export function standUp(g: Game, p: PlayerState) {
     const o = mod.start(g, p, { t: 'call', table, call: 'leave' });
     if (o && typeof o !== 'string') {
       t21.pending = o;
-      t21.until = g.tick + ticks(mod.def.resolveS);
+      t21.until = g.tick + ticks(mod.holdS?.(o) ?? mod.def.resolveS);
     }
   }
   p.seat = null;
@@ -86,7 +86,7 @@ export const tables: System = {
     const r = mod.start(g, p, cmd);
     if (typeof r === 'string') return refuse(r);
     if (r) {
-      const n = ticks(mod.def.resolveS);
+      const n = ticks(mod.holdS?.(r) ?? mod.def.resolveS);
       t.pending = r;
       t.until = g.tick + n;
       g.emit({ t: 'play', player: p.id, table: id, ticks: n });

@@ -17,9 +17,11 @@ import { addMarkers, gainLife, living, loseLife, ticks } from '../rules';
 /** How close to the Collector's table you must stand to call the night (m). */
 export const CALL_RADIUS = 1.6;
 
-/** The beat between the Circuit ending and the wheel coming up (s): the shock, his last words or
- *  yours, the table turning back over (presentation pacing in the sim). */
-export const AFTER_CIRCUIT_S = 6;
+/** The beat between the Circuit ending and the wheel coming up (s): a loss, your last shock, his
+ *  words and the table turning back; a win, his slow death, the pit boss coming through the staff
+ *  door and dragging him out, and the table turning back (presentation pacing in the sim). */
+export const AFTER_CIRCUIT_S = 7;
+export const AFTER_DEATH_S = 23.5;
 
 function shortfall(g: Game) {
   const s = g.state;
@@ -146,7 +148,7 @@ export const collector: System = {
     } else if (s.phase === 'circuit' && s.circuit) {
       const c = s.circuit;
       if (!c.done && c.turn === 'coll' && g.tick >= c.wait) collectorAct(g);
-      if (c.done && s.phase === 'circuit' && g.tick - c.endedAt >= ticks(AFTER_CIRCUIT_S)) {
+      if (c.done && s.phase === 'circuit' && g.tick - c.endedAt >= ticks(c.done.won ? AFTER_DEATH_S : AFTER_CIRCUIT_S)) {
         s.summary!.circuit = c.done;
         // won: he's dead, the quota stays in the bank (its overshoot still pays markers), and the
         // first kill of each Collector puts his charm in the pool; lost: the quota is paid now

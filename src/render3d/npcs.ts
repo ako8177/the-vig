@@ -125,6 +125,16 @@ export class Crowd {
     scene.add(this.smoke);
   }
 
+  /** when each table's dealer last dealt a card (the panel tells us), in update's clock */
+  private dealt = new Map<string, number>();
+  private now = 0;
+
+  /** The dealer at `table` deals a card now. */
+  deal(table: string) {
+    this.dealt.set(table, this.now);
+    this.acc = 1;
+  }
+
   /** A result at `table`: its railbirds cheer a win (a big one brings the room in), groan at a loss. */
   react(table: string, win: boolean, big: boolean, at: { x: number; z: number }) {
     for (const p of this.people) {
@@ -146,6 +156,7 @@ export class Crowd {
   update(dt: number, t: number, seat: { table: string; x: number; z: number } | null, you: { x: number; z: number; fx: number; fz: number }, rooms: ReadonlySet<string>) {
     // pose at 30 Hz: the matrices go up to the GPU each pose, and under software WebGL a per-frame
     // upload stalls the pipeline (DECISIONS #68); people don't need 60 poses a second
+    this.now = t;
     this.acc += dt;
     if (this.acc < 1 / 30) return;
     dt = this.acc;
@@ -236,18 +247,20 @@ export class Crowd {
           break;
         }
         case 'table': {
-          // forearms on the rail; the right pushes chips out now and then
+          // leaning in, forearms on the rail; the right pushes chips out now and then
           const push = pulse(4.5, 0.7);
-          shL = 0.35;
-          elL = 1.2;
-          shR = 0.35 + 0.4 * push;
-          elR = 1.2 - 0.25 * push;
+          shL = 0.75;
+          elL = 0.85;
+          shR = 0.75 + 0.35 * push;
+          elR = 0.85 - 0.25 * push;
           abL = abR = 0.12;
-          lean = 0.16;
+          lean = seated ? 0.32 : 0.16;
           break;
         }
         case 'dealer': {
-          const deal = pulse(1.6, 0.6);
+          // a dealer at your table deals when a card comes out (Crowd.deal); the others on their own
+          const mine = this.dealt.get(p.spot.table ?? '');
+          const deal = mine !== undefined ? Math.max(0, Math.sin(Math.min(1, (t - mine) / 0.38) * Math.PI)) * (t - mine < 0.38 ? 1 : 0) : pulse(1.6, 0.6);
           shL = 0.45;
           elL = 0.75;
           shR = 0.45 + 0.4 * deal;
@@ -339,8 +352,10 @@ export class Crowd {
       const J = this.J, joint = this.joint, box = this.box;
       this.base = slot++ * NP;
       joint(J.root, null, x, hop, z, 0, yaw, 0);
-      // a slot player's spot is at the machine; the stool is a hand's width behind it
+      // a slot player's spot is at the machine; the stool is a hand's width behind it. A seated card
+      // player's spot is the table's edge: the chair goes back so the knees clear it
       if (role === 'slots') J.root.multiply(this.m4.makeTranslation(0, 0, 0.12));
+      if (role === 'table' && seated) J.root.multiply(this.m4.makeTranslation(0, 0, 0.42));
       joint(J.torso, J.root, 0, hip, 0, -lean, 0, 0);
       box(0, J.torso, 0, 0.05, 0, 0.34, 0.17, 0.21);
       box(1, J.torso, 0, 0.35, 0, 0.38, 0.44, 0.22);

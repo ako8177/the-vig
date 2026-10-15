@@ -36,6 +36,19 @@ export class BanditPanel extends TablePanel {
     this.showHow = false;
   }
 
+  /** A column's reel for this round: its three results first (top to bottom), then a run of the
+   *  strip above them, the same every frame of the round. */
+  private reel(c: number, grid: readonly number[], round: number): number[] {
+    const { cols: K } = GRID;
+    const seq = [grid[c], grid[K + c], grid[2 * K + c]];
+    let x = (round * 7919 + c * 104729) >>> 0;
+    for (let k = 0; k < REEL_RUN + 2; k++) {
+      x = (Math.imul(x, 1103515245) + 12345) >>> 0;
+      seq.push(STRIP[(x >>> 16) % STRIP.length]);
+    }
+    return seq;
+  }
+
   /** One cell's symbol, centered in a CW x CH cell at (x, y). */
   private symbol(ui: UI, s: number, x: number, y: number) {
     const cx = x + CW / 2;
@@ -67,11 +80,14 @@ export class BanditPanel extends TablePanel {
       ui.clip(x, y0, CW, R * (CH + 2) - 2);
       for (let r = 0; r < R; r++) ui.fill(x, y0 + r * (CH + 2), CW, CH, C.bone);
       if (!done) {
-        const pos = (1 - out3(t / stopAt)) * 30;
-        const base = Math.floor(pos), frac = pos - base;
-        for (let k = -1; k <= R; k++) {
-          const sym = STRIP[(((base + k + c * 3) % STRIP.length) + STRIP.length) % STRIP.length];
-          this.symbol(ui, sym, x, y0 + Math.round((k + frac) * (CH + 2)));
+        // the reel: a run of symbols whose last three are this column's result, rolling down and
+        // slowing until exactly those three sit in the window (what you watch is what lands)
+        const seq = this.reel(c, grid, this.tableState(v).rounds);
+        const s = REEL_RUN * Math.pow(1 - t / stopAt, 3);
+        const i0 = Math.floor(s), f = s - i0;
+        for (let r = -1; r <= R; r++) {
+          const sym = seq[i0 + r] ?? seq[seq.length - 1];
+          if (i0 + r >= 0) this.symbol(ui, sym, x, y0 + Math.round((r - f) * (CH + 2)));
         }
       } else {
         const since = rolling ? (t - stopAt) * FEEL.bandit.s : 1;
@@ -123,10 +139,14 @@ export class BanditPanel extends TablePanel {
   }
 }
 
-/** A Bandit cell, in panel pixels. */
+/** A Bandit cell, in panel pixels; how many cells a reel rolls past before it stops. */
 const CW = 30, CH = 20;
+const REEL_RUN = 24;
 
 // ---------------------------------------------------------------- Twenty-One
+
+/** Where Twenty-One's shoe sits on the panel (its cards fly from here). */
+const SHOE = { x: 290, y: 27 };
 
 export class TwentyOnePanel extends TablePanel {
   /** cards on the cloth so far, per hand and the dealer's: the rest are still coming out of the
@@ -136,6 +156,7 @@ export class TwentyOnePanel extends TablePanel {
   /** the dealer's hole card turned over; when the last card came down (s); a round in play last frame */
   private holeUp = false;
   private lastAt = -1e9;
+  private lastWasFlip = false;
   private live = false;
   private started = false;
 
@@ -203,11 +224,13 @@ export class TwentyOnePanel extends TablePanel {
     else if (!t.hole && !this.holeUp && this.seenD >= 2) {
       this.holeUp = true;
       this.lastAt = now;
+      this.lastWasFlip = true;
       this.sound('flip');
       return;
     } else if (this.seenD < t.dealer.length) this.seenD++;
     else return;
     this.lastAt = now;
+    this.lastWasFlip = false;
     this.sound('card', 1, 0.94 + Math.random() * 0.12);
   }
 
@@ -219,15 +242,23 @@ export class TwentyOnePanel extends TablePanel {
     ui.text(`${label} ${vis.length ? (hideHole && vis.length > 1 ? total + ' +?' : total) : ''}`, x, PLAY_Y + 2, col);
     const since = now - this.lastAt;
     vis.slice(0, 6).forEach((c, i) => {
-      // the newest card drops onto the cloth; the hole card turns over edge-on
-      const newest = i === vis.length - 1 && since < FEEL.deal.gap;
-      const drop = newest ? Math.round((1 - clamp01(since / (FEEL.deal.gap * 0.7))) * -8) : 0;
-      if (dealer && i === 1 && !hideHole && since < FEEL.deal.gap && this.holeUp && shown === 2) {
+      if (dealer && i === 1 && !hideHole && since < FEEL.deal.gap && this.holeUp && shown === 2 && this.lastWasFlip) {
+        // the hole card turns over edge-on
         const k = clamp01(since / (FEEL.deal.gap * 0.8));
         drawCard(ui, x + i * gap, y, k < 0.5 ? null : c, 24 * Math.abs(Math.cos(k * Math.PI)));
         return;
       }
-      drawCard(ui, x + i * gap, y + drop, hideHole && i === 1 ? null : c);
+      const face = hideHole && i === 1 ? null : c;
+      const newest = i === vis.length - 1 && since < FEEL.deal.gap && !this.lastWasFlip;
+      if (newest) {
+        // the newest card leaves the shoe face down, slides across the felt and turns as it lands
+        const k = out3(clamp01(since / (FEEL.deal.gap * 0.7)));
+        const cx = Math.round(SHOE.x + (x + i * gap - SHOE.x) * k), cy = Math.round(SHOE.y + (y - SHOE.y) * k - Math.sin(k * Math.PI) * 6);
+        if (k < 0.8 || !face) drawCard(ui, cx, cy, null);
+        else drawCard(ui, cx, cy, face, 24 * clamp01((k - 0.8) / 0.2));
+        return;
+      }
+      drawCard(ui, x + i * gap, y, face);
     });
   }
 
@@ -251,6 +282,11 @@ export class TwentyOnePanel extends TablePanel {
       ui.text('PLACE A BET TO DEAL.', PANEL_W / 2, PLAY_Y + 24, C.dust, { align: 'center' });
       if (!this.dark(v)) ui.text('NATURAL (A + 10) PAYS 3:2. A WIN PAYS 1:1.', PANEL_W / 2, PLAY_Y + 36, C.ash, { align: 'center' });
     }
+    // the shoe, top right: every card comes out of it
+    ui.fill(SHOE.x - 4, SHOE.y - 2, 32, 38, C.woodLo);
+    ui.fill(SHOE.x - 2, SHOE.y, 28, 34, C.ink);
+    drawCard(ui, SHOE.x, SHOE.y + 1, null);
+    ui.fill(SHOE.x - 4, SHOE.y + 22, 32, 14, C.woodLo);
     // the shoe: how deep it is, so a counter can count
     const left = ts.shoe?.length ?? SHOE_SIZE;
     ui.text(`SHOE: ${left} OF ${SHOE_SIZE} LEFT${left < RESHUFFLE_AT ? ', SHUFFLE NEXT' : ''}`, 12, PLAY_Y + 52, C.ash);
@@ -334,6 +370,7 @@ export class HiLoPanel extends TablePanel {
  * game in the palette (DECISIONS #62): the wheel's spectacle is the reference, not anyone's art.
  */
 /** The wheel's wedge colors (the owner's red, black and purple; gold for the one big slot). */
+const WEDGE_LABEL: Record<WheelColor, string> = { red: '1.5', black: '.5', purple: '2.5', gold: '6', mark: '' };
 const WEDGE: Record<WheelColor, number> = { red: C.blood, black: C.ink, purple: C.collLo, gold: C.gold, mark: C.midLo };
 
 export class WheelPanel extends TablePanel {
@@ -428,9 +465,9 @@ export class WheelPanel extends TablePanel {
       const mid = a + (i + 0.5) * th;
       const x = cx + Math.cos(mid) * (r - 10), y = cy + Math.sin(mid) * (r - 10);
       const c = WHEEL_LAYOUT[i];
+      // the multiple on the wedge itself, read from the outside in
       if (c === 'mark') ui.text(ICON.mark, Math.round(x), Math.round(y - 3), C.ink, { align: 'center' });
-      else if (c === 'gold') ui.text('6', Math.round(x), Math.round(y - 3), C.ink, { align: 'center' });
-      else ui.fill(Math.round(x - 1), Math.round(y - 1), 3, 3, c === 'black' ? C.smoke : C.white);
+      else ui.text(WEDGE_LABEL[c], Math.round(x), Math.round(y - 3), c === 'gold' ? C.ink : c === 'black' ? C.dust : C.white, { align: 'center' });
     }
     // the pegs, the hub
     for (let i = 0; i < WHEEL_SLOTS; i++) {

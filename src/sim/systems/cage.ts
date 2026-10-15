@@ -8,7 +8,7 @@ import { BUZZ, DRINK_BY_ID, type DrinkId } from '../../data/drinks';
 import { ticks } from '../rules';
 import { CHARM_BY_ID, UPGRADE_BY_ID, type CharmId, type UpgradeId } from '../../data/charms';
 import { ECONOMY } from '../../data/economy';
-import { atComputer, pendingCharms, pendingItems, post } from './home';
+import { atComputer, pendingCharms, post } from './home';
 
 /** A player's charm slots (3, 4 with the upgrade). */
 export const slotsOf = (g: Game) => ECONOMY.charmSlots.v + (g.state.upgrades.includes('slot4') ? 1 : 0);
@@ -62,10 +62,8 @@ export function cantBuy(g: Game, p: PlayerState, item: string): string | null {
     return null;
   }
   if (up) {
-    if (s.upgrades.includes(up.id)) return 'already owned';
-    if (pendingItems(g).includes(up.id)) return 'already in the post';
-    if (s.markers < up.price) return 'not enough markers';
-    return null;
+    // markers buy charms only now: lasting upgrades will come from the skill tree (DECISIONS #84)
+    return s.upgrades.includes(up.id) ? 'already owned' : 'markers buy charms only';
   }
   return 'no such item';
 }

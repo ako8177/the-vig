@@ -7,7 +7,7 @@
 // and moves on to your punishment. Presentation only: it reads sim events and state, and the only
 // thing it sends is your pull or trace.
 import type { Audio } from '../engine/audio/audio';
-import type { PerspectiveCamera, Object3D } from 'three';
+import { Vector3, type PerspectiveCamera, type Object3D } from 'three';
 import type { SimEvent } from '../sim/events';
 import type { Command } from '../sim/commands';
 import type { State } from '../sim/state';
@@ -40,6 +40,8 @@ const EYE = {
 type Look = keyof typeof LOOK;
 
 const CHARS_PER_S = 30;
+/** how fast words type while a voice says them */
+const SPOKEN_CPS = 13;
 
 export interface Subtitle {
   name: string;
@@ -56,7 +58,7 @@ export interface DuelHud {
 }
 
 interface Line {
-  who: 'coll' | 'sys';
+  who: 'coll' | 'sys' | 'pit';
   text: string;
   /** cut it off this far in (his last words) */
   cut?: number;
@@ -82,6 +84,7 @@ export class DuelScene {
   private introduced = new Set<number>();
   private hisIdx = 0;
   readonly tension: Tension;
+  private focusAt: Vector3 | null = null;
 
   constructor(
     private audio: Audio,
@@ -99,10 +102,11 @@ export class DuelScene {
   }
 
   /** Queue his words (or a narrator's line). `interrupt` drops whatever was still to come. */
-  say(texts: string[], who: 'coll' | 'sys' = 'coll', interrupt = false, cut?: number) {
+  say(texts: string[], who: 'coll' | 'sys' | 'pit' = 'coll', interrupt = false, cut?: number) {
     if (interrupt) {
       this.lines = [];
       this.cur = null;
+      this.hush();
     }
     texts.forEach((text, i) => this.lines.push({ who, text, cut: i === texts.length - 1 ? cut : undefined }));
   }
@@ -120,6 +124,7 @@ export class DuelScene {
 
   /** Back to the table as it was: the top down, the screen up, him alive with his own eyes. */
   reset(s: State) {
+    this.hush();
     this.timers = [];
     this.lines = [];
     this.cur = null;
@@ -208,23 +213,28 @@ export class DuelScene {
               else this.duel.shock();
             });
             if (dies) {
-              this.after(1.0, () => this.tension.stop());
-              this.after(1.4, () => this.say(this.pickLine(LINES.hisDeath, s), 'coll', true, 11));
-              this.after(3.2, () => this.say([`${collectorOf(s.collector.idx).name} IS DEAD. THE QUOTA STAYS IN YOUR BANK.`], 'sys'));
+              // slow: the current holds him, he gets out half a sentence, slumps, goes dark; then
+              // the pit boss comes for him through the staff door (DECISIONS #83)
+              this.after(1.6, () => this.say(this.pickLine(LINES.hisDeath, s), 'coll', true, 11));
+              this.after(3.2, () => this.tension.stop());
+              this.after(6.0, () => this.say([`${collectorOf(s.collector.idx).name} IS DEAD. THE QUOTA STAYS IN YOUR BANK.`], 'sys'));
+              this.after(8.0, () => {
+                this.audio.sfx('creak');
+                this.duel.funeral({
+                  speak: () => this.say(['THANK YOU FOR PLAYING.'], 'pit', true),
+                  done: () => this.flipBack(),
+                });
+              });
             } else this.after(2.3, () => this.say(this.pickLine(LINES.hisShocked, s), 'coll', true));
           } else if (Math.random() < 0.6) this.after(1.1, () => this.say(this.pickLine(LINES.hisSafe, s), 'coll', true));
         }
         break;
       }
       case 'circuitEnd':
-        // the table turns back over before the wheel comes up on its screen
-        this.after(4.2, () => {
-          this.ready = false;
-          this.duel.flip(false, () => {
-            this.showScreen(true);
-            this.audio.sfx('thunk');
-          });
-        });
+        // the table turns back over before the wheel comes up on its screen (after a death, once
+        // the pit boss has been: the funeral turns it back)
+        this.ready = false;
+        if (!e.won) this.after(4.2, () => this.flipBack());
         break;
     }
   }
@@ -257,29 +267,36 @@ export class DuelScene {
       this.cur = this.lines.shift()!;
       this.shown = 0;
       this.hold = 0;
+      if (this.cur.who !== 'sys') this.speak(this.cur, s);
     }
     let subtitle: Subtitle | null = null;
     if (this.cur) {
       const full = this.cur.cut ?? this.cur.text.length;
+      const cps = this.speakingUntil > this.clock ? SPOKEN_CPS : CHARS_PER_S;
       if (this.shown < full) {
-        this.shown = Math.min(full, this.shown + dt * CHARS_PER_S);
+        this.shown = Math.min(full, this.shown + dt * cps);
         this.murmurAcc += dt;
-        if (this.cur.who === 'coll' && this.murmurAcc > 0.11) {
+        // no speech in this browser (or the murmur chosen): his murmur under the words
+        if (this.cur.who !== 'sys' && this.speakingUntil <= this.clock && this.murmurAcc > 0.11) {
           this.murmurAcc = 0;
-          murmur(this.audio, 1 - this.hisIdx * 0.08);
+          murmur(this.audio, this.cur.who === 'pit' ? 1.5 : 1 - this.hisIdx * 0.08);
         }
       } else this.hold += dt;
       const who = collectorOf(s.collector.idx);
-      subtitle = { name: this.cur.who === 'coll' ? who.name : '', text: this.cur.text.slice(0, Math.floor(this.shown)), color: this.cur.who === 'coll' ? who.eyes : C.bone };
+      const name = this.cur.who === 'coll' ? who.name : this.cur.who === 'pit' ? 'THE PIT BOSS' : '';
+      const color = this.cur.who === 'coll' ? who.eyes : this.cur.who === 'pit' ? C.gold : C.bone;
+      subtitle = { name, text: this.cur.text.slice(0, Math.floor(this.shown)), color };
       this.duel.talk(this.cur.who === 'coll' && this.shown < full);
-      if (this.hold > 1.3 + full * 0.035 || (this.cur.cut && this.hold > 0.5)) this.cur = null;
+      const spoken = this.speakingUntil > this.clock;
+      if (this.cur.cut && this.shown >= full && this.hold > 0.05) this.hush();
+      if ((!spoken && this.hold > 1.3 + full * 0.035) || (this.cur.cut && this.hold > 0.5)) this.cur = null;
     } else this.duel.talk(false);
 
     // the levers and your hand on them
     const c = ph === 'circuit' ? s.circuit : null;
     let prompt: string | null = null;
     let status: DuelHud['status'] = null;
-    if (c) {
+    if (c && !c.done) {
       this.duel.setLevers(c.levers.map((l, i) => ({ pulled: !!this.pulledShown[i], known: l.known && (!l.pulled || !!this.pulledShown[i]), live: l.live })));
       const r = rulesFor(s.floor);
       const mine = this.ready && c.turn === 'team' && !c.done;
@@ -314,13 +331,58 @@ export class DuelScene {
     return { subtitle, zap: Math.min(1, this.zapT / 1.1), status, prompt };
   }
 
+  private flipBack() {
+    this.duel.flip(false, () => {
+      this.showScreen(true);
+      this.audio.sfx('thunk');
+    });
+  }
+
+  // ---- speech: the browser's own voices, when it has them and the setting allows (DECISIONS #83)
+  /** spoken aloud (true) or murmured (false) */
+  spoken = true;
+  private speakingUntil = 0;
+  private voices: SpeechSynthesisVoice[] = [];
+
+  private pickVoice(): SpeechSynthesisVoice | null {
+    if (typeof speechSynthesis === 'undefined') return null;
+    if (!this.voices.length) this.voices = speechSynthesis.getVoices().filter((v) => v.lang.toLowerCase().startsWith('en'));
+    // a low male voice if there is one
+    return this.voices.find((v) => /david|mark|guy|male|daniel|george|ryan|james/i.test(v.name)) ?? this.voices[0] ?? null;
+  }
+
+  private speak(line: Line, s: State) {
+    if (!this.spoken || typeof speechSynthesis === 'undefined' || this.audio.muted) return;
+    const voice = this.pickVoice();
+    if (!voice) return;
+    const text = (line.cut ? line.text.slice(0, line.cut) : line.text).toLowerCase().replace(/—/g, '');
+    const u = new SpeechSynthesisUtterance(text);
+    u.voice = voice;
+    // each Collector a little different: low and slow; the pit boss plain and polite
+    u.pitch = line.who === 'pit' ? 0.9 : [0.35, 0.55, 0.2][Math.min(this.hisIdx, 2)];
+    u.rate = line.who === 'pit' ? 0.92 : 0.82;
+    u.volume = Math.min(1, this.audio.vol.master * this.audio.vol.sfx * 1.4);
+    speechSynthesis.cancel();
+    speechSynthesis.speak(u);
+    // the words type at the voice's pace; the line holds until it's said (a guess, so a voice
+    // that never reports its end can't hold the scene up)
+    this.speakingUntil = this.clock + 0.6 + text.length / (SPOKEN_CPS * 0.95);
+    u.onend = () => (this.speakingUntil = Math.min(this.speakingUntil, this.clock + 0.5));
+  }
+
+  private hush() {
+    if (typeof speechSynthesis !== 'undefined') speechSynthesis.cancel();
+    this.speakingUntil = 0;
+  }
+
   /** The challenge accepted: his word, the table turns over, the rules, the music. */
   private begin(s: State) {
     this.pulledShown = s.circuit!.levers.map(() => false);
+    this.showScreen(false);
+    this.duel.cover();
     this.ready = false;
     this.say(this.pickLine(LINES.challenge, s), 'coll', true);
     this.after(2.2, () => {
-      this.showScreen(false);
       this.audio.sfx('flip');
       this.duel.flip(true, () => {
         this.audio.sfx('thunk');
@@ -333,6 +395,11 @@ export class DuelScene {
 
   /** The current through you: the camera shakes and struggles (call after the camera is placed). */
   applyCamera(cam: PerspectiveCamera, dt: number) {
+    const f = this.duel.focus();
+    if (f) {
+      this.focusAt = this.focusAt ? this.focusAt.lerp(f, Math.min(1, dt * 2.5)) : f;
+      cam.lookAt(this.focusAt);
+    } else this.focusAt = null;
     if (this.zapT > 0) {
       const k = 0.5 + 0.5 * Math.min(1, this.zapT);
       cam.position.x += (Math.random() - 0.5) * 0.06 * k;

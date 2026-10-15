@@ -88,33 +88,38 @@ export class CollectorPanel extends Panel {
       ui.text(title, x + 74, 34, C.white, { align: 'center' });
       lines.forEach(([l, c], i) => ui.text(l, x + 6, 46 + i * 11, c));
     };
-    card(8, 'PAY', [
-      [`${money(s.quota)} LEAVES THE BANK`, C.bone],
-      [over ? `+${over} ${ICON.marker} FOR THE OVERSHOOT` : 'NO OVERSHOOT MARKERS', over ? C.marker : C.ash],
-      [last ? 'AND YOU WALK OUT ALIVE' : `NEXT QUOTA ${money(next)}`, C.dust],
-      [last ? '' : `NEXT NIGHT STARTS AT ${money(keep)}`, C.dust],
+    card(8, 'PAY HIM', [
+      [`${money(s.quota)} LEAVES YOUR BANK.`, C.bone],
+      [over ? `+${over} ${ICON.marker} FOR WHAT'S LEFT OVER.` : 'NOTHING LEFT OVER.', over ? C.marker : C.ash],
+      [last ? 'THEN YOU WALK OUT.' : `TOMORROW YOU START AT ${money(keep)}.`, C.dust],
+      [last ? '' : `TOMORROW HE WANTS ${money(next)}.`, C.dust],
     ]);
     const r = rulesFor(s.floor);
     const live = s.mods.overloads3 ? WHEEL.bigOverloads : r.live;
     const kit = me.charms.includes('insulated');
     const odds = s.mods.overloads3 ? r.odds.bane : kit ? r.odds.withKit : r.odds.win;
-    card(164, 'CHALLENGE HIM', [
-      ['NOTHING PAID YET. HIS GAME:', C.bone],
-      [`${r.levers} LEVERS, ${live} LIVE. TAKE TURNS.`, C.dust],
-      [`TWO SHOCKS EACH. YOU WIN ~${Math.round(odds * 100)}%`, C.dust],
-      [`DEAD ONE: +$${r.safeBank}, +1 MARKER`, C.gold],
-      ...(last
-        ? ([['WIN: HE DIES, KEEP THE QUOTA,', T.hi], ['A FREE PERMANENT UPGRADE', T.hi], [`LOSE: A LIFE ${ICON.heart}, PAY THE QUOTA`, C.blood]] as [string, number][])
-        : ([['WIN: HE DIES, KEEP THE QUOTA,', T.hi], ['AND SPIN THE BOON WHEEL', T.hi], [`LOSE: A LIFE ${ICON.heart}, PAY, THE BANE`, C.blood]] as [string, number][])),
+    card(164, 'PLAY HIM FOR IT', [
+      [`${r.levers} LEVERS, ${live} LIVE. TURNS.`, C.bone],
+      [`TWO SHOCKS AND IT'S OVER.`, C.dust],
+      [`YOU WIN ABOUT ${Math.round(odds * 100)}%.`, C.dust],
+      ['WIN: HE DIES. KEEP IT ALL,', T.hi],
+      [last ? 'AND A FREE UPGRADE.' : 'AND SPIN THE BOON.', T.hi],
+      [`LOSE: ${ICON.heart} -1, YOU PAY,`, C.blood],
+      [last ? 'AND THAT IS ALL.' : 'AND SPIN THE BANE.', C.blood],
     ]);
     const ghost = me.ghost;
     if (ui.button('pay', 8, 140, 148, 22, `PAY ${money(s.quota)}`, { edge: C.gold, disabled: ghost || !v.active, tip: ghost ? 'A ghost has no say.' : 'Pay and go on.' })) this.send({ t: 'pay' });
-    if (ui.button('gamble', 164, 140, 148, 22, 'CHALLENGE', { edge: T.base, disabled: ghost || !v.active, tip: ghost ? 'A ghost has no say.' : 'Play him for the quota.' })) this.send({ t: 'gamble' });
+    if (ui.button('gamble', 164, 140, 148, 22, 'CHALLENGE HIM', { edge: T.base, disabled: ghost || !v.active, tip: ghost ? 'A ghost has no say.' : 'Play his game for the quota.' })) this.send({ t: 'gamble' });
     const charms = me.charms.map((c) => CHARM_BY_ID.get(c)!.name.toUpperCase()).join(', ') || 'NONE';
     ui.text(`${ICON.heart.repeat(me.lives)}  CHARMS: ${charms}`, PANEL_W / 2, 167, C.dust, { align: 'center' });
   }
 
   private circuit(ui: UI, v: PanelView) {
+    // in the moment between "challenge" and the table turning over, the screen goes dark
+    if (!v.state.circuit!.levers.some((l) => l.pulled) && v.tick - v.state.phaseAt < 4 * TICKS_PER_S) {
+      ui.text('...', PANEL_W / 2, 80, C.collHi, { scale: 3, align: 'center' });
+      return;
+    }
     // the table has turned over: the duel is played on the levers themselves (render3d/duel.ts);
     // this screen, face down under them, keeps a plain readout and a row of buttons (the screens
     // sweep and anyone without a mouse on the levers can still play it)

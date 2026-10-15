@@ -3,7 +3,7 @@
 // lives, souls, markers, charms, marks, the seat prompt, toasts and the lesson cards. Around play:
 // the title, how to play, settings, the cage, pause and the results. It returns what was clicked;
 // the app turns that into commands or screens. It never touches the sim's state.
-import { UI, type Pointer } from '../ui/ui';
+import { UI, type Pointer, type TipLine } from '../ui/ui';
 import { C, PALETTE, TIER_ROLE } from '../data/palette';
 import { ICON, textWidth } from '../ui/font';
 import type { State } from '../sim/state';
@@ -32,6 +32,10 @@ export interface Settings {
   bloom: boolean;
   /** how hard a drink hits the screen: full, or mild for motion comfort (DESIGN.md §10) */
   drunkFx: 'full' | 'mild';
+  /** a win shows what came back (stake included), or only what it gained (DECISIONS #83) */
+  wins: 'total' | 'net';
+  /** the Collector and the pit boss speak aloud (the browser's voices) or murmur */
+  voice: 'spoken' | 'murmur';
 }
 
 export interface Meta {
@@ -83,6 +87,10 @@ export interface HudView {
   dark: number;
   /** the Collector's scene: his words, the duel's tally, the lever under your hand, the current */
   duel: DuelHud | null;
+  /** your vision going black and coming back (the drive home): 0..1, and what it says */
+  fade: { a: number; text: string } | null;
+  /** the mouse is free (not looking around): hovering a status shows what it does */
+  free: boolean;
 }
 
 export type HudAction =
@@ -239,18 +247,33 @@ export class Hud {
     const souls = s.players.filter((p) => p.ghost).length;
     ui.text(`${ICON.soul} ${souls} SOULS HELD`, rx + rw - 6, 20, souls ? C.soul : C.ash, { align: 'right' });
 
-    // under it: your charms and an Overclock window
+    // hover any of these (with the mouse free) to read what it does (DECISIONS #83)
+    const tipAt = (x: number, y: number, w: number, h: number, lines: TipLine[]) => {
+      if (v.free && ui.hover(x, y, w, h)) ui.tip(lines, 200);
+    };
+    const right = (text: string, y: number, color: number, lines: TipLine[]) => {
+      ui.text(text, HUD_W - 8, y, color, { align: 'right' });
+      const w = textWidth(text);
+      tipAt(HUD_W - 8 - w, y - 1, w, 9, lines);
+    };
+    tipAt(rx, 6, rw, 26, [{ text: 'LIVES, SOULS, MARKERS', color: C.white }, { text: 'AT 0 LIVES YOU ARE A GHOST.' }, { text: 'MARKERS BUY CHARMS AT THE COMPUTER AT HOME.', color: C.marker }]);
+    // under it: your charms, an Overclock window, a drink's edge, the buzz
     let cy = 36;
     for (const id of me.charms) {
       const c = CHARM_BY_ID.get(id)!;
-      ui.text(c.name.toUpperCase(), HUD_W - 8, cy, C.collHi, { align: 'right' });
+      right(c.name.toUpperCase(), cy, C.collHi, [{ text: c.name.toUpperCase(), color: C.collHi }, { text: c.text[0] }, { text: c.text[1] }]);
       cy += 9;
     }
     if (me.overclock > 0) {
-      ui.text(`OVERCLOCK x2  ${Math.ceil(me.overclock / TICKS_PER_S)}S`, HUD_W - 8, cy, C.gold, { align: 'right' });
+      right(`OVERCLOCK x2  ${Math.ceil(me.overclock / TICKS_PER_S)}S`, cy, C.gold, [{ text: 'OVERCLOCK', color: C.gold }, { text: 'YOUR STAKES, AND SO YOUR WINS, x2.' }, { text: "THE ODDS DON'T CHANGE." }]);
       cy += 9;
     }
-    if (me.drunk > 0) ui.text(`${me.drunk > 90 * TICKS_PER_S ? 'DRUNK' : 'BUZZED'}  ${Math.ceil(me.drunk / TICKS_PER_S)}S`, HUD_W - 8, cy, C.pinkHi, { align: 'right' });
+    for (const b of me.buffs) {
+      const d = DRINKS.find((x) => x.id === b.drink)!;
+      right(`${d.edgeText.replace(' TABLES PAY', '').replace('EVERY TABLE PAYS', 'ALL')}  ${Math.ceil(b.left / TICKS_PER_S)}S`, cy, C.pinkHi, [{ text: d.name.toUpperCase(), color: C.pinkHi }, { text: d.edgeText + '.' }, { text: 'AS LONG AS ITS BUZZ LASTS.' }]);
+      cy += 9;
+    }
+    if (me.drunk > 0) right(`${me.drunk > 90 * TICKS_PER_S ? 'DRUNK' : 'BUZZED'}  ${Math.ceil(me.drunk / TICKS_PER_S)}S`, cy, C.pinkHi, [{ text: 'THE BUZZ', color: C.pinkHi }, { text: 'THE ROOM SWIMS; YOUR WALK WANDERS.' }, { text: 'OVER 90 S OF IT, YOU ARE DRUNK.' }]);
 
     // bottom left: active marks (marks may wear the mid tier's yellow: they are its price)
     const mine = s.marks.filter((m) => m.player === v.player || m.player === -1);
@@ -260,6 +283,11 @@ export class Hud {
       const label = `${ICON.mark} ${d.name.toUpperCase()}${m.stacks > 1 ? ' x' + m.stacks : ''}  ${MARK_SHORT[m.id](m.stacks)}  ${Math.ceil(m.left / TICKS_PER_S)}S`;
       ui.panel(6, my - 2, textWidth(label) + 10, 12, 'dark', { blocking: false, edge: TIER_ROLE.mid.lo });
       ui.text(label, 11, my, C.midHi);
+      tipAt(6, my - 2, textWidth(label) + 10, 12, [
+        { text: d.name.toUpperCase(), color: C.midHi },
+        { text: d.text + '.' },
+        { text: m.player === -1 ? 'A TEAM MARK: IT HITS EVERYONE.' : 'YOURS ALONE.', color: C.dust },
+      ]);
       my += 13;
     }
 
@@ -277,6 +305,11 @@ export class Hud {
     }
     if (v.screen === 'game' && s.phase === 'floor' && v.seated && !v.atCollector && !v.cage?.open && !v.bar?.open) ui.text('E / ESC  STAND UP', HUD_W / 2, HUD_H - 12, C.ash, { align: 'center' });
     if (v.duel) this.duelLayer(ui, v.duel);
+    // your vision: black, and back
+    if (v.fade && v.fade.a > 0) {
+      ui.fill(0, 0, HUD_W, HUD_H, C.ink, Math.min(1, v.fade.a));
+      if (v.fade.text && v.fade.a > 0.25) ui.text(v.fade.text, HUD_W / 2, HUD_H / 2 - 4, C.bone, { align: 'center' });
+    }
 
     // toasts rise from just under the crosshair; seated, from under the table's screen, and not
     // while a banner holds that space (critic F10)
@@ -398,18 +431,8 @@ export class Hud {
       if (ui.button(`buy-${c.id}`, x + w - 74, ry + 3, 60, 20, locked ? 'LOCKED' : worn ? 'WORN' : home ? 'ORDER' : 'BUY', { edge: C.marker, disabled: !!why, tip: worn ? 'You wear it.' : why ? cap(why) : home ? `Costs ${c.price} markers. The post brings it to the mailbox.` : `Costs ${c.price} markers.` })) out.push({ t: 'buy', item: c.id });
       ry += 29;
     }
-    ui.text('UPGRADES: PERMANENT, FOR EVERY RUN FROM NOW ON.', x + 10, ry + 2, C.dust);
-    ry += 13;
-    for (const u of UPGRADES) {
-      const owned = s.upgrades.includes(u.id);
-      const why = cg.why.get(u.id) ?? null;
-      ui.panel(x + 8, ry, w - 16, 17, 'inset', { blocking: false });
-      ui.text(u.name.toUpperCase(), x + 14, ry + 5, owned ? C.collHi : C.white);
-      ui.text(`${u.price} ${ICON.marker}`, x + 120, ry + 5, C.marker);
-      ui.text(u.text, x + 150, ry + 5, C.bone);
-      if (ui.button(`buy-${u.id}`, x + w - 74, ry + 1, 60, 15, owned ? 'OWNED' : home ? 'ORDER' : 'BUY', { edge: C.marker, disabled: !!why, tip: owned ? 'Yours for good.' : why ? cap(why) : `Costs ${u.price} markers.` })) out.push({ t: 'buy', item: u.id });
-      ry += 19;
-    }
+    // markers buy charms only; lasting upgrades will come from a skill tree (DECISIONS #84)
+    ry += 4;
     const solo = s.players.length === 1;
     if (!home) ui.text(solo ? `${ICON.soul} SOULS: BOUGHT BACK HERE FOR 50% OF THE QUOTA (CO-OP).` : `${ICON.soul} SOUL BUYBACK: 50% OF THE QUOTA`, x + 10, ry + 4, C.soulLo);
     if (ui.button('closecage', x + w / 2 - 50, y + h - 26, 100, 20, 'CLOSE (E)', { tip: 'Back to the floor.' })) out.push({ t: 'closeCage' });
@@ -507,7 +530,7 @@ export class Hud {
 
   private settings(ui: UI, v: HudView, out: HudAction[]) {
     ui.fill(0, 0, HUD_W, HUD_H, C.ink, 0.7);
-    const { x, y } = this.card(ui, 360, 288);
+    const { x, y } = this.card(ui, 360, 336);
     ui.text('SETTINGS', HUD_W / 2, y + 8, C.collHi, { scale: 2, align: 'center' });
     const st = v.settings;
     let ry = y + 40;
@@ -531,8 +554,12 @@ export class Hud {
     stepper('scale', 'SCREEN SCALING', names[st.scaling], () => out.push({ t: 'set', settings: { scaling: modes[(mi + 2) % 3] } }), () => out.push({ t: 'set', settings: { scaling: modes[(mi + 1) % 3] } }));
     stepper('bloom', 'NEON GLOW', st.bloom ? 'ON' : 'OFF', () => out.push({ t: 'set', settings: { bloom: !st.bloom } }), () => out.push({ t: 'set', settings: { bloom: !st.bloom } }));
     stepper('drunk', 'DRUNK EFFECTS', st.drunkFx === 'full' ? 'FULL' : 'MILD', () => out.push({ t: 'set', settings: { drunkFx: st.drunkFx === 'full' ? 'mild' : 'full' } }), () => out.push({ t: 'set', settings: { drunkFx: st.drunkFx === 'full' ? 'mild' : 'full' } }));
+    const flipWins = () => out.push({ t: 'set', settings: { wins: st.wins === 'total' ? 'net' : 'total' } });
+    stepper('wins', 'A WIN SHOWS', st.wins === 'total' ? 'ALL OF IT' : 'THE GAIN', flipWins, flipWins);
+    const flipVoice = () => out.push({ t: 'set', settings: { voice: st.voice === 'murmur' ? 'spoken' : 'murmur' } });
+    stepper('voice', "THE COLLECTOR'S VOICE", st.voice === 'murmur' ? 'MURMUR' : 'SPOKEN', flipVoice, flipVoice);
     ui.text('GLOW OFF RUNS FASTER ON A WEAK MACHINE.', HUD_W / 2, ry + 4, C.ash, { align: 'center' });
-    if (ui.button('back', HUD_W / 2 - 50, y + 258, 100, 20, 'BACK')) out.push({ t: 'screen', to: v.state ? 'game' : 'title' });
+    if (ui.button('back', HUD_W / 2 - 50, y + 306, 100, 20, 'BACK')) out.push({ t: 'screen', to: v.state ? 'game' : 'title' });
   }
 
   private pause(ui: UI, v: HudView, out: HudAction[]) {

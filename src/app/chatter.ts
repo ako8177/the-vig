@@ -8,8 +8,12 @@ import type { Audio } from '../engine/audio/audio';
 import type { Floor } from '../data/floors';
 
 interface Voice {
-  /** the voice's pitch (Hz) and when its next syllable starts (audio time) */
+  /** the voice's pitch (Hz) and when its next syllable starts (audio time); the last pitch and
+   *  vowel, so the next syllable glides on from them */
   f0: number;
+  last: number;
+  f1: number;
+  f2: number;
   next: number;
   /** syllables left in this phrase */
   left: number;
@@ -52,7 +56,7 @@ export class Chatter {
         voices: Array.from({ length: voices }, () => {
           k++;
           // a mix of lower and higher voices
-          return { f0: k % 2 ? 100 + ((k * 37) % 50) : 175 + ((k * 53) % 60), next: 0, left: 0 };
+          return { f0: k % 2 ? 100 + ((k * 37) % 50) : 175 + ((k * 53) % 60), next: 0, left: 0, last: 0, f1: 0, f2: 0 };
         }),
       });
     }
@@ -62,8 +66,18 @@ export class Chatter {
     // the talk is muffled (you hear it, you can't follow it) and sits under the sound effects
     this.filter = ctx.createBiquadFilter();
     this.filter.type = 'lowpass';
-    this.filter.frequency.value = 1700;
+    this.filter.frequency.value = 1250;
     this.bus = ctx.createGain();
+    // a little room: two short echoes, so the syllables smear together as a crowd's do
+    for (const [t, k] of [[0.043, 0.3], [0.071, 0.22]] as [number, number][]) {
+      const dl = ctx.createDelay(0.2);
+      dl.delayTime.value = t;
+      const dg = ctx.createGain();
+      dg.gain.value = k;
+      this.filter.connect(dl);
+      dl.connect(dg);
+      dg.connect(this.bus);
+    }
     // measured: 3.5 puts a group you stand beside a few dB under the music (DECISIONS #78)
     this.bus.gain.value = 3.5;
     this.filter.connect(this.bus);
@@ -77,51 +91,73 @@ export class Chatter {
     }
   }
 
-  /** One syllable: a voiced buzz through two formants, a breath of consonant at its front. */
+  /**
+   * One syllable, made to blur into the next (DECISIONS #83: the first version beeped): a buzz at a
+   * gliding pitch, a soft low hum of it under two wide vowel formants that slide from the last
+   * vowel to this one, a breath through the same vowel, slow edges. The bus muffles and smears it.
+   */
   private syllable(ctx: AudioContext, out: GainNode, v: Voice, at: number, dur: number, laugh: boolean) {
-    const f0 = v.f0 * (laugh ? 1.35 : 0.9 + Math.random() * 0.25);
+    const f0 = v.f0 * (laugh ? 1.3 : 0.92 + Math.random() * 0.16);
     const o = ctx.createOscillator();
     o.type = 'sawtooth';
-    o.frequency.setValueAtTime(f0, at);
-    o.frequency.linearRampToValueAtTime(f0 * (laugh ? 0.85 : 0.92 + Math.random() * 0.16), at + dur);
+    o.frequency.setValueAtTime(v.last || f0, at);
+    o.frequency.linearRampToValueAtTime(f0, at + dur * 0.3);
+    o.frequency.linearRampToValueAtTime(f0 * (laugh ? 0.8 : 0.9 + Math.random() * 0.12), at + dur);
+    v.last = f0 * 0.97;
     const env = ctx.createGain();
-    const peak = laugh ? 0.05 : 0.035 + Math.random() * 0.02;
+    const peak = (laugh ? 0.05 : 0.03 + Math.random() * 0.015) * 1.4;
     env.gain.setValueAtTime(0.0001, at);
-    env.gain.exponentialRampToValueAtTime(peak, at + 0.025);
-    env.gain.setValueAtTime(peak, at + dur * 0.6);
-    env.gain.exponentialRampToValueAtTime(0.0001, at + dur);
-    // a vowel: F1 300-800 Hz, F2 900-2300 Hz, a new one each syllable
-    const f1 = ctx.createBiquadFilter(), f2 = ctx.createBiquadFilter();
-    f1.type = f2.type = 'bandpass';
-    f1.frequency.value = laugh ? 750 : 300 + Math.random() * 500;
-    f2.frequency.value = laugh ? 1250 : 900 + Math.random() * 1400;
-    f1.Q.value = 7;
-    f2.Q.value = 9;
-    o.connect(f1);
-    o.connect(f2);
-    f1.connect(env);
-    f2.connect(env);
+    env.gain.exponentialRampToValueAtTime(peak, at + Math.min(0.05, dur * 0.35));
+    env.gain.setValueAtTime(peak * 0.85, at + dur * 0.65);
+    env.gain.exponentialRampToValueAtTime(0.0001, at + dur + 0.07);
+    // the vowel, sliding from the last one
+    const t1 = laugh ? 750 : 320 + Math.random() * 450, t2 = laugh ? 1250 : 950 + Math.random() * 1200;
+    const mk = (from: number, to: number, q: number, gain: number) => {
+      const f = ctx.createBiquadFilter();
+      f.type = 'bandpass';
+      f.frequency.setValueAtTime(from, at);
+      f.frequency.linearRampToValueAtTime(to, at + dur * 0.6);
+      f.Q.value = q;
+      const g = ctx.createGain();
+      g.gain.value = gain;
+      o.connect(f);
+      f.connect(g);
+      g.connect(env);
+      return f;
+    };
+    mk(v.f1 || t1, t1, 3.5, 1);
+    const f2 = mk(v.f2 || t2, t2, 4.5, 0.55);
+    v.f1 = t1;
+    v.f2 = t2;
+    // the body: the same buzz, low-passed, under the vowel
+    const body = ctx.createBiquadFilter();
+    body.type = 'lowpass';
+    body.frequency.value = 700;
+    const bg = ctx.createGain();
+    bg.gain.value = 0.35;
+    o.connect(body);
+    body.connect(bg);
+    bg.connect(env);
+    // breath through the vowel
+    const len = Math.ceil(ctx.sampleRate * (dur + 0.08));
+    const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    const nb = ctx.createBiquadFilter();
+    nb.type = 'bandpass';
+    nb.frequency.value = f2.frequency.value;
+    nb.Q.value = 2;
+    const ng = ctx.createGain();
+    ng.gain.value = Math.random() < 0.35 ? 0.5 : 0.18;
+    src.connect(nb);
+    nb.connect(ng);
+    ng.connect(env);
     env.connect(out);
     o.start(at);
-    o.stop(at + dur + 0.02);
-    // a consonant's hiss or tap at the front, now and then
-    if (!laugh && Math.random() < 0.5) {
-      const len = Math.ceil(ctx.sampleRate * 0.03);
-      const buf = ctx.createBuffer(1, len, ctx.sampleRate);
-      const d = buf.getChannelData(0);
-      for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
-      const src = ctx.createBufferSource();
-      src.buffer = buf;
-      const bp = ctx.createBiquadFilter();
-      bp.type = 'bandpass';
-      bp.frequency.value = 2500 + Math.random() * 2000;
-      const g = ctx.createGain();
-      g.gain.value = 0.02;
-      src.connect(bp);
-      bp.connect(g);
-      g.connect(out);
-      src.start(at);
-    }
+    o.stop(at + dur + 0.1);
+    src.start(at);
   }
 
   /**
@@ -154,14 +190,16 @@ export class Chatter {
             // a new phrase after a pause (now and then a syllable becomes a laugh)
             v.left = 3 + Math.floor(Math.random() * 7);
             v.next += 0.35 + Math.random() * 1.4;
+            v.last = 0;
             continue;
           }
           const laugh = v.left > 2 && Math.random() < 0.04;
           const n = laugh ? 4 : 1;
           for (let i = 0; i < n; i++) {
-            const dur = laugh ? 0.11 : 0.08 + Math.random() * 0.14;
+            const dur = laugh ? 0.12 : 0.12 + Math.random() * 0.16;
             this.syllable(ctx, g.gain!, v, v.next, dur, laugh);
-            v.next += dur + (laugh ? 0.05 : 0.015 + Math.random() * 0.05);
+            // the next starts as this one fades: connected speech, not blips
+            v.next += dur - (laugh ? -0.04 : 0.02 + Math.random() * 0.03);
           }
           v.left -= n;
         }

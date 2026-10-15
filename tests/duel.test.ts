@@ -3,7 +3,7 @@
 import { describe, expect, it } from 'vitest';
 import { Game } from '../src/sim/Game';
 import { startNight } from '../src/sim/systems/economy';
-import { AFTER_CIRCUIT_S } from '../src/sim/systems/collector';
+import { AFTER_DEATH_S } from '../src/sim/systems/collector';
 import { TICKS_PER_S } from '../src/sim/state';
 import { FLOOR_1 } from '../src/data/floors';
 
@@ -20,7 +20,7 @@ function duel(seed: number) {
   return g;
 }
 const finish = (g: Game) => {
-  for (let i = 0; i < (AFTER_CIRCUIT_S + 1) * TICKS_PER_S && g.state.phase === 'circuit'; i++) g.step();
+  for (let i = 0; i < (AFTER_DEATH_S + 1) * TICKS_PER_S && g.state.phase === 'circuit'; i++) g.step();
 };
 
 describe('the lever duel', () => {

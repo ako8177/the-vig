@@ -9,6 +9,7 @@ import { defOf, stake } from './table';
 import { payoutFactor, stakeFor } from '../rules';
 import type { Card, Hand21, Outcome, PlayerState } from '../state';
 import type { Game } from '../Game';
+import { FEEL } from '../../data/feel';
 
 const def = defOf('twentyone');
 const [MIN, MAX] = def.bet as [number, number];
@@ -293,6 +294,15 @@ export const twentyone: TableModule = {
     return { rtp: exactRtp(), winP: def.winP };
   },
   lossCost: () => def.lossText,
+  /** The result waits for the cards still to come down at FEEL.deal.gap each: a whole deal (a
+   *  natural), or the last hit, the hole card and the dealer's draws (presentation pacing). */
+  holdS(o) {
+    const dealer = o.dealer21?.length ?? 2;
+    const mine = (o.hands21 ?? []).reduce((a, h) => a + h.cards.length, 0);
+    const natural = mine === 2 && dealer === 2 && o.hands21?.length === 1;
+    const cards = natural ? 4 + 1 : 1 + 1 + Math.max(0, dealer - 2);
+    return cards * FEEL.deal.gap + 0.5;
+  },
   start(g, p, cmd) {
     const t = g.state.tables.twentyone;
     if (cmd.t === 'bet') {

@@ -30,6 +30,7 @@ import type { Floor } from '../data/floors';
 import { buildDuel, type Duel } from '../render3d/duel';
 import { DuelScene, type DuelHud } from './duelscene';
 import { COLLECTORS } from '../data/collectors';
+import { WIN_DISPLAY } from '../panels/table';
 import { TablePlay } from '../render3d/tableplay';
 import { Chatter } from './chatter';
 import { Crowd } from '../render3d/npcs';
@@ -46,7 +47,7 @@ import type { Pointer } from '../ui/ui';
 const ME = 0;
 const BASE_SENS = 0.0022;
 
-const DEFAULT_SETTINGS: Settings = { sens: 1, invert: false, master: 0.8, music: 0.6, sfx: 0.8, scaling: 'auto', bloom: true, drunkFx: 'full' };
+const DEFAULT_SETTINGS: Settings = { sens: 1, invert: false, master: 0.8, music: 0.6, sfx: 0.8, scaling: 'auto', bloom: true, drunkFx: 'full', wins: 'total', voice: 'spoken' };
 const DEFAULT_META: Meta = { upgrades: [], runs: 0, wins: 0, bestNight: 0, lessons: [], unlocked: [], endings: [] };
 
 /** localStorage can be missing or throw (private windows, blocked storage): the game plays without it. */
@@ -102,6 +103,9 @@ export class App {
   duel: Duel;
   duelScene: DuelScene;
   private duelHud: DuelHud | null = null;
+  /** your vision fading out and in (dir +1 to black, -1 back), how long it holds black, its words */
+  private fade: { a: number; dir: number; hold: number; text: string } | null = null;
+  private pendingReady: Command | null = null;
   game: Game;
   readonly fp = new FirstPerson();
   readonly hud: Hud;
@@ -185,7 +189,11 @@ export class App {
     tex.generateMipmaps = false;
     tex.colorSpace = SRGBColorSpace;
     panel.ui.sfx = (id) => this.audio.sfx(id);
-    panel.sound = (id, v, p) => this.audio.sfx(id, v, p);
+    panel.sound = (id, v, p) => {
+      this.audio.sfx(id, v, p);
+      // Twenty-One's dealer deals each card the panel deals
+      if (panel.table === 'twentyone' && (id === 'card' || id === 'flip')) this.crowd.deal('twentyone');
+    };
     // a hair under 1.0 so the panel stays crisp under the bloom threshold
     mesh.material = new MeshBasicMaterial({ map: tex, color: 0xeaeaea });
     this.panels.set(panel.table, { panel, tex, mesh });
@@ -200,6 +208,8 @@ export class App {
 
   private applySettings() {
     const s = this.settings;
+    WIN_DISPLAY.total = s.wins !== 'net';
+    if (this.duelScene) this.duelScene.spoken = s.voice !== 'murmur';
     this.fp.sensitivity = BASE_SENS * s.sens;
     this.audio.applySettings({ master: s.master, music: s.music, sfx: s.sfx });
     this.view.scaling = s.scaling;
@@ -356,7 +366,7 @@ export class App {
             // a win should feel like one: the bigger it is, the more the room shows it (DECISIONS #63)
             const jackpot = net >= FEEL.jackpot || !!o.jackpot;
             const big = net >= FEEL.bigWin;
-            this.toast(`+${money(net)}`, C.gold);
+            this.toast(`+${money(WIN_DISPLAY.total ? o.ret : net)}`, C.gold);
             if (jackpot) {
               a.sfx('jackpot');
               this.hud.celebrate('jackpot', net);
@@ -713,6 +723,26 @@ export class App {
         this.view.camera.position.y += Math.sin(tt * 1.7) * 0.04 * dk * k;
       }
     }
+    // the fade: to black, the night ends at black, a beat, then you wake up at home
+    if (this.fade) {
+      const f = this.fade;
+      if (f.dir > 0) {
+        f.a = Math.min(1, f.a + dt / 1.4);
+        if (f.a >= 1 && this.pendingReady) {
+          this.send(this.pendingReady);
+          this.pendingReady = null;
+          f.dir = 0;
+          f.hold = 1.2;
+          f.text = 'YOU WAKE UP AT HOME.';
+        }
+      } else if (f.dir === 0) {
+        f.hold -= dt;
+        if (f.hold <= 0) f.dir = -1;
+      } else {
+        f.a = Math.max(0, f.a - dt / 2.2);
+        if (f.a <= 0) this.fade = null;
+      }
+    }
     // the Collector's scene: his words, the levers, the current (DECISIONS #82)
     this.duelHud = inGame ? this.duelScene.frame(dt, s, this.view.camera, { x: i.mouse.x, y: i.mouse.y, left: i.mouse.pressed[0], right: i.mouse.pressed[2] }) : null;
     if (inGame) this.duelScene.applyCamera(this.view.camera, dt);
@@ -776,7 +806,15 @@ export class App {
         ptr = uv ? { x: uv.x * PANEL_W, y: (1 - uv.y) * PANEL_H, down: i.mouse.down[0], pressed: i.mouse.pressed[0] } : null;
       }
       if (panel.update({ state: s, player: ME, active, tick: this.game.tick, rev: this.game.rev }, ptr, dt, i)) tex.needsUpdate = true;
-      for (const c of panel.out.splice(0)) this.send(c);
+      for (const c of panel.out.splice(0)) {
+        // going home: your vision goes black first, then the night ends (DECISIONS #83)
+        if (c.t === 'ready' && s.home && s.night < ECONOMY.nights.v) {
+          if (!this.pendingReady) {
+            this.pendingReady = c;
+            this.fade = { a: 0, dir: 1, hold: 0, text: '' };
+          }
+        } else this.send(c);
+      }
     }
 
     // timers: toasts, the banner, lessons
@@ -821,6 +859,8 @@ export class App {
         overlay: this.confirm ? null : overlay, confirm: this.confirm, cage: inGame && walks(s.phase) ? this.cageView() : null,
         bar: inGame && s.phase === 'floor' ? { open: this.barOpen, why: new Map(DRINKS.map((d) => [d.id, cantOrder(this.game, p, d.id)])) } : null,
         toasts: this.toasts, lesson: this.lesson, banner: this.banner, settings: this.settings, meta: this.meta, dark: this.dark, duel: this.duelHud,
+        fade: this.fade ? { a: this.fade.a, text: this.fade.text } : null,
+        free: !i.locked,
       },
       hp, dt, i,
     );

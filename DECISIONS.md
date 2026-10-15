@@ -231,3 +231,21 @@ inspirations: the ideas are taken, never their names, numbers or art).
   second: "...still breathing? Curious." and on to the punishment. Lesson cards wait while he
   talks; toasts rise from the middle so his words keep the bottom. The face-down screen keeps a
   plain button readout (the screens sweep, and anyone without the levers).
+- #83 2026-10-15: **The owner's fourth round of notes.** The Bandit's reels roll into the result
+  they show (each column's reel ends in its three results). The Wheel prints each wedge's
+  multiple. Twenty-One deals a card every 0.42 s from a shoe drawn on the felt, the dealer at the
+  table dealing each one, and the sim holds the result until the last card is down (a module may
+  now say how long its outcome is held: `holdS`). A setting shows a win as all that came back
+  (default) or only the gain. The crowd's talk is smoother, muffled babble (it beeped); the
+  Collector and the pit boss speak aloud in the browser's own voices (a setting; the murmur is
+  the fallback). The choice cards are reworded; the screen goes dark the moment you challenge
+  (it showed the old grid). His death is slower, and then **the pit boss** comes through a staff
+  door in the back room's far right corner, thanks you for playing and drags the body out; the
+  sim holds a won duel 23.5 s for it. Going home fades your vision to black and you wake up at
+  home. Hovering a mark, a charm, a drink's edge or the buzz (mouse free) says what it does. The
+  booth NPCs sit on their bench (they sat in the table); seated card players sit back from the
+  felt (their knees went through it). The beer, martini and whiskey last 60 s each (edges
+  unchanged; the $500 drink untouched).
+- #84 2026-10-15: **Markers buy charms only** (the owner): the marker upgrades leave the shop;
+  ones already owned keep working. Lasting upgrades will come from a skill tree, to be designed
+  with the owner (IDEAS.md has the charm and skill-tree proposals).

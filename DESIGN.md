@@ -285,10 +285,12 @@ cheapest bad decision in the house.
 reason to drink"): while its own buzz runs, payouts at one tier's tables are multiplied. The rule:
 **played at that tier for the whole buzz, the edge about pays the drink back**, so a drink is a
 tempo call (walk to the bar, then play the tier it favors, swimming), never free money.
-- Draft Beer $40, 25 s, **low +6%**: 10 Bandit pulls return ≈ $950; 6% ≈ **$57**.
-- Dry Martini $120, 50 s, **mid +4%**: ~16 Hi-Lo rounds return ≈ $3,840 (at 1.2), minus marks;
-  4% ≈ **$150**.
-- Double Whiskey $200, 80 s, **high +3%**: ~13 Red Line rounds return ≈ $8,100; 3% ≈ **$245**
+- **Every drink but the house special lasts a minute** (DECISIONS #83, the owner), the edges
+  unchanged, so the cheap ones now pay back more than they cost:
+- Draft Beer $40, 60 s, **low +6%**: 24 Bandit pulls return ≈ $2,280; 6% ≈ **$137**.
+- Dry Martini $120, 60 s, **mid +4%**: ~20 Hi-Lo rounds return ≈ $4,800 (at 1.2), minus marks;
+  4% ≈ **$190**.
+- Double Whiskey $200, 60 s, **high +3%**: ~10 Red Line rounds return ≈ $6,250; 3% ≈ **$190**
   (Dead Man's Hand returns more, and kills more).
 - The Collector's Own $500, 150 s, **every table +5%**: a mixed floor turns over ≈ $10,000 in
   150 s; 5% ≈ **$500**.
