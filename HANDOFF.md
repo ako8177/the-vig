@@ -4,6 +4,13 @@ Read this first, every session.
 
 ## Where things stand (2026-10-14)
 
+**Start here (end of the 2026-10-14 Blender session)**: the people (#86) and the six game tables,
+stools and pieces (#87) are Blender-built, committed, pushed and live on GitHub Pages. Nothing is
+uncommitted except `.mcp.json` (local MCP config, deliberately not in the repo). The Blender MCP
+works (Blender 5.2 LTS on port 9876; memory has the setup). Next Blender work, if the owner wants
+it: the room, the decorative tables, the slot bank, the Collector's round table (Next, item 4).
+Otherwise follow "Next" below.
+
 **Milestone 1 is done**: a playable single-player slice, three nights on floor 1 (PROGRESS.md has
 the list). It was playtested twice by the `indie-dev-critic` agent and reviewed once by the
 project's `indie-critic`; their findings are fixed except the owner's calls below. The repo moved
@@ -51,8 +58,8 @@ side, and close the Browser pane (or any tab running the game) first.
 Blender. With no player avatar yet, every person was rebuilt: the crowd, the family, the pit boss
 and the Collector, from one kit (`art/people/build_people.py` → `public/models/people.glb`; run it
 in Blender through the MCP, then `preview_people.py` to see people assembled). **Ask the owner**
-whether the people read better, and whether the rest of the Blender pass (room, tables, props:
-ROADMAP M1 step 10) comes next. Budget note: the door view is at 36k of the 40k triangles.
+whether the people read better. Budget note: each person is ~700 triangles; the door view is near
+36k of the 40k budget, so new detail must replace triangles, not add them.
 
 **2026-10-14, the tables in Blender** (DECISIONS #87): the six game tables, every stool and the
 crowd's chips, cards and dice are Blender-built (`art/tables/`, `art/props/`, on `art/blender_kit.py`;
