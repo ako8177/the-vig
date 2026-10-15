@@ -56,7 +56,7 @@ order (each to be specified in DESIGN.md before it's built):
 friend plays it over the owner's shoulder (co-op isn't in yet; this is the proxy for the
 argument). Either the model changes or the gate is marked passed here with the date.
 
-**Milestone 1: done 2026-10-12** (placeholder models; the Blender pass was deferred: DECISIONS #48; the people are Blender-built since #86).
+**Milestone 1: done 2026-10-12** (placeholder models; the Blender pass was deferred: DECISIONS #48; the people are Blender-built since #86, the six game tables, the stools and the crowd's pieces since #87).
 
 **Gate status: not yet passed.** Before the gate: the owner's open calls in DECISIONS #56-#58 and DESIGN.md §2/§7.
 

@@ -54,6 +54,12 @@ in Blender through the MCP, then `preview_people.py` to see people assembled). *
 whether the people read better, and whether the rest of the Blender pass (room, tables, props:
 ROADMAP M1 step 10) comes next. Budget note: the door view is at 36k of the 40k triangles.
 
+**2026-10-14, the tables in Blender** (DECISIONS #87): the six game tables, every stool and the
+crowd's chips, cards and dice are Blender-built (`art/tables/`, `art/props/`, on `art/blender_kit.py`;
+run a build script in Blender through the MCP, then `art/tables/preview_tables.py` to see the set
+with its neon). Neon, screens, panels and signs unchanged; the door view got cheaper (35.9k
+triangles). **Ask the owner** whether the tables read better (legs, pedestals, plinths by tier).
+
 ## Waiting on the owner (ask before touching; CLAUDE.md's "ask before" list)
 
 1. **Paying beats gambling** (DESIGN.md §7, §8 test 6): always-pay survives all three nights 38%,
@@ -79,8 +85,12 @@ ROADMAP M1 step 10) comes next. Budget note: the door view is at 36k of the 40k 
    a cushioned Dead Man's bot in §8.
 3. Milestone 2, the gate (ROADMAP): the owner plays, then a friend over the shoulder; the
    indie-critic against DESIGN.md §9. Nothing from Milestone 3 before it passes.
-4. The rest of the Blender model pass (ROADMAP M1 step 10): the people are done (#86); the room,
-   tables and props are still code geometry. The Blender MCP is connected (5.2 LTS).
+4. The rest of the Blender model pass (ROADMAP M1 step 10): the people (#86), the game tables,
+   stools and pieces (#87) are done; still code: the Collector's round table, the decorative tables
+   (roulette, card tables, poker, craps), the slot bank and carousel cabinets, and the room. The door
+   view is at ~36k of 40k triangles: the slot bank (19 cabinets) must stay near 36 triangles a body,
+   or pay for itself (the chandeliers' toruses and crystals are the next big floor-room cost). The
+   Blender MCP is connected (5.2 LTS).
 
 ## How to run
 
@@ -89,7 +99,7 @@ ROADMAP M1 step 10) comes next. Budget note: the door view is at 36k of the 40k 
 - Node 22+ installed normally, on PATH.
 - Live build: https://ako8177.github.io/the-vig/ (repo `ako8177/the-vig`). Every push to `main` runs
   the tests, builds and deploys (`.github/workflows/deploy.yml`), about a minute.
-- `npm run typecheck`, `npm test` (29 tests, ~10 s: sim, data validation, the pace tests on 200
+- `npm run typecheck`, `npm test` (43 tests, ~12 s: sim, data validation, the models against their footprints, the pace tests on 200
   seeds, the songs compile), `npm run build`.
 - With a dev server up: `npm run e2e` (smoke: a whole night into night 2), `npm run screens`
   (25 surfaces, overlap audit), `npm run shots` (door, Hi-Lo, the Collector, 0:00, lounge, back room), `npm run perf`,

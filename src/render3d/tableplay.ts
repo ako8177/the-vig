@@ -4,11 +4,12 @@
 // the bets and sweeps up; the back room's poker table antes, deals hole cards, a flop, a turn and a
 // river, shows down and pushes the pot; the craps rail's shooter throws two dice the length of the
 // table; the roulette layout fills with chips while a ball rides the wheel and drops. Cards, chips,
-// dice and the ball are four instanced draws for the whole floor; a table in a room you can't see
+// dice (Blender-built: models.ts, art/props/) and the ball are four instanced draws for the whole floor; a table in a room you can't see
 // isn't drawn. `update` reports cards and chips landing near you, for their sounds.
-import { BoxGeometry, Color, CylinderGeometry, Euler, InstancedMesh, Matrix4, MeshLambertMaterial, Quaternion, SphereGeometry, Vector3, type Scene } from 'three';
+import { Color, Euler, InstancedMesh, Matrix4, MeshLambertMaterial, Quaternion, SphereGeometry, Vector3, type Scene } from 'three';
 import type { Floor, Prop } from '../data/floors';
 import { C, hexOf } from '../data/palette';
+import { propPart } from './models';
 
 type V3 = [number, number, number];
 
@@ -50,7 +51,7 @@ interface Game {
   ballAt?: number;
 }
 
-/** one chip's thickness (m): drawn a little fat, so a stack reads at 640x360 */
+/** one chip's thickness (m): drawn a little fat, so a stack reads at 640x360 (art/props/build_props.py) */
 const CHIP_H = 0.016;
 const CHIP_COLS = [C.pink, C.teal, C.gold, C.marker, C.white, C.blood];
 const rnd = (seed: number) => {
@@ -103,10 +104,11 @@ export class TablePlay {
       if (prop.kind === 'roulette') g.wheel = [prop.x + w / 2 - 0.55, 1.07, prop.z];
       this.games.push(g);
     }
-    const lam = () => new MeshLambertMaterial({ color: 0xffffff });
-    this.cards = new InstancedMesh(new BoxGeometry(0.07, 0.004, 0.1), lam(), 160);
-    this.chips = new InstancedMesh(new CylinderGeometry(0.04, 0.04, CHIP_H, 8), lam(), 240);
-    this.dice = new InstancedMesh(new BoxGeometry(0.045, 0.045, 0.045), lam(), 8);
+    // each piece one tint (the instance color) times its vertex mask: a chip's edge spots, a die's pips
+    const lam = () => new MeshLambertMaterial({ color: 0xffffff, vertexColors: true, flatShading: true });
+    this.cards = new InstancedMesh(propPart('card').clone(), lam(), 160);
+    this.chips = new InstancedMesh(propPart('chip').clone(), lam(), 240);
+    this.dice = new InstancedMesh(propPart('die').clone(), lam(), 8);
     this.ball = new InstancedMesh(new SphereGeometry(0.018, 6, 4), new MeshLambertMaterial({ color: hexOf(C.white) }), 4);
     for (const m of [this.cards, this.chips, this.dice, this.ball]) {
       m.frustumCulled = false;

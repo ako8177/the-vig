@@ -275,3 +275,29 @@ inspirations: the ideas are taken, never their names, numbers or art).
   draw calls 71 -> 69, triangles 20.6k -> 36.2k (budget 40k), fps within the machine's noise
   (HEAD 9-11, new 9-18 under SwiftShader). About 700 triangles a person: anything added to a person
   later has to come out of the head or hair first. Not derivative: plain low-poly people.
+
+- #87 2026-10-14: **The game tables and the pieces are Blender-built** (ROADMAP M1 step 10, continuing
+  #86). `art/tables/build_tables.py` builds each of the six game tables round its own footprint
+  (floors.ts) and exports `public/models/tables.glb`: one object per material (`<table>_<material>`:
+  wood, felt, brass, brassLo, woodLo, ink, night) that `room.ts` gives the room's own material, so
+  they merge into draws the room already makes (no new draw calls; wood and felt carry UVs in meters
+  at the room's densities). The tiers show in the furniture too: the floor's Twenty-One on legs, the
+  lounge's tables on pedestals with rounded corners, the back room's on heavy plinths with a brass
+  kick; each carries its game's thing in a back corner clear of the screen (a shoe, a dice cup, a
+  token stack, a deck, a dice tray). The Bandit's cabinet has cheeks, a bezel and an arch topper; its
+  painted face and chasing bulbs stay code like the bank's. **Kept exactly**: every neon rim, screen,
+  frame, post and sign. One stool model (seat and post, 40 triangles; the cylinders were 64) seats
+  every table, slot and the bar. `art/props/build_props.py` exports `props.glb`: a chip (8 sides,
+  edge spots, no bottom: 22 triangles, was 32), a card with clipped corners (12) and a die with pips
+  (54, eight at most on the floor), one tint times a vertex mask, instanced as before.
+  `art/blender_kit.py` is the shared builder (faces wound by an outward hint, no normal recalc; UVs
+  projected in meters); `tests/models.test.ts` checks each table against its footprint (±5 cm), its
+  height and ≤ 1.5k triangles with its stool (they are 116-292), and the pieces' budgets. The
+  Collector's round table, the decorative tables, the slot bank and the room stay code for now.
+  A/B against HEAD (each view, same session, interleaved): draw calls unchanged everywhere; triangles
+  door 36.4k -> 35.9k, floor 34.7k -> 34.3k, lounge 19.4k -> 19.6k, back room 19.9k -> 19.8k; seated
+  at the Bandit 36.7k -> 36.3k, Twenty-One 34.4k -> 34.2k, Hi-Lo 8.9k -> 9.3k, Wheel 16.6k -> 16.9k,
+  Red Line 19.1k -> 19.0k, Dead Man's 10.8k -> 10.9k (the floor's views get cheaper, as #86's budget
+  note asked; the lounge pays a few hundred for its pedestals). `npm run perf` interleaved five times:
+  HEAD 16.6/15.1/8.2/8.3/8.6 fps, new 15.4/8.2/9.2/8.3/9.5: the machine's swing, not the models. Not
+  derivative: plain casino furniture.

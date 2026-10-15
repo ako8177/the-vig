@@ -5,7 +5,8 @@
 // tables, a craps rail, booths, a piano, chandeliers, bare bulbs, velvet ropes, plants.
 // Rules (THREEJS-NOTES 6, 7, 9, 11): Lambert + pixel textures, ≤ 8 point lights, emissive neon on
 // the GLOW layer, every interactive table signed in its tier's color; static meshes merged per
-// material; things that move are kept apart and turned by `update`.
+// material; things that move are kept apart and turned by `update`. The six game tables and every
+// stool are Blender-built (models.ts, art/tables/); their neon, screens and signs are drawn here.
 import {
   BoxGeometry, BufferGeometry, CanvasTexture, Color, CylinderGeometry, DoubleSide, Group, HemisphereLight, InstancedMesh, Material, Matrix4,
   Mesh, MeshBasicMaterial, MeshLambertMaterial, NearestFilter, Object3D, type Side, PlaneGeometry, PointLight, Scene, SphereGeometry, SRGBColorSpace,
@@ -17,6 +18,7 @@ import { C, PALETTE, TIER_ROLE, hexOf, type Tier } from '../data/palette';
 import type { Textures, TextureName } from './textures';
 import { GLOW } from './view';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { stoolPart, tableParts, type TableMat } from './models';
 
 /** Neon is a tier's base color pushed until its brightest channel is exactly 1 (DECISIONS #16). */
 const NEON = 4;
@@ -119,6 +121,23 @@ export function buildRoom(scene: Scene, floor: Floor, tx: Textures): Room {
   };
   /** things that move: updated each frame, never merged */
   const moving: { mesh: Object3D; spin: number }[] = [];
+  /** the room's own material for each material a Blender-built table part names (models.ts) */
+  const tableMat = (m: TableMat): Material => ({
+    wood: lambert('wood'), felt: lambert('felt'), brass: flat(C.brass), brassLo: flat(C.brassLo),
+    woodLo: flat(C.woodLo), ink: flat(C.ink), night: flat(C.night),
+  })[m];
+  /** A stool (the Blender seat and post): its seat's top at `top`, `r` across, into `into` (the room). */
+  const stool = (x: number, z: number, top: number, r: number, seat: Material, into: Group = group) => {
+    const s = new Mesh(keep(stoolPart('seat').clone()), seat);
+    s.position.set(x, top, z);
+    s.scale.set(r / 0.22, 1, r / 0.22);
+    s.name = 'stool';
+    const p = new Mesh(keep(stoolPart('post').clone()), flat(C.brass));
+    p.position.set(x, 0, z);
+    p.scale.y = top - 0.06;
+    p.name = 'stoolpost';
+    into.add(s, p);
+  };
 
   // ---------------------------------------------------------------- rooms: floors, ceilings, walls
   const TEX_H: Record<RoomDef['wallTex'], number> = { wall_floor: 5, wall: 4, wall_back: 4 };
@@ -318,8 +337,7 @@ export function buildRoom(scene: Scene, floor: Floor, tx: Textures): Room {
     }
     add(new BoxGeometry(w, 0.32, d * 0.7), flat(C.ink), x, 2.1, z - d * 0.1, 'topper');
     for (let k = 0; k < 5; k++) add(new BoxGeometry(0.12, 0.12, 0.02), chase[(k + Math.round(x * 3)) % chase.length], x - w / 2 + 0.2 + k * ((w - 0.4) / 4), 2.1, z + d * 0.25 + 0.01, 'bulb');
-    add(new CylinderGeometry(0.22, 0.22, 0.06, 10), flat(C.pink), x, 0.66, z + d / 2 + 0.75, 'stool');
-    add(new CylinderGeometry(0.04, 0.04, 0.6, 6), flat(C.brass), x, 0.3, z + d / 2 + 0.75, 'stoolpost');
+    stool(x, z + d / 2 + 0.75, 0.69, 0.22, flat(C.pink));
   }
 
   /** A decorative cabinet inside a turned group (the carousel), facing the group's +Z. */
@@ -334,8 +352,7 @@ export function buildRoom(scene: Scene, floor: Floor, tx: Textures): Room {
     part(new PlaneGeometry(w - 0.1, 0.85), lambert('slot_face'), 0, 0.5, d / 2 + 0.005);
     part(new PlaneGeometry(w - 0.2, 0.55), slotScreen, 0, 1.3, d / 2 + 0.006);
     for (let k = 0; k < 4; k++) part(new BoxGeometry(0.1, 0.1, 0.02), chase[k % chase.length], -w / 2 + 0.2 + k * ((w - 0.4) / 3), 2.0, d / 2 - 0.05);
-    part(new CylinderGeometry(0.2, 0.2, 0.06, 10), flat(C.pink), 0, 0.66, d / 2 + 0.75);
-    part(new CylinderGeometry(0.035, 0.035, 0.6, 6), flat(C.brass), 0, 0.3, d / 2 + 0.75);
+    stool(0, d / 2 + 0.75, 0.69, 0.2, flat(C.pink), g);
   }
   // the progressive jackpot's ticker: gold numbers on black, counting up all night
   const jackCanvas = document.createElement('canvas');
@@ -357,19 +374,20 @@ export function buildRoom(scene: Scene, floor: Floor, tx: Textures): Room {
   function buildTable(pl: Placement) {
     const def = TABLE_BY_ID.get(pl.table)!;
     const nm = neonMat(def.tier);
+    // the table itself, built in Blender round this footprint (art/tables/build_tables.py)
+    for (const { mat, geo } of tableParts(pl.table)) add(geo.clone(), tableMat(mat), pl.x, 0, pl.z, `${pl.table}-${mat}`);
     if (pl.table === 'bandit') {
-      slotCabinet(pl.x, pl.z, pl.w, pl.d, false);
+      // the cabinet's painted face and its topper's chasing bulbs, as on every slot
+      add(new PlaneGeometry(pl.w - 0.1, 0.85), lambert('slot_face'), pl.x, 0.5, pl.z + pl.d / 2 + 0.005, 'slotface');
+      for (let k = 0; k < 5; k++) add(new BoxGeometry(0.12, 0.12, 0.02), chase[(k + Math.round(pl.x * 3)) % chase.length], pl.x - pl.w / 2 + 0.2 + k * ((pl.w - 0.4) / 4), 2.1, pl.z + pl.d * 0.25 + 0.01, 'bulb');
+      stool(pl.x, pl.z + pl.d / 2 + 0.75, 0.69, 0.22, flat(C.pink));
       // its tier's neon on the crown and kick, well clear of its screen (DECISIONS #25, #45)
       add(new BoxGeometry(pl.w + 0.04, 0.04, 0.04), nm, pl.x, 1.92, pl.z + pl.d / 2, 'neon');
       add(new BoxGeometry(pl.w + 0.04, 0.04, 0.04), nm, pl.x, 0.1, pl.z + pl.d / 2, 'neon');
     } else {
-      add(new BoxGeometry(pl.w, pl.h - 0.06, pl.d), lambert('wood'), pl.x, (pl.h - 0.06) / 2, pl.z, pl.table);
-      add(uvRepeat(new BoxGeometry(pl.w - 0.14, 0.06, pl.d - 0.14), (pl.w - 0.14) * 2, (pl.d - 0.14) * 2), lambert('felt'), pl.x, pl.h - 0.03, pl.z, 'felt');
-      add(new BoxGeometry(pl.w + 0.06, 0.06, 0.08), flat(C.brassLo), pl.x, pl.h - 0.01, pl.z + pl.d / 2, 'rail');
       // the neon rim: front and back edges in the tier color
       for (const dz of [pl.d / 2 + 0.05, -pl.d / 2]) add(new BoxGeometry(pl.w, 0.035, 0.035), nm, pl.x, pl.h - 0.04, pl.z + dz, 'neon');
-      add(new CylinderGeometry(0.22, 0.22, 0.06, 10), flat(C.brass), pl.stand.x, 0.62, pl.stand.z - 0.25, 'stool');
-      add(new CylinderGeometry(0.04, 0.04, 0.6, 6), flat(C.brass), pl.stand.x, 0.3, pl.stand.z - 0.25, 'stoolpost');
+      stool(pl.stand.x, pl.stand.z - 0.25, 0.65, 0.22, flat(C.brass));
     }
     if (pl.screen) {
       const s = pl.screen;
@@ -529,8 +547,7 @@ export function buildRoom(scene: Scene, floor: Floor, tx: Textures): Room {
         add(new SphereGeometry(0.3, 6, 4), flat(C.baize), p.x + 0.12, 1.3, p.z - 0.05, 'leaves');
         break;
       case 'stool':
-        add(new CylinderGeometry(0.2, 0.2, 0.06, 10), flat(C.pink), p.x, 0.72, p.z, 'stool');
-        add(new CylinderGeometry(0.035, 0.035, 0.7, 6), flat(C.brass), p.x, 0.35, p.z, 'stoolpost');
+        stool(p.x, p.z, 0.75, 0.2, flat(C.pink));
         break;
     }
   }

@@ -2,6 +2,20 @@
 
 What is built. Newest first.
 
+## 2026-10-14 — The game tables and the pieces, built in Blender
+
+The six game tables, every stool on the floor and the crowd's chips, cards and dice are rebuilt by
+script in Blender (DECISIONS #87): Twenty-One on four tapered legs with brass shoes, a shoe and a
+discard holder; Hi-Lo and the Wheel on lounge pedestals with rounded corners (a turned-down dice
+cup; a spindle and a token stack); Red Line and Dead Man's Hand on heavy plinths over a brass kick
+(a deck; a raised dice tray); the Bandit a cabinet with proud cheeks, a brass bezel round its screen
+and a lit arch topper. Chips have edge spots, cards clipped corners, dice pips. The neon, screens,
+panels and signs are unchanged. `art/tables/build_tables.py` → `public/models/tables.glb`,
+`art/props/build_props.py` → `public/models/props.glb`, both on `art/blender_kit.py`. Checks:
+typecheck, 43 tests (new: `tests/models.test.ts`), screens sweep 0 issues, `npm run shots` and
+close-ups of every table (HEAD vs new), the seated views and the pieces on the felt, all looked at;
+A/B in DECISIONS #87. PixelLab spend: 0.
+
 ## 2026-10-14 — The people, built in Blender
 
 Every person in the game is rebuilt from a Blender-made kit (DECISIONS #86): the crowd of 52 and
@@ -237,6 +251,6 @@ TanoPal 48; mid recast yellow so all four tiers read apart (DECISIONS #21, #29).
 | Milestone | Status |
 |---|---|
 | M0 — Foundation and the room | done 2026-10-12 |
-| M1 — The slice (single player, floor 1, three nights) | done 2026-10-12 (Blender models: the people done 2026-10-14; room and tables still placeholder) |
+| M1 — The slice (single player, floor 1, three nights) | done 2026-10-12 (Blender models: the people, the game tables, stools and pieces done 2026-10-14; the room, the decorative tables and the slot bank still placeholder) |
 | M2 — The gate | not started |
 | M3 — Co-op | waiting for the gate |

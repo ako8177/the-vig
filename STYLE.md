@@ -99,7 +99,10 @@ the signs. Each must not read as a letter or digit at 7 px (the first mark and m
 - **Models: by script through the Blender MCP**, `art/<family>/build_<asset>.py` → `.glb`; families:
   room, tables, props, avatar, the Collector; `art/people/` is the people's kit (the crowd, the
   pit boss and the Collector: parts modelled at their joints, one tint times a vertex mask,
-  flat-shaded; DECISIONS #86). Low-poly, rigid parts, no skeleton. Budgets: ≤ 1.5k
+  flat-shaded; DECISIONS #86); `art/tables/` is the six game tables (one part per room material
+  round each footprint, so they merge into the room's own draws; their neon, screens and signs stay
+  in code) and the stools, `art/props/` the crowd's chips, cards and dice (one tint times a mask,
+  instanced); both build on `art/blender_kit.py` (DECISIONS #87). Low-poly, rigid parts, no skeleton. Budgets: ≤ 1.5k
   triangles a table, ≤ 40k on screen, ≤ 80 draw calls (static meshes are merged per material; share
   materials), 15 MB total.
 - **PixelLab** only when the owner asks; any spend goes in PROGRESS.md.

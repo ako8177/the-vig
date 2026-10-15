@@ -51,7 +51,9 @@ and read `node_modules/three/src` and threejs.org/docs for that version rather t
     nothing hand-edited. Families: room (floor, walls, pillars, bar, cage), tables (six + the
     Collector's), props (chips, cards, dice as instanced meshes), avatar (mask, hands), the
     Collector (a seated figure: coat, hands, mask; rigid parts, no skeleton). Budgets: ≤ 1.5k
-    triangles per table, ≤ 40k on screen, ≤ 80 draw calls, 15 MB total.
+    triangles per table, ≤ 40k on screen, ≤ 80 draw calls, 15 MB total. Done: the people (#86),
+    the six game tables, the stools and the crowd's pieces (#87); `tests/models.test.ts` checks each
+    table's model against its footprint and budget.
 12. **Dispose** on floor change and on run end.
 13. **Perf**: 60 fps on the owner's PC; ≥ 15 fps in headless SwiftShader.
 

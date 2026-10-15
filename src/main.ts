@@ -3,7 +3,7 @@ import { Game } from './sim/Game';
 import { FLOOR_1 } from './data/floors';
 import { loadModels } from './render3d/models';
 
-// the Blender-built people come in before anything builds a room (src/render3d/models.ts)
+// the Blender-built models (people, tables, pieces) come in before anything builds a room (src/render3d/models.ts)
 await loadModels();
 
 const app = new App(document.getElementById('game') as HTMLCanvasElement, document.getElementById('hud') as HTMLCanvasElement);
