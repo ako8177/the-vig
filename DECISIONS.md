@@ -258,3 +258,20 @@ inspirations: the ideas are taken, never their names, numbers or art).
   (mid rotation 54% vs 66%; with Red Line 54% vs 69%): a bigger bet is a bigger swing, not a free
   win. The two-system rule for charms is dropped (CLAUDE.md, the data test). A run starts with 6
   markers (a charm or two, or saved). GAMES.md lists every game for planning charms and skills.
+
+- #86 2026-10-14: **The people are Blender-built** (the owner: "redo all the player models using
+  blender"; the Blender MCP is connected now, so #48's deferral ends for people). Nobody has a player
+  avatar yet (co-op is M3; the slice draws no hands), so "player models" is read as everyone who
+  plays or works the floor: the crowd and the family (`npcs.ts`), the pit boss and the Collector
+  (`duel.ts`). `art/people/build_people.py` builds one kit of rigid parts in Blender, each modelled at
+  its joint in three.js's frame, and exports `public/models/people.glb` (28 parts, ~150 KB);
+  `preview_people.py` stands a few people up in Blender to judge them. Variety comes from the kit: a
+  suit coat or a dress (with or without a skirt), a shirt and tie, a bow tie (staff) or a neckline,
+  four hairstyles or a fedora. Each part is one tint (the person's colors, as before) times a vertex
+  mask (eyes, mouth, tie, cuffs), flat-shaded so the facets catch the lamps. The crowd is one
+  `BatchedMesh` (still one draw a pass; people out of sight are hidden per instance instead of
+  re-packed); the Collector and the pit boss are meshes on their old pivots, so every animation is
+  unchanged. `main.ts` loads the .glb before the app starts. Cost, A/B against HEAD from the door:
+  draw calls 71 -> 69, triangles 20.6k -> 36.2k (budget 40k), fps within the machine's noise
+  (HEAD 9-11, new 9-18 under SwiftShader). About 700 triangles a person: anything added to a person
+  later has to come out of the head or hair first. Not derivative: plain low-poly people.

@@ -47,6 +47,13 @@ feels right. **Perf watch**: `npm run perf` reads ~10 fps on this PC today for b
 the one before (19-20 on #68's day), so the machine's speed moves a lot; compare A/B runs side by
 side, and close the Browser pane (or any tab running the game) first.
 
+**2026-10-14, the people in Blender** (DECISIONS #86): the owner asked to redo the player models in
+Blender. With no player avatar yet, every person was rebuilt: the crowd, the family, the pit boss
+and the Collector, from one kit (`art/people/build_people.py` → `public/models/people.glb`; run it
+in Blender through the MCP, then `preview_people.py` to see people assembled). **Ask the owner**
+whether the people read better, and whether the rest of the Blender pass (room, tables, props:
+ROADMAP M1 step 10) comes next. Budget note: the door view is at 36k of the 40k triangles.
+
 ## Waiting on the owner (ask before touching; CLAUDE.md's "ask before" list)
 
 1. **Paying beats gambling** (DESIGN.md §7, §8 test 6): always-pay survives all three nights 38%,
@@ -72,7 +79,8 @@ side, and close the Browser pane (or any tab running the game) first.
    a cushioned Dead Man's bot in §8.
 3. Milestone 2, the gate (ROADMAP): the owner plays, then a friend over the shoulder; the
    indie-critic against DESIGN.md §9. Nothing from Milestone 3 before it passes.
-4. The Blender model pass (ROADMAP M1 step 10) when a Blender MCP is available.
+4. The rest of the Blender model pass (ROADMAP M1 step 10): the people are done (#86); the room,
+   tables and props are still code geometry. The Blender MCP is connected (5.2 LTS).
 
 ## How to run
 

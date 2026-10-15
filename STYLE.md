@@ -97,7 +97,9 @@ the signs. Each must not read as a letter or digit at 7 px (the first mark and m
   `src/ui/font.ts` and sign data from `src/data/tables.ts`. The skill's loop is mandatory: build,
   render, **look**, critique against its checklist, fix; two passes at least. Never hand-edit a PNG.
 - **Models: by script through the Blender MCP**, `art/<family>/build_<asset>.py` → `.glb`; families:
-  room, tables, props, avatar, the Collector. Low-poly, rigid parts, no skeleton. Budgets: ≤ 1.5k
+  room, tables, props, avatar, the Collector; `art/people/` is the people's kit (the crowd, the
+  pit boss and the Collector: parts modelled at their joints, one tint times a vertex mask,
+  flat-shaded; DECISIONS #86). Low-poly, rigid parts, no skeleton. Budgets: ≤ 1.5k
   triangles a table, ≤ 40k on screen, ≤ 80 draw calls (static meshes are merged per material; share
   materials), 15 MB total.
 - **PixelLab** only when the owner asks; any spend goes in PROGRESS.md.

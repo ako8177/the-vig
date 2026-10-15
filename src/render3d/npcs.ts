@@ -1,22 +1,32 @@
 // The crowd (DECISIONS #66): presentation only, never in the sim. Each person is a little jointed
-// figure of boxes (hips, torso, a head with eyes and hair, upper arms, forearms and hands, thighs,
-// shins and shoes; a chair for a card player), everyone in one instanced draw, posed by what they're
+// figure of Blender-built parts (art/people/build_people.py: hips or a skirt, a coat or a dress, a
+// shirt front, a head, a hairstyle or a hat, upper arms, forearms and hands, thighs, shins and shoes;
+// a chair for a card player), everyone in one batched draw (DECISIONS #86), posed by what they're
 // doing: pulling a slot's handle, pushing chips, dealing, polishing glasses behind the bar, lifting
 // a drink, smoking, playing piano, pacing the floor. The railbirds by each table turn to watch when
 // you sit down there, and cheer your wins (a big one brings the room in) and groan at your losses.
-import { BoxGeometry, Color, InstancedMesh, Matrix4, MeshBasicMaterial, MeshLambertMaterial, Quaternion, Euler, Vector3, type Scene } from 'three';
+import { BatchedMesh, BoxGeometry, Color, InstancedMesh, Matrix4, MeshBasicMaterial, MeshLambertMaterial, Quaternion, Euler, Vector3, type Scene } from 'three';
 import type { Floor, NpcSpot } from '../data/floors';
 import { C, hexOf } from '../data/palette';
 import { GLOW } from './view';
+import { part, partMaterial, type PartName } from './models';
 
-/** the parts, in instance order within a person */
+/** the parts, in instance order within a person (the chair's two last) */
 const PARTS = [
-  'pelvis', 'torso', 'head', 'hairTop', 'hairBack', 'eyeL', 'eyeR',
+  'pelvis', 'torso', 'shirt', 'head', 'hair',
   'uArmL', 'uArmR', 'fArmL', 'fArmR', 'handL', 'handR',
   'thighL', 'thighR', 'shinL', 'shinR', 'shoeL', 'shoeR', 'seat', 'post',
 ] as const;
 type Part = (typeof PARTS)[number];
 const NP = PARTS.length;
+/** every kit part the crowd can wear */
+const KIT: PartName[] = [
+  'pelvis', 'skirt', 'torso_coat', 'torso_dress', 'shirt_tie', 'shirt_bow', 'neckline', 'head',
+  'hair_short', 'hair_long', 'hair_bun', 'hair_quiff', 'hat', 'arm_upper', 'arm_fore', 'hand', 'thigh', 'shin', 'shoe', 'seat', 'post',
+];
+const HAIR_COAT: PartName[] = ['hair_short', 'hair_short', 'hair_quiff', 'hat', 'hair_long'];
+const HAIR_DRESS: PartName[] = ['hair_long', 'hair_long', 'hair_bun', 'hair_short'];
+const HATS = [C.ink, C.night, C.woodLo, C.smoke, C.indigo];
 
 const SKIN = [C.cream, C.woodHi, C.wood, C.woodLo, C.brass];
 const HAIR = [C.ink, C.woodLo, C.ink, C.brassLo, C.bone, C.night];
@@ -58,7 +68,7 @@ const rand = (i: number, k: number) => {
 
 export class Crowd {
   readonly people: Person[];
-  private body: InstancedMesh;
+  private body: BatchedMesh;
   private glass: InstancedMesh;
   private ember: InstancedMesh;
   private smoke: InstancedMesh;
@@ -75,41 +85,73 @@ export class Crowd {
     root: new Matrix4(), torso: new Matrix4(), head: new Matrix4(), shL: new Matrix4(), shR: new Matrix4(),
     elL: new Matrix4(), elR: new Matrix4(), hipL: new Matrix4(), hipR: new Matrix4(), knL: new Matrix4(), knR: new Matrix4(),
   };
-  private base = 0;
-  /** each person's part colors, and who is drawn in each slot of the instance list */
-  private colors: Color[][] = [];
-  private owner: number[] = [];
+  private cur: number[] = [];
+  /** each person's instances in the batch (by part), and whether they're drawn now */
+  private ids: number[][] = [];
+  private shown: boolean[] = [];
+  /** whether a person brings a chair (the seat and post are drawn only for them) */
+  private chair: boolean[] = [];
 
   constructor(private scene: Scene, floor: Floor) {
     this.people = floor.npcs.map((spot, i) => ({
       spot, x: spot.x, z: spot.z, yaw: spot.yaw, phase: rand(i, 1) * 10, speed: 0.9 + rand(i, 2) * 0.5,
       leg: 1, dir: 1, cheer: 0, big: false, groan: 0, coat: i,
     }));
-    const unit = new BoxGeometry(1, 1, 1);
-    this.body = new InstancedMesh(unit, new MeshLambertMaterial({ color: 0xffffff }), this.people.length * NP);
+    let verts = 0, index = 0;
+    for (const name of KIT) {
+      verts += part(name).getAttribute('position').count;
+      index += part(name).index!.count;
+    }
+    this.body = new BatchedMesh(Math.max(1, this.people.length * NP), verts, index, partMaterial());
+    const geo = new Map(KIT.map((name) => [name, this.body.addGeometry(part(name))]));
     this.body.name = 'crowd';
     this.body.frustumCulled = false;
+    // everyone seen is posed every pose anyway: culling and sorting ~1,000 parts would cost more
+    this.body.perObjectFrustumCulled = false;
+    this.body.sortObjects = false;
     // people stand in front of neon: the glow pass draws them black (view.ts)
     this.body.userData.occluder = true;
-    // each part's color is the person's: skin, hair, coat, trousers, shoes; dealers and bartenders
-    // in a dark vest over white shirtsleeves, so the staff read as staff from across the room
+    // each part's color is the person's: skin, hair (or a hat), coat or dress, shirt, trousers,
+    // shoes; dealers and bartenders in a dark vest and bow tie over white shirtsleeves, so the staff
+    // read as staff from across the room. A dress shows skin at the neckline and may come with a skirt
+    const c = new Color();
     this.people.forEach((p, i) => {
       const staff = p.spot.role === 'dealer' || p.spot.role === 'bartender';
+      const dress = !staff && rand(i, 9) < 0.42;
       const skin = SKIN[Math.floor(rand(i, 3) * SKIN.length)];
-      const hair = HAIR[Math.floor(rand(i, 4) * HAIR.length)];
+      const hairs = dress ? HAIR_DRESS : staff ? HAIR_COAT.slice(0, 3) : HAIR_COAT;
+      const hairPart = hairs[Math.floor(rand(i, 10) * hairs.length)];
+      const hair = hairPart === 'hat' ? HATS[Math.floor(rand(i, 4) * HATS.length)] : HAIR[Math.floor(rand(i, 4) * HAIR.length)];
       const coat = staff ? C.ink : COAT[Math.floor(rand(i, 5) * COAT.length)];
       const sleeve = staff ? C.bone : coat;
       const pants = staff ? C.ink : PANTS[Math.floor(rand(i, 6) * PANTS.length)];
       const shoe = SHOES[Math.floor(rand(i, 7) * SHOES.length)];
-      const col: Record<Part, number> = {
-        pelvis: pants, torso: coat, head: skin, hairTop: hair, hairBack: hair, eyeL: C.ink, eyeR: C.ink,
-        uArmL: sleeve, uArmR: sleeve, fArmL: sleeve, fArmR: sleeve, handL: skin, handR: skin,
-        thighL: pants, thighR: pants, shinL: pants, shinR: pants, shoeL: shoe, shoeR: shoe, seat: C.woodLo, post: C.brassLo,
+      const skirt = dress && rand(i, 11) < 0.6;
+      const shirt = dress ? skin : rand(i, 12) < 0.7 ? C.bone : C.cream;
+      const look: Record<Part, [PartName, number]> = {
+        pelvis: [skirt ? 'skirt' : 'pelvis', skirt ? coat : pants],
+        torso: [dress ? 'torso_dress' : 'torso_coat', coat],
+        shirt: [dress ? 'neckline' : staff ? 'shirt_bow' : 'shirt_tie', shirt],
+        head: ['head', skin],
+        hair: [hairPart, hair],
+        uArmL: ['arm_upper', sleeve], uArmR: ['arm_upper', sleeve],
+        fArmL: ['arm_fore', sleeve], fArmR: ['arm_fore', sleeve],
+        handL: ['hand', skin], handR: ['hand', skin],
+        thighL: ['thigh', pants], thighR: ['thigh', pants],
+        shinL: ['shin', pants], shinR: ['shin', pants],
+        shoeL: ['shoe', shoe], shoeR: ['shoe', shoe],
+        seat: ['seat', C.woodLo], post: ['post', C.brassLo],
       };
-      this.colors.push(PARTS.map((part) => new Color(hexOf(col[part]))));
+      this.ids.push(PARTS.map((k) => {
+        const id = this.body.addInstance(geo.get(look[k][0])!);
+        this.body.setColorAt(id, c.set(hexOf(look[k][1])));
+        this.body.setVisibleAt(id, false);
+        return id;
+      }));
+      this.shown.push(false);
+      // a seated card player brings a chair (room.ts's card tables have none); craps is played standing
+      this.chair.push(p.spot.role === 'table' && p.spot.seated);
     });
-    this.colors.forEach((cs, i) => cs.forEach((c, k) => this.body.setColorAt(i * NP + k, c)));
-    this.owner = this.people.map((_, i) => i);
     scene.add(this.body);
     const drinkers = this.people.length;
     this.glass = new InstancedMesh(new BoxGeometry(0.07, 0.12, 0.07), new MeshLambertMaterial({ color: hexOf(C.cream) }), drinkers);
@@ -162,8 +204,7 @@ export class Crowd {
     dt = this.acc;
     this.acc = 0;
     const glassM = this.glass, emberM = this.ember;
-    let g = 0, em = 0, slot = 0;
-    let recolor = false;
+    let g = 0, em = 0;
     const smokeAt: { x: number; y: number; z: number }[] = [];
     this.people.forEach((p, i) => {
       const role = p.spot.role;
@@ -214,12 +255,11 @@ export class Crowd {
       p.groan = Math.max(0, p.groan - dt);
       // out of sight: they keep walking and cheering, but cost nothing to draw
       const seen = rooms.has(p.spot.room) && (x - you.x) * you.fx + (z - you.z) * you.fz > -1.2;
-      if (!seen) return;
-      if (this.owner[slot] !== i) {
-        this.owner[slot] = i;
-        this.colors[i].forEach((c, k) => this.body.setColorAt(slot * NP + k, c));
-        recolor = true;
+      if (seen !== this.shown[i]) {
+        this.shown[i] = seen;
+        this.ids[i].forEach((id, k) => this.body.setVisibleAt(id, seen && (k < NP - 2 || this.chair[i])));
       }
+      if (!seen) return;
 
       // ---- the pose: joint angles for this role and moment, in radians. A positive shoulder or hip
       // swings the limb forward, a positive elbow bends the forearm forward, a positive knee folds the
@@ -348,48 +388,47 @@ export class Crowd {
         lean = 0.25;
       }
 
-      // ---- the boxes, hung off the joints
-      const J = this.J, joint = this.joint, box = this.box;
-      this.base = slot++ * NP;
+      // ---- the parts, hung off the joints (each modelled with its origin at its joint)
+      const J = this.J, joint = this.joint, put = this.put;
+      this.cur = this.ids[i];
       joint(J.root, null, x, hop, z, 0, yaw, 0);
       // a slot player's spot is at the machine; the stool is a hand's width behind it. A seated card
       // player's spot is the table's edge: the chair goes back so the knees clear it
       if (role === 'slots') J.root.multiply(this.m4.makeTranslation(0, 0, 0.12));
       if (role === 'table' && seated) J.root.multiply(this.m4.makeTranslation(0, 0, 0.42));
       joint(J.torso, J.root, 0, hip, 0, -lean, 0, 0);
-      box(0, J.torso, 0, 0.05, 0, 0.34, 0.17, 0.21);
-      box(1, J.torso, 0, 0.35, 0, 0.38, 0.44, 0.22);
+      put(0, J.torso);
+      put(1, J.torso);
+      put(2, J.torso);
       // the head stays upright as the body leans, and turns toward you when you're close
       joint(J.head, J.torso, 0, SHOULDER.y + 0.05, 0, lean * 0.7, headYaw, 0);
-      box(2, J.head, 0, 0.13, 0, 0.22, 0.24, 0.22);
-      box(3, J.head, 0, 0.265, 0.01, 0.24, 0.06, 0.245);
-      box(4, J.head, 0, 0.16, 0.1, 0.24, 0.2, 0.05);
-      box(5, J.head, -0.055, 0.15, -0.112, 0.045, 0.03, 0.012);
-      box(6, J.head, 0.055, 0.15, -0.112, 0.045, 0.03, 0.012);
+      put(3, J.head);
+      put(4, J.head);
       joint(J.shL, J.torso, -SHOULDER.x, SHOULDER.y, 0, shL, 0, -abL);
       joint(J.shR, J.torso, SHOULDER.x, SHOULDER.y, 0, shR, 0, abR);
-      box(7, J.shL, 0, -ARM.upper / 2, 0, 0.1, ARM.upper, 0.11);
-      box(8, J.shR, 0, -ARM.upper / 2, 0, 0.1, ARM.upper, 0.11);
+      put(5, J.shL);
+      put(6, J.shR);
       joint(J.elL, J.shL, 0, -ARM.upper, 0, elL, 0, 0);
       joint(J.elR, J.shR, 0, -ARM.upper, 0, elR, 0, 0);
-      box(9, J.elL, 0, -ARM.fore / 2 + 0.01, 0, 0.09, ARM.fore, 0.1);
-      box(10, J.elR, 0, -ARM.fore / 2 + 0.01, 0, 0.09, ARM.fore, 0.1);
-      box(11, J.elL, 0, -ARM.fore - 0.03, 0, 0.08, 0.08, 0.08);
-      box(12, J.elR, 0, -ARM.fore - 0.03, 0, 0.08, 0.08, 0.08);
+      put(7, J.elL);
+      put(8, J.elR);
+      put(9, J.elL, -ARM.fore);
+      put(10, J.elR, -ARM.fore);
       joint(J.hipL, J.root, -0.09, hip, 0, thL, 0, 0);
       joint(J.hipR, J.root, 0.09, hip, 0, thR, 0, 0);
-      box(13, J.hipL, 0, -LEG.thigh / 2, 0, 0.14, LEG.thigh, 0.16);
-      box(14, J.hipR, 0, -LEG.thigh / 2, 0, 0.14, LEG.thigh, 0.16);
+      put(11, J.hipL);
+      put(12, J.hipR);
       joint(J.knL, J.hipL, 0, -LEG.thigh, 0, -knL, 0, 0);
       joint(J.knR, J.hipR, 0, -LEG.thigh, 0, -knR, 0, 0);
-      box(15, J.knL, 0, -LEG.shin / 2, 0, 0.12, LEG.shin, 0.13);
-      box(16, J.knR, 0, -LEG.shin / 2, 0, 0.12, LEG.shin, 0.13);
-      box(17, J.knL, 0, -LEG.shin - LEG.foot / 2, -0.045, 0.12, LEG.foot, 0.23);
-      box(18, J.knR, 0, -LEG.shin - LEG.foot / 2, -0.045, 0.12, LEG.foot, 0.23);
-      // a seated card player brings a chair (room.ts's card tables have none); craps is played standing
-      const chair = role === 'table' && seated ? 1 : 0;
-      box(19, J.root, 0, seatTop - 0.03, -0.08, 0.44 * chair, 0.06 * chair, 0.42 * chair);
-      box(20, J.root, 0, (seatTop - 0.06) / 2, -0.08, 0.06 * chair, (seatTop - 0.06) * chair, 0.06 * chair);
+      put(13, J.knL);
+      put(14, J.knR);
+      put(15, J.knL, -LEG.shin);
+      put(16, J.knR, -LEG.shin);
+      if (this.chair[i]) {
+        // the kit's chair has its seat top at 0.55 m
+        put(17, J.root, seatTop - 0.55, -0.08);
+        put(18, J.root, 0, -0.08);
+      }
 
       // what's in the right hand: a glass upright, a cigarette's ember
       if (holding) {
@@ -401,9 +440,6 @@ export class Crowd {
     });
     glassM.count = g;
     emberM.count = em;
-    this.body.count = slot * NP;
-    this.body.instanceMatrix.needsUpdate = true;
-    if (recolor && this.body.instanceColor) this.body.instanceColor.needsUpdate = true;
     glassM.instanceMatrix.needsUpdate = true;
     emberM.instanceMatrix.needsUpdate = true;
 
@@ -444,10 +480,10 @@ export class Crowd {
     if (parent) out.premultiply(parent);
   };
 
-  /** Part `k` of the person being posed: a box (sx, sy, sz) centered at (x, y, z) in a joint's frame. */
-  private box = (k: number, parent: Matrix4, x: number, y: number, z: number, sx: number, sy: number, sz: number) => {
-    this.m4.makeScale(sx, sy, sz).setPosition(x, y, z).premultiply(parent);
-    this.body.setMatrixAt(this.base + k, this.m4);
+  /** Part `k` of the person being posed, its origin at (0, y, z) in a joint's frame. */
+  private put = (k: number, parent: Matrix4, y = 0, z = 0) => {
+    this.m4.makeTranslation(0, y, z).premultiply(parent);
+    this.body.setMatrixAt(this.cur[k], this.m4);
   };
 
   dispose() {

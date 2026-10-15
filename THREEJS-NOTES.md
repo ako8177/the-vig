@@ -80,5 +80,6 @@ camera, voice chat, a server, in-app purchases of any kind, hiding odds for "mys
   pass), plus the crowd and turning things by a black material swap (`userData.occluder`).
   Blocking with the shells alone let every sign shine through the table panels.
 - No canvas re-upload every frame: a panel or screen that only shows a clock redraws once a second.
-- The crowd (`src/render3d/npcs.ts`) is one instanced draw posed at 30 Hz, a jointed figure of 21
-  boxes each, and only the people in a drawn room and not behind you are written into it (#71).
+- The crowd (`src/render3d/npcs.ts`) is one batched draw (a `BatchedMesh` of the Blender kit's parts,
+  DECISIONS #86; it was one instanced draw of boxes) posed at 30 Hz, a jointed figure of 19 parts
+  each (was 21 boxes), and only the people in a drawn room and not behind you are drawn (#71).

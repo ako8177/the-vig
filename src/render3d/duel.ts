@@ -17,6 +17,7 @@ import {
 import type { Floor } from '../data/floors';
 import { C, PALETTE, hexOf } from '../data/palette';
 import { GLOW } from './view';
+import { part, partMaterial, type PartName } from './models';
 
 const LEVERS = 10;
 /** the levers' row across the board, toward him (board space: after the flip, world offsets from the table's center) */
@@ -87,23 +88,35 @@ export function buildDuel(scene: Scene, floor: Floor): Duel {
   const him = new Group();
   him.position.set(co.x, 0, chairFront + 0.13);
   root.add(him);
-  const coat = flat(C.night), shade = flat(C.ink), pale = flat(C.dust);
+  // his parts are Blender-built (art/people/build_people.py, coll_*), each with its origin at its
+  // joint; the materials are flat-shaded and take the parts' masks (his eye sockets)
+  const kit = new Map<number, MeshLambertMaterial>();
+  const tint = (role: number) => {
+    let m = kit.get(role);
+    if (!m) kit.set(role, (m = keep(partMaterial(hexOf(role)))));
+    return m;
+  };
+  const put = (name: PartName, mat: Material, parent: Object3D, x = 0, y = 0, z = 0) => {
+    const m = new Mesh(part(name), mat);
+    m.position.set(x, y, z);
+    parent.add(m);
+    return m;
+  };
+  const coat = tint(C.night), shade = tint(C.ink), pale = tint(C.dust);
   const hips = new Group();
   hips.position.y = 0.82;
   him.add(hips);
-  const torso = box(0.62, 0.72, 0.24, coat, hips, 0, 0.36, 0);
-  box(0.16, 0.5, 0.02, flat(C.collLo), hips, 0, 0.42, 0.125); // a waistcoat's stripe
+  const torso = put('coll_torso', coat, hips);
+  put('coll_vest', tint(C.collLo), hips); // a waistcoat's stripe
   const neck = new Group();
   neck.position.y = 0.74;
   hips.add(neck);
-  box(0.12, 0.1, 0.12, shade, neck, 0, 0.05, 0);
   const head = new Group();
   head.position.y = 0.1;
   neck.add(head);
-  box(0.3, 0.34, 0.28, shade, head, 0, 0.17, 0);
-  box(0.52, 0.03, 0.5, shade, head, 0, 0.36, 0);
-  box(0.3, 0.26, 0.3, shade, head, 0, 0.5, 0);
-  const band = box(0.31, 0.05, 0.31, flat(C.collLo), head, 0, 0.4, 0);
+  put('coll_head', shade, head);
+  put('coll_hat', shade, head);
+  const band = put('coll_band', tint(C.collLo), head);
   const eyeMat = keep(new MeshBasicMaterial({ color: new Color(hexOf(C.coll)).multiplyScalar(1.6) }));
   const eyes = [-0.07, 0.07].map((x) => box(0.07, 0.035, 0.02, eyeMat, head, x, 0.2, 0.145));
   for (const e of eyes) glow(e);
@@ -112,8 +125,8 @@ export function buildDuel(scene: Scene, floor: Floor): Duel {
     const sh = new Group();
     sh.position.set(side * 0.36, 0.64, 0);
     hips.add(sh);
-    box(0.12, 0.12, 0.98, coat, sh, 0, 0, 0.49);
-    box(0.1, 0.05, 0.16, pale, sh, 0, 0, 1.02);
+    put('coll_arm', coat, sh);
+    put('coll_hand', pale, sh);
     return sh;
   };
   const shL = arm(-1), shR = arm(1);
@@ -276,33 +289,37 @@ export function buildDuel(scene: Scene, floor: Floor): Duel {
   const boss = new Group();
   boss.visible = false;
   root.add(boss);
+  // the pit boss is the crowd's kit (a suit, a gold tie, slicked hair) a size up: he fills the door
+  boss.scale.setScalar(1.08);
   const bHips = new Group();
-  bHips.position.y = 0.95;
+  bHips.position.y = 0.9;
   boss.add(bHips);
-  const suit = flat(C.ink);
-  box(0.5, 0.66, 0.26, suit, bHips, 0, 0.33, 0);
-  box(0.14, 0.5, 0.02, flat(C.bone), bHips, 0, 0.38, -0.135);
-  box(0.05, 0.3, 0.025, flat(C.gold), bHips, 0, 0.4, -0.14);
+  const suit = tint(C.ink), skin = tint(C.cream);
+  put('pelvis', suit, bHips);
+  put('torso_coat', suit, bHips);
+  put('shirt_tie', tint(C.gold), bHips);
   const bHead = new Group();
-  bHead.position.y = 0.72;
+  bHead.position.y = 0.58;
   bHips.add(bHead);
-  box(0.24, 0.27, 0.24, flat(C.cream), bHead, 0, 0.13, 0);
-  box(0.26, 0.08, 0.26, flat(C.ink), bHead, 0, 0.29, 0.01);
+  put('head', skin, bHead);
+  put('hair_quiff', tint(C.ink), bHead);
   const bLeg = (side: number) => {
     const hp = new Group();
-    hp.position.set(side * 0.12, 0.95, 0);
+    hp.position.set(side * 0.09, 0.9, 0);
     boss.add(hp);
-    box(0.16, 0.93, 0.18, suit, hp, 0, -0.47, 0);
-    box(0.16, 0.06, 0.26, flat(C.ink), hp, 0, -0.93, -0.04);
+    put('thigh', suit, hp);
+    put('shin', suit, hp, 0, -0.44);
+    put('shoe', tint(C.ink), hp, 0, -0.84);
     return hp;
   };
   const legs = [bLeg(-1), bLeg(1)];
   const bArm = (side: number) => {
     const sh = new Group();
-    sh.position.set(side * 0.31, 0.62, 0);
+    sh.position.set(side * 0.24, 0.53, 0);
     bHips.add(sh);
-    box(0.12, 0.66, 0.13, suit, sh, 0, -0.33, 0);
-    box(0.1, 0.1, 0.1, flat(C.cream), sh, 0, -0.7, 0);
+    put('arm_upper', suit, sh);
+    put('arm_fore', suit, sh, 0, -0.3);
+    put('hand', skin, sh, 0, -0.57);
     return sh;
   };
   const bArms = [bArm(-1), bArm(1)];
@@ -466,7 +483,7 @@ export function buildDuel(scene: Scene, floor: Floor): Duel {
       doorPivot.rotation.y = 0;
       eyeColor = color;
       eyeMat.color.copy(new Color(hexOf(color)).multiplyScalar(1.6));
-      band.material = flat(color === C.coll ? C.collLo : color);
+      band.material = tint(color === C.coll ? C.collLo : color);
       for (const e of eyes) e.visible = true;
     },
     update(dt, time) {

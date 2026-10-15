@@ -2,6 +2,16 @@
 
 What is built. Newest first.
 
+## 2026-10-14 — The people, built in Blender
+
+Every person in the game is rebuilt from a Blender-made kit (DECISIONS #86): the crowd of 52 and
+the family at home (coats, dresses, skirts, shirts and ties, bow-tied staff, four hairstyles and
+fedoras, faces with eyes, brows, a nose, ears and a mouth), the pit boss, and the Collector (a
+standing collar, a top hat with his band, long arms and long fingers). `art/people/build_people.py`
+→ `public/models/people.glb`; the crowd draws as one batch. Checks: typecheck, 35 tests, screens
+sweep 0 issues, `npm run shots` (door, lounge, back room, floor, Collector) and close-ups at the
+booths, the card tables and the staff door, all looked at; A/B perf in DECISIONS #86. PixelLab spend: 0.
+
 ## 2026-10-15 — Pick your bet; markers to start; GAMES.md
 
 You choose your stake at every table within its floor-1 limits (a picker on each screen; deeper
@@ -227,6 +237,6 @@ TanoPal 48; mid recast yellow so all four tiers read apart (DECISIONS #21, #29).
 | Milestone | Status |
 |---|---|
 | M0 — Foundation and the room | done 2026-10-12 |
-| M1 — The slice (single player, floor 1, three nights) | done 2026-10-12 (Blender models deferred) |
+| M1 — The slice (single player, floor 1, three nights) | done 2026-10-12 (Blender models: the people done 2026-10-14; room and tables still placeholder) |
 | M2 — The gate | not started |
 | M3 — Co-op | waiting for the gate |
