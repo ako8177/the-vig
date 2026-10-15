@@ -105,7 +105,7 @@ export class Bot {
 
   canBet(table: string) {
     const d = TABLE_BY_ID.get(table)!;
-    return this.g.state.bank >= (typeof d.bet === 'number' ? d.bet : 200);
+    return this.g.state.bank >= (d.id === 'twentyone' ? this.bet21 : d.bet.std);
   }
   hiloStacks() {
     return this.g.state.marks.find((m) => m.id === 'hilo' && m.player === this.id)?.stacks ?? 0;

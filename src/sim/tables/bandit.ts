@@ -7,7 +7,7 @@
 // GRID is data so a later floor's machine can be bigger.
 import type { TableModule } from './table';
 import { stakeFor } from '../rules';
-import { defOf, stake } from './table';
+import { betOf, defOf, stake } from './table';
 import { payoutFactor } from '../rules';
 
 /** Symbols. */
@@ -102,7 +102,9 @@ export const bandit: TableModule = {
   lossCost: () => def.lossText,
   start(g, p, cmd) {
     if (cmd.t !== 'spin') return 'pull the lever';
-    const bet = stakeFor(p, def.bet as number);
+    const base = betOf(g, def, 'amount' in cmd ? cmd.amount : undefined);
+    if (typeof base === 'string') return base;
+    const bet = stakeFor(p, base);
     const why = stake(g, bet);
     if (why) return why;
     const grid = Array.from({ length: CELLS }, () => STRIP[g.rng.int(0, STRIP.length - 1)]);

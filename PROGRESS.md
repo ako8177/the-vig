@@ -2,6 +2,13 @@
 
 What is built. Newest first.
 
+## 2026-10-15 — Pick your bet; markers to start; GAMES.md
+
+You choose your stake at every table within its floor-1 limits (a picker on each screen; deeper
+floors scale them); a run starts with 6 markers; charms may touch one system (DECISIONS #85).
+GAMES.md describes every game, the duel, the bar, the house and skill-point options. Checks:
+typecheck, 35 tests (a stake-limits test), screens sweep 0 issues.
+
 ## 2026-10-15 — Rolling reels, a dealt shoe, the pit boss, the wake-up
 
 The owner's fourth notes (DECISIONS #83, #84): reels that land on what they show; the Wheel's

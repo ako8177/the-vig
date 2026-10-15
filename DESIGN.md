@@ -63,6 +63,12 @@ Rates assume one player at the table continuously.
 likely outcomes from the seeded RNG, so its RTP is exact by enumeration (the data test checks
 it), and a 100k-round seeded run must land within 4 standard errors of it.
 
+**Stakes (DECISIONS #85).** You pick your bet: floor 1's limits are Bandit $50–250, Twenty-One
+$50–400, Hi-Lo $100–500, Wheel $100–600, Red Line $250–1,250, Dead Man's $500–2,500, each in its
+own steps; the table's standard stake (the "Bet" column above) is what the pace bots play. RTP
+doesn't depend on the stake; variance does: bots betting the maximum make night 1 less often
+(54% vs 66% for the mid rotation). A deeper floor scales every limit.
+
 **The mechanics** (one honest random draw each; the odds printed are the odds):
 - **The Bandit** (DECISIONS #75, the owner's 3×3): nine cells, each an independent stop of a
   10-stop strip (one 7, two ★, three BAR, four blanks). Every pattern that hits pays, summed. On
@@ -159,7 +165,7 @@ So the shopping beat moves from the middle of a night to between nights: markers
 The cage keeps soul buybacks. The pace bots play nights back to back without the house (it costs
 no clock time, so the night arithmetic is unchanged); a sim test plays the house flow.
 
-**Markers** come from: a Red Line win (+1), a Dead Man's Hand win (+2), each safe circuit you
+A run starts with **6 markers** (DECISIONS #85). **Markers** come from: a Red Line win (+1), a Dead Man's Hand win (+2), each safe circuit you
 activate (+1), each $500 over quota (+1). Markers are the team's, like the bank. Slice charms
 (each player has **3 charm slots**; a charm is bought once and worn by the buyer):
 

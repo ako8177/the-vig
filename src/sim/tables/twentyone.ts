@@ -5,14 +5,13 @@
 // printed return is basic strategy's, by dynamic programming over an endless shoe (DESIGN.md §3);
 // 100k hands from the real shoe land on it (tests/data.test.ts).
 import type { TableModule } from './table';
-import { defOf, stake } from './table';
+import { betOf, defOf, stake } from './table';
 import { payoutFactor, stakeFor } from '../rules';
 import type { Card, Hand21, Outcome, PlayerState } from '../state';
 import type { Game } from '../Game';
 import { FEEL } from '../../data/feel';
 
 const def = defOf('twentyone');
-const [MIN, MAX] = def.bet as [number, number];
 
 /** Six decks; a fresh shuffle when fewer than a quarter remain at the start of a hand. */
 export const DECKS = 6;
@@ -307,8 +306,8 @@ export const twentyone: TableModule = {
     const t = g.state.tables.twentyone;
     if (cmd.t === 'bet') {
       if (t.hand && t.hand.stage === 'play') return 'finish the hand';
-      const base = Math.round(cmd.amount / 100) * 100;
-      if (base < MIN || base > MAX) return `bet $${MIN}-$${MAX}`;
+      const base = betOf(g, def, cmd.amount);
+      if (typeof base === 'string') return base;
       const amount = stakeFor(p, base);
       const why = stake(g, amount);
       if (why) return why;

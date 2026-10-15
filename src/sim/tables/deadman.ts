@@ -3,7 +3,7 @@
 // A win: +2 markers (4 with Marker Magnet). DESIGN.md §3, §5.
 import type { TableModule } from './table';
 import { stakeFor } from '../rules';
-import { defOf, stake } from './table';
+import { betOf, defOf, stake } from './table';
 import { addMarkers, loseLife, payoutFactor } from '../rules';
 import { ECONOMY } from '../../data/economy';
 
@@ -24,7 +24,9 @@ export const deadman: TableModule = {
   lossCost: () => def.lossText,
   start(g, p, cmd) {
     if (cmd.t !== 'spin') return 'roll the dice';
-    const bet = stakeFor(p, def.bet as number);
+    const base = betOf(g, def, 'amount' in cmd ? cmd.amount : undefined);
+    if (typeof base === 'string') return base;
+    const bet = stakeFor(p, base);
     const why = stake(g, bet);
     if (why) return why;
     const dice = [g.rng.int(1, 6), g.rng.int(1, 6)];

@@ -54,8 +54,8 @@ describe('data validation', () => {
     expect(Math.min(...by('high'))).toBeGreaterThan(Math.max(...by('mid')));
   });
 
-  it('every charm touches at least two systems (pillar 3)', () => {
-    for (const c of CHARMS) expect(new Set(c.systems).size, c.id).toBeGreaterThanOrEqual(2);
+  it('every charm says which systems it touches (one is enough: DECISIONS #85)', () => {
+    for (const c of CHARMS) expect(new Set(c.systems).size, c.id).toBeGreaterThanOrEqual(1);
   });
 
   it('100k seeded rounds land within 4 standard errors of each RTP', () => {

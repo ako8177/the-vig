@@ -17,7 +17,6 @@ import { hiloMarkSOf, streakLimitOf, streakRisk } from './view';
 import type { Card, Outcome } from '../sim/state';
 import { HILO_MARK } from '../data/marks';
 import { ECONOMY } from '../data/economy';
-import { minBet } from '../data/tables';
 import { TICKS_PER_S } from '../sim/state';
 
 /** A salt for a round's animation, so no two throws look the same (from the round count). */
@@ -135,7 +134,8 @@ export class BanditPanel extends TablePanel {
 
   protected drawControls(ui: UI, v: PanelView) {
     const bet = this.stake(v);
-    if (this.betButton(ui, v, 'pull', 110, 100, `PULL  ${money(bet)}`, bet)) this.send({ t: 'spin', table: 'bandit' });
+    this.drawBetPicker(ui, v);
+    if (this.betButton(ui, v, 'pull', 110, 100, `PULL  ${money(bet)}`, bet)) this.send({ t: 'spin', table: 'bandit', amount: this.base(v) });
   }
 }
 
@@ -309,10 +309,9 @@ export class TwentyOnePanel extends TablePanel {
       if (ui.button('split', 240, CTRL_Y, 68, 20, 'SPLIT', { edge: tier.base, disabled: off || !can.split || short, tip: can.split ? `Stake ${money(cost)} more: two hands, one card each.` : 'Only a pair, once.' })) call('split');
       return;
     }
-    [100, 200, 300].forEach((amount, i) => {
-      const stake = this.stake(v, amount);
-      if (this.betButton(ui, v, `bet${amount}`, 46 + i * 80, 68, `BET ${money(stake)}`, stake)) this.send({ t: 'bet', table: 'twentyone', amount });
-    });
+    this.drawBetPicker(ui, v);
+    const stake = this.stake(v);
+    if (this.betButton(ui, v, 'deal', 110, 110, `DEAL  ${money(stake)}`, stake)) this.send({ t: 'bet', table: 'twentyone', amount: this.base(v) });
   }
 }
 
@@ -344,7 +343,7 @@ export class HiLoPanel extends TablePanel {
     ui.text(`${hiloMarkSOf(s)} S EACH`, 12, PLAY_Y + 25, C.dust);
     ui.text(`AT ${losesAt} IT LOSES`, 12, PLAY_Y + 35, n >= losesAt ? C.midHi : C.ash);
     if (st) ui.text(`CLEARS IN ${Math.ceil(st.left / TICKS_PER_S)} S`, 12, PLAY_Y + 45, C.ash);
-    const bet = minBet(this.def);
+    const bet = this.base(v);
     const me = s.players[v.player];
     const f = 1 - HILO_MARK.perStack * n;
     const pay = Math.round(bet * this.def.pays! * f * (s.marks.some((m) => m.id === 'colddeck') ? 0.9 : 1) * (me.overclock > 0 ? 2 : 1));
@@ -357,8 +356,9 @@ export class HiLoPanel extends TablePanel {
 
   protected drawControls(ui: UI, v: PanelView) {
     const bet = this.stake(v);
-    if (this.betButton(ui, v, 'call-lo', 60, 96, 'CALL LO  1-3', bet)) this.send({ t: 'call', table: 'hilo', call: 'lo' });
-    if (this.betButton(ui, v, 'call-hi', 164, 96, 'CALL HI  4-6', bet)) this.send({ t: 'call', table: 'hilo', call: 'hi' });
+    this.drawBetPicker(ui, v);
+    if (this.betButton(ui, v, 'call-lo', 104, 98, 'CALL LO  1-3', bet)) this.send({ t: 'call', table: 'hilo', call: 'lo', amount: this.base(v) });
+    if (this.betButton(ui, v, 'call-hi', 208, 98, 'CALL HI  4-6', bet)) this.send({ t: 'call', table: 'hilo', call: 'hi', amount: this.base(v) });
   }
 }
 
@@ -422,7 +422,7 @@ export class WheelPanel extends TablePanel {
       ui.text(`TEAM MARK, ${Math.ceil(bo / TICKS_PER_S)} S LEFT`, 12, 50, C.dust);
       return;
     }
-    const bet = minBet(d);
+    const bet = this.base(v);
     ui.text(`${TIER_NAME[d.tier]}  WIN ${Math.round(d.winP * 100)}%`, 12, 29, C.white);
     ui.text(`PAYS ${d.paysText}`, 12, 39, C.white);
     ui.text(`LOSE: ${lossTextOf(d, v.state).replace('THE BET', money(bet))}`, 12, 50, tier.hi);
@@ -523,7 +523,8 @@ export class WheelPanel extends TablePanel {
 
   protected drawControls(ui: UI, v: PanelView) {
     const bet = this.stake(v);
-    if (this.betButton(ui, v, 'spin', 12, 150, `SPIN THE WHEEL  ${money(bet)}`, bet)) this.send({ t: 'spin', table: 'wheel' });
+    this.drawBetPicker(ui, v);
+    if (this.betButton(ui, v, 'spin', 98, 68, `SPIN ${money(bet)}`, bet)) this.send({ t: 'spin', table: 'wheel', amount: this.base(v) });
   }
 }
 
@@ -590,7 +591,7 @@ export class RedLinePanel extends TablePanel {
     if (streak === limit - 1) ui.text('NEXT LOSS: A LIFE', 12, PLAY_Y + 38, C.blood);
     else ui.text(`${limit} IN A ROW: A LIFE`, 12, PLAY_Y + 38, C.ash);
     ui.text(`6 ROUNDS: ${Math.round(streakRisk(limit, 6) * 100)}% A LIFE`, 12, PLAY_Y + 48, C.highHi);
-    const bet = minBet(this.def);
+    const bet = this.base(v);
     if (!this.dark(v)) {
       ui.text('A WIN PAYS', PANEL_W - 12, PLAY_Y + 4, C.dust, { align: 'right' });
       ui.text(money(Math.round(bet * this.def.pays! * (me.overclock > 0 ? 2 : 1) * (v.state.marks.some((m) => m.id === 'colddeck') ? 0.9 : 1))), PANEL_W - 12, PLAY_Y + 14, C.gold, { align: 'right', scale: 2 });
@@ -602,8 +603,9 @@ export class RedLinePanel extends TablePanel {
 
   protected drawControls(ui: UI, v: PanelView) {
     const bet = this.stake(v);
-    if (this.betButton(ui, v, 'red', 60, 96, 'CALL RED', bet)) this.send({ t: 'call', table: 'redline', call: 'red' });
-    if (this.betButton(ui, v, 'black', 164, 96, 'CALL BLACK', bet)) this.send({ t: 'call', table: 'redline', call: 'black' });
+    this.drawBetPicker(ui, v);
+    if (this.betButton(ui, v, 'red', 104, 98, 'CALL RED', bet)) this.send({ t: 'call', table: 'redline', call: 'red', amount: this.base(v) });
+    if (this.betButton(ui, v, 'black', 208, 98, 'CALL BLACK', bet)) this.send({ t: 'call', table: 'redline', call: 'black', amount: this.base(v) });
   }
 }
 
@@ -643,7 +645,7 @@ export class DeadManPanel extends TablePanel {
     ui.text(`${ICON.skull} 1-1: A LIFE`, 12, PLAY_Y + 38, C.highHi);
     ui.text('1 IN 36 (2.8%)', 12, PLAY_Y + 48, C.highHi);
     const me = v.state.players[v.player];
-    const bet = minBet(this.def);
+    const bet = this.base(v);
     if (!this.dark(v)) {
       ui.text('A WIN PAYS', PANEL_W - 12, PLAY_Y + 4, C.dust, { align: 'right' });
       ui.text(money(Math.round(bet * this.def.pays! * (me.overclock > 0 ? 2 : 1) * (v.state.marks.some((m) => m.id === 'colddeck') ? 0.9 : 1))), PANEL_W - 12, PLAY_Y + 14, C.gold, { align: 'right', scale: 2 });
@@ -655,6 +657,7 @@ export class DeadManPanel extends TablePanel {
 
   protected drawControls(ui: UI, v: PanelView) {
     const bet = this.stake(v);
-    if (this.betButton(ui, v, 'roll', 100, 120, `ROLL  ${money(bet)}`, bet)) this.send({ t: 'spin', table: 'deadman' });
+    this.drawBetPicker(ui, v);
+    if (this.betButton(ui, v, 'roll', 110, 120, `ROLL  ${money(bet)}`, bet)) this.send({ t: 'spin', table: 'deadman', amount: this.base(v) });
   }
 }

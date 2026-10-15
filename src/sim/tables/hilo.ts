@@ -2,7 +2,7 @@
 // (-5% on your mid payouts a stack). DESIGN.md §3.
 import type { TableModule } from './table';
 import { stakeFor } from '../rules';
-import { defOf, stake } from './table';
+import { betOf, defOf, stake } from './table';
 import { addMark, payoutFactor } from '../rules';
 
 const def = defOf('hilo');
@@ -19,7 +19,9 @@ export const hilo: TableModule = {
   lossCost: () => def.lossText,
   start(g, p, cmd) {
     if (cmd.t !== 'call' || (cmd.call !== 'hi' && cmd.call !== 'lo')) return 'call hi or lo';
-    const bet = stakeFor(p, def.bet as number);
+    const base = betOf(g, def, 'amount' in cmd ? cmd.amount : undefined);
+    if (typeof base === 'string') return base;
+    const bet = stakeFor(p, base);
     const why = stake(g, bet);
     if (why) return why;
     const die = g.rng.int(1, 6);

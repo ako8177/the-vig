@@ -5,7 +5,7 @@
 import { Panel, PANEL_W, PANEL_H, type PanelView } from './panel';
 import type { UI } from '../ui/ui';
 import { C, TIER_NAME, TIER_ROLE } from '../data/palette';
-import { TABLE_BY_ID, minBet, type TableDef } from '../data/tables';
+import { TABLE_BY_ID, limitsOf, type TableDef } from '../data/tables';
 import { ICON, textWidth } from '../ui/font';
 import { FEEL } from '../data/feel';
 import { drawSparkles } from './fx';
@@ -110,12 +110,12 @@ export abstract class TablePanel extends Panel {
       ui.text(`${ICON.mark} BLACKOUT: THE ODDS ARE HIDDEN`, PANEL_W / 2, 36, C.midHi, { align: 'center' });
       ui.text(`A TEAM MARK. ${Math.ceil(bo / TICKS_PER_S)} S LEFT. THE TABLE STILL PLAYS.`, PANEL_W / 2, 50, C.dust, { align: 'center' });
     } else {
-      const bet = minBet(d);
+      const bet = this.base(v);
       const win = `WIN ${Math.round(d.winP * 100)}%`;
       const pays = d.pays !== null ? `PAYS ${d.paysText} (${money(bet * d.pays)} ON ${money(bet)})` : `PAYS ${d.paysText}`;
       ui.text(win, 12, 29, C.white);
       ui.text(pays, 70, 29, C.white);
-      ui.text(`LOSE: ${lossTextOf(d, v.state).replace('THE BET', '$' + (typeof d.bet === 'number' ? d.bet : `${d.bet[0]}-${d.bet[1]}`))}`, 12, 40, tier.hi);
+      ui.text(`LOSE: ${lossTextOf(d, v.state).replace('THE BET', money(bet))}`, 12, 40, tier.hi);
       ui.text(`RETURNS $${d.rtp.toFixed(2)} PER $1`, 12, 51, C.dust);
       const f = payoutFactorOf(v.state, me, d.id);
       if (me.overclock > 0) ui.text(`OVERCLOCK: STAKES AND WINS x2, ${Math.ceil(me.overclock / TICKS_PER_S)} S`, PANEL_W - 12, 51, C.gold, { align: 'right' });
@@ -174,9 +174,31 @@ export abstract class TablePanel extends Panel {
   /** The bet buttons (drawn after the odds: the odds always come first). */
   protected abstract drawControls(ui: UI, v: PanelView): void;
 
+  /** the stake you picked here (null: the table's standard) */
+  private chosen: number | null = null;
+
+  /** Your bet here, before Overclock: what you picked, inside this floor's limits. */
+  protected base(v: PanelView): number {
+    const l = limitsOf(this.def, v.state.floor);
+    return Math.max(l.min, Math.min(l.max, this.chosen ?? l.std));
+  }
+
   /** This player's stake at this table now (Overclock doubles it). */
-  protected stake(v: PanelView, base = minBet(this.def)): number {
+  protected stake(v: PanelView, base = this.base(v)): number {
     return stakeFor(v.state.players[v.player], base);
+  }
+
+  /** The stake picker: - $200 +, at the left of the controls row (DECISIONS #85). */
+  protected drawBetPicker(ui: UI, v: PanelView, x = 12) {
+    const l = limitsOf(this.def, v.state.floor);
+    const b = this.base(v);
+    const off = !v.active || !!this.tableState(v).pending;
+    const tier = TIER_ROLE[this.def.tier];
+    if (ui.button(`${this.table}-less`, x, CTRL_Y, 18, 20, '-', { edge: tier.base, disabled: off || b <= l.min, tip: `Bet less (the least here: ${money(l.min)}).` })) this.chosen = b - l.step;
+    ui.text(money(b), x + 41, CTRL_Y + 4, C.gold, { align: 'center' });
+    // the table's limits on this floor, under your stake
+    ui.text(`${l.min}-${l.max}`, x + 41, CTRL_Y + 13, C.ash, { align: 'center' });
+    if (ui.button(`${this.table}-more`, x + 64, CTRL_Y, 18, 20, '+', { edge: tier.base, disabled: off || b >= l.max, tip: `Bet more (the most here: ${money(l.max)}).` })) this.chosen = b + l.step;
   }
 
   /** The odds are hidden by a Blackout (the header says so). */

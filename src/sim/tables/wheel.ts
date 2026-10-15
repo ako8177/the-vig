@@ -5,7 +5,7 @@
 // earner on the floor).
 import type { TableModule } from './table';
 import { stakeFor } from '../rules';
-import { defOf, stake } from './table';
+import { betOf, defOf, stake } from './table';
 import { addMark, payoutFactor } from '../rules';
 import { TEAM_MARKS } from '../../data/marks';
 
@@ -38,7 +38,9 @@ export const wheel: TableModule = {
   lossCost: () => def.lossText,
   start(g, p, cmd) {
     if (cmd.t !== 'spin') return 'spin the wheel';
-    const bet = stakeFor(p, def.bet as number);
+    const base = betOf(g, def, 'amount' in cmd ? cmd.amount : undefined);
+    if (typeof base === 'string') return base;
+    const bet = stakeFor(p, base);
     const why = stake(g, bet);
     if (why) return why;
     const slot = g.rng.int(0, WHEEL_SLOTS - 1);

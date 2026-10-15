@@ -5,7 +5,7 @@
 import type { Game } from '../Game';
 import type { Command } from '../commands';
 import type { Card, Outcome, PlayerState } from '../state';
-import { TABLE_BY_ID, type TableDef } from '../../data/tables';
+import { TABLE_BY_ID, limitsOf, type TableDef } from '../../data/tables';
 
 export interface Odds {
   /** expected return per $1 bet, exact (enumerated) */
@@ -35,6 +35,19 @@ export interface TableModule {
 }
 
 export const defOf = (id: string) => TABLE_BY_ID.get(id)!;
+
+/**
+ * The stake a player asked for at this table (none: the table's standard), checked against its
+ * limits on this floor and rounded to its step; or why not (DECISIONS #85).
+ */
+export function betOf(g: Game, def: TableDef, amount?: number): number | string {
+  const l = limitsOf(def, g.state.floor);
+  if (amount === undefined) return l.std;
+  if (!Number.isFinite(amount)) return 'no such bet';
+  const a = Math.round(amount / l.step) * l.step;
+  if (a < l.min || a > l.max) return `bet $${l.min}-$${l.max}`;
+  return a;
+}
 
 /** Take a stake from the bank, or say why not. */
 export function stake(g: Game, amount: number): string | null {

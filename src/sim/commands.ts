@@ -10,9 +10,9 @@ export type Command =
   /** Twenty-One: place a bet and deal */
   | { t: 'bet'; table: string; amount: number }
   /** Hi-Lo 'hi' | 'lo'; Red Line 'red' | 'black'; Twenty-One 'hit' | 'stand' */
-  | { t: 'call'; table: string; call: string }
+  | { t: 'call'; table: string; call: string; amount?: number }
   /** the one-button tables: the Bandit, the Wheel of Marks, Dead Man's Hand */
-  | { t: 'spin'; table: string }
+  | { t: 'spin'; table: string; amount?: number }
   /** a charm or an upgrade: from the computer at home (into the post), or at the cage in a run without the house */
   | { t: 'buy'; item: string }
   /** the house: take what's in the mailbox; get in the car and drive to the casino */

@@ -3,7 +3,7 @@
 // A win: +1 marker (2 with Marker Magnet). DESIGN.md §3, §5; DECISIONS #8, #11.
 import type { TableModule } from './table';
 import { stakeFor } from '../rules';
-import { defOf, drawCard, isRed, stake } from './table';
+import { betOf, defOf, drawCard, isRed, stake } from './table';
 import { addMarkers, loseLife, payoutFactor } from '../rules';
 import { ECONOMY } from '../../data/economy';
 import { WHEEL } from '../../data/wheels';
@@ -26,7 +26,9 @@ export const redline: TableModule = {
   lossCost: () => def.lossText,
   start(g, p, cmd) {
     if (cmd.t !== 'call' || (cmd.call !== 'red' && cmd.call !== 'black')) return 'call red or black';
-    const bet = stakeFor(p, def.bet as number);
+    const base = betOf(g, def, 'amount' in cmd ? cmd.amount : undefined);
+    if (typeof base === 'string') return base;
+    const bet = stakeFor(p, base);
     const why = stake(g, bet);
     if (why) return why;
     const card = drawCard(g);

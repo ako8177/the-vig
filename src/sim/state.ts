@@ -284,7 +284,7 @@ export function newState(players: number, upgrades: UpgradeId[] = [], home = fal
     clock: NIGHT_TICKS,
     bank: START_BANK + (upgrades.includes('bank500') ? 500 : 0),
     quota: QUOTA_1,
-    markers: 0,
+    markers: ECONOMY.startMarkers.v,
     players: Array.from({ length: players }, (_, id) => ({
       id, ...(home ? homeSpawnOf(id, players) : spawnOf(id, players)), mx: 0, mz: 0, seat: null, lives: START_LIVES, ghost: false,
       charms: [], redStreak: 0, overclock: 0, apronUsed: false, drunk: 0, run: false, buffs: [],

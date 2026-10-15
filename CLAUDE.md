@@ -35,8 +35,8 @@ audit, the e2e harness, the deploy workflow, the `.bat` files, Electron.
 - Content is typed data in `src/data/` (tables, charms, upgrades, marks, wheels, floors, the
   Circuit rules per floor). A validation test checks cross-references, that **every number has
   a `derivation` string** naming a `DESIGN.md` section, that every table's RTP matches its
-  `pays × p` within 0.5%, and that **every charm declares effects on at least two systems**
-  (pillar 3).
+  `pays × p` within 0.5%, and that **every charm declares the systems it touches** (one is enough:
+  the owner dropped the two-system rule, DECISIONS #85).
 - The renderer and panels are presentation: `src/render3d/`, `src/panels/` (2D canvases),
   `src/hud/`, `src/app/` (title → lobby → night → results). Panels send commands; they never
   touch sim state.
@@ -65,7 +65,7 @@ audit, the e2e harness, the deploy workflow, the `.bat` files, Electron.
   before a bet can be placed. A "Blackout" team mark is the only thing that may hide them, and
   it says that it is doing so.
 - **No real-money anything**, ever, in any form, including cosmetics. Don't propose it.
-- **Every charm touches two systems. Every table has a tier color. Every risk is shown.**
+- **Every table has a tier color. Every risk is shown.** (Charms may touch one system: DECISIONS #85.)
 - Play the build with the bots before asking for a review; send screenshots of: the room from
   the door, a Hi-Lo loss handing out a mark, Red Line's third loss, the lights dropping at
   0:00, a Circuit overload, the Boon wheel.

@@ -249,3 +249,12 @@ inspirations: the ideas are taken, never their names, numbers or art).
 - #84 2026-10-15: **Markers buy charms only** (the owner): the marker upgrades leave the shop;
   ones already owned keep working. Lasting upgrades will come from a skill tree, to be designed
   with the owner (IDEAS.md has the charm and skill-tree proposals).
+- #85 2026-10-15: **You pick your bet; charms may touch one system; a run starts with markers**
+  (the owner). Every table has floor-1 limits and a step (Bandit $50-250, 21 $50-400, Hi-Lo
+  $100-500, Wheel $100-600, Red Line $250-1,250, Dead Man $500-2,500); a deeper floor scales them
+  (`FLOOR_STAKES`, floor 1 only so far). The panels have a stake picker; the commands carry the
+  amount; no amount means the table's standard stake (the old fixed bet), so the pace bots are
+  unchanged. Measured: bots that bet the maximum and change nothing else make night 1 less often
+  (mid rotation 54% vs 66%; with Red Line 54% vs 69%): a bigger bet is a bigger swing, not a free
+  win. The two-system rule for charms is dropped (CLAUDE.md, the data test). A run starts with 6
+  markers (a charm or two, or saved). GAMES.md lists every game for planning charms and skills.

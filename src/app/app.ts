@@ -13,7 +13,7 @@ import { OPEN_TABLES } from '../sim/systems/tables';
 import { atBar, atCage, cantBuy, cantOrder, slotsOf } from '../sim/systems/cage';
 import { BUZZ, DRINKS, DRINK_BY_ID, type DrinkId } from '../data/drinks';
 import { FLOOR_1, USE_RADIUS, roomAt } from '../data/floors';
-import { TABLE_BY_ID, minBet } from '../data/tables';
+import { TABLE_BY_ID, limitsOf, minBet } from '../data/tables';
 import { CHARMS, UPGRADES, CHARM_BY_ID, UPGRADE_BY_ID, type CharmId, type UpgradeId } from '../data/charms';
 import { MARK_BY_ID } from '../data/marks';
 import { FEEL } from '../data/feel';
@@ -529,7 +529,8 @@ export class App {
   /** The seat prompt: the table's name, then its tier, odds and loss cost (all from its data). */
   private promptFor(table: string) {
     const d = TABLE_BY_ID.get(table)!;
-    const bet = typeof d.bet === 'number' ? `$${d.bet}` : `$${d.bet[0]}-${d.bet[1]}`;
+    const l = limitsOf(d, this.game.state.floor);
+    const bet = `$${l.min}-${l.max}`;
     const hidden = blackoutLeft(this.game.state) > 0;
     return {
       title: `E  SIT  ${d.name.toUpperCase()}`,

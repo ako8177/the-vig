@@ -85,4 +85,22 @@ describe('sim scaffold', () => {
     g.step();
     expect(g.drainEvents().map((e) => e.t)).toEqual(['sat', 'stood']);
   });
+
+  it('takes any stake inside a table limits, rounded to its step, and refuses one outside (DECISIONS #85)', () => {
+    const g = new Game({ seed: 5 });
+    const hilo = FLOOR_1.tables.find((t) => t.table === 'hilo')!;
+    Object.assign(g.state.players[0], { x: hilo.stand.x, z: hilo.stand.z });
+    g.submit(0, { t: 'sit', table: 'hilo' });
+    g.step();
+    g.state.bank = 5000;
+    g.submit(0, { t: 'call', table: 'hilo', call: 'hi', amount: 400 });
+    g.step();
+    expect(g.state.bank).toBe(4600);
+    g.state.tables.hilo.pending = null;
+    g.drainEvents();
+    g.submit(0, { t: 'call', table: 'hilo', call: 'hi', amount: 900 });
+    g.step();
+    expect(g.drainEvents()).toContainEqual({ t: 'refused', player: 0, cmd: 'call', why: 'bet $100-$500' });
+    expect(g.state.bank).toBe(4600);
+  });
 });

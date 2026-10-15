@@ -17,8 +17,9 @@ export interface TableDef {
   sign: string;
   tier: Tier;
   loss: LossKind;
-  /** the bet, or [min, max] for a table that lets you choose */
-  bet: number | [number, number];
+  /** the stakes on floor 1 (DECISIONS #85): you pick any `step` from `min` to `max`; `std` is the
+   *  stake the pace bots play and the panels start on. A deeper floor scales all four. */
+  bet: { min: number; max: number; step: number; std: number };
   /** seconds per round with one player seated (decision + result; the pace bots play at this rate) */
   roundS: number;
   /** seconds from the call until the result lands (the sim holds the result back this long; src/data/feel.ts) */
@@ -40,37 +41,37 @@ export interface TableDef {
 
 export const TABLES: TableDef[] = [
   {
-    id: 'bandit', name: 'The Bandit', sign: 'BANDIT', tier: 'low', loss: 'coin', bet: 100, roundS: 2.5, resolveS: FEEL.bandit.s,
+    id: 'bandit', name: 'The Bandit', sign: 'BANDIT', tier: 'low', loss: 'coin', bet: { min: 50, max: 250, step: 50, std: 100 }, roundS: 2.5, resolveS: FEEL.bandit.s,
     winP: 0.2586, pays: null, rtp: 0.9504, paysText: '8 LINES, CORNERS, THE GRID', lossText: 'THE BET',
     howText: 'PULL. 9 CELLS, EACH ONE STOP OF 10.',
     derivation: 'DESIGN.md §3: low tier; 3x3, 8 lines 10/3/1/0.3x, corners 3x, whole grid 50x over 4^9 weighted grids → RTP 0.9504; -$5 a round',
   },
   {
-    id: 'twentyone', name: 'Twenty-One', sign: '21', tier: 'low', loss: 'coin', bet: [100, 300], roundS: 8, resolveS: 0.6,
+    id: 'twentyone', name: 'Twenty-One', sign: '21', tier: 'low', loss: 'coin', bet: { min: 50, max: 400, step: 50, std: 200 }, roundS: 8, resolveS: 0.6,
     winP: 0.43, pays: null, rtp: 0.9921, paysText: '1:1, NATURAL 3:2', lossText: 'THE BET (MORE IF YOU DOUBLE OR SPLIT)',
     howText: '6 DECKS. HIT, STAND, DOUBLE, SPLIT. DEALER HITS SOFT 17.',
     derivation: 'DESIGN.md §3: low tier; 6-deck shoe, H17, peek, double any two (and after a split), split once, 3:2 → basic strategy RTP 0.9921 (endless-shoe DP; 400k shoe hands measure 0.9929)',
   },
   {
-    id: 'hilo', name: 'Hi-Lo Dice', sign: 'HI-LO', tier: 'mid', loss: 'mark', bet: 200, roundS: 3, resolveS: FEEL.dice.s,
+    id: 'hilo', name: 'Hi-Lo Dice', sign: 'HI-LO', tier: 'mid', loss: 'mark', bet: { min: 100, max: 500, step: 100, std: 200 }, roundS: 3, resolveS: FEEL.dice.s,
     winP: 0.5, pays: 2.4, rtp: 1.2, paysText: '2.4x', lossText: 'THE BET + 1 MARK',
     howText: 'ONE DIE. CALL HI (4-6) OR LO (1-3).',
     derivation: 'DESIGN.md §3: mid tier, p 0.50 x 2.4 = RTP 1.20, +$40 a round; 3 marks still pay, 4 lose',
   },
   {
-    id: 'wheel', name: 'Wheel of Marks', sign: 'WHEEL', tier: 'mid', loss: 'mark', bet: 300, roundS: 5, resolveS: FEEL.wheel.s,
+    id: 'wheel', name: 'Wheel of Marks', sign: 'WHEEL', tier: 'mid', loss: 'mark', bet: { min: 100, max: 600, step: 100, std: 300 }, roundS: 5, resolveS: FEEL.wheel.s,
     winP: 0.48, pays: null, rtp: 1.16, paysText: 'BY COLOR, UP TO 6x', lossText: 'THE BET + 1 TEAM MARK',
     howText: 'RED 1.5x, PURPLE 2.5x, GOLD 6x, BLACK HALF BACK.',
     derivation: 'DESIGN.md §3: mid tier, 25 slots: 8 red 1.5x, 3 purple 2.5x, 1 gold 6x, 7 black 0.5x, 6 marks 0 = 29/25 → RTP 1.16, +$48 a round; ahead on 12 of 25',
   },
   {
-    id: 'redline', name: 'Red Line', sign: 'RED LINE', tier: 'high', loss: 'skull', bet: 500, roundS: 6, resolveS: FEEL.card.s,
+    id: 'redline', name: 'Red Line', sign: 'RED LINE', tier: 'high', loss: 'skull', bet: { min: 250, max: 1250, step: 250, std: 500 }, roundS: 6, resolveS: FEEL.card.s,
     winP: 0.5, pays: 2.5, rtp: 1.25, paysText: '2.5x', lossText: 'THE BET; 3 LOSSES IN A ROW COST A LIFE',
     howText: 'CALL RED OR BLACK. ONE CARD, FRESH DECK.',
     derivation: 'DESIGN.md §3: high tier, p 0.50 x 2.5 = RTP 1.25, +$125 a round; a three-loss streak costs a life (31% in 6 rounds)',
   },
   {
-    id: 'deadman', name: "Dead Man's Hand", sign: 'DEAD MAN', tier: 'high', loss: 'skull', bet: 1000, roundS: 4, resolveS: FEEL.deadman.s,
+    id: 'deadman', name: "Dead Man's Hand", sign: 'DEAD MAN', tier: 'high', loss: 'skull', bet: { min: 500, max: 2500, step: 500, std: 1000 }, roundS: 4, resolveS: FEEL.deadman.s,
     winP: 0.25, pays: 6, rtp: 1.5, paysText: '6x', lossText: 'THE BET; SNAKE EYES COSTS A LIFE',
     howText: 'TWO DICE. DOUBLES OR 10+ WIN. 1-1 COSTS A LIFE.',
     derivation: "DESIGN.md §3: high tier, p 9/36 = 0.25 x 6 = RTP 1.50, +$500 a round; snake eyes (1/36) costs a life",
@@ -85,5 +86,17 @@ export const COLLECTOR_TABLE = {
 
 export const TABLE_BY_ID = new Map(TABLES.map((t) => [t.id, t]));
 
-/** The smallest bet a table takes. */
-export const minBet = (t: TableDef) => (typeof t.bet === 'number' ? t.bet : t.bet[0]);
+/** How a casino level scales every table's stakes (DECISIONS #85): floor 1 plays the stakes as
+ *  written; each floor down raises them (the floors past 1 aren't built yet). */
+export const FLOOR_STAKES: Record<number, { scale: number; derivation: string }> = {
+  1: { scale: 1, derivation: 'DESIGN.md §3 (DECISIONS #85): floor 1 plays the stakes as written' },
+};
+
+/** A table's stakes on a floor. */
+export function limitsOf(t: TableDef, floor = 1) {
+  const k = FLOOR_STAKES[floor]?.scale ?? 1;
+  return { min: t.bet.min * k, max: t.bet.max * k, step: t.bet.step * k, std: t.bet.std * k };
+}
+
+/** The smallest bet a table takes (floor 1). */
+export const minBet = (t: TableDef) => t.bet.min;
